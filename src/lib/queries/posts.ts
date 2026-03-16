@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Post, PostComment, ReviewEvent } from '@/lib/types'
+import type { Post, PostComment, PostStatus, ReviewEvent } from '@/lib/types'
 
 export async function getPendingReviewPosts(): Promise<Post[]> {
   const supabase = await createClient()
@@ -56,6 +56,38 @@ export async function getPostComments(postId: string): Promise<PostComment[]> {
 
   if (error) {
     console.error('Error fetching post comments:', error)
+    return []
+  }
+  return data ?? []
+}
+
+export async function getPostsByStatus(status: PostStatus | PostStatus[]): Promise<Post[]> {
+  const supabase = await createClient()
+  const statuses = Array.isArray(status) ? status : [status]
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .in('status', statuses)
+    .order('suggested_publish_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching posts by status:', error)
+    return []
+  }
+  return data ?? []
+}
+
+export async function getReviewChain(postId: string): Promise<ReviewEvent[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('review_events')
+    .select('*')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching review chain:', error)
     return []
   }
   return data ?? []
