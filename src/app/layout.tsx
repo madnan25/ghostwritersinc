@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
@@ -39,28 +40,28 @@ export default function RootLayout({
             <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <nav className="container flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-6">
-                  <a href="/" className="text-lg font-semibold">
+                  <Link href="/" className="text-lg font-semibold">
                     Ghostwriters Inc.
-                  </a>
+                  </Link>
                   <div className="hidden items-center gap-4 text-sm md:flex">
-                    <a
+                    <Link
                       href="/dashboard"
                       className="text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Dashboard
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/calendar"
                       className="text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Calendar
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href="/insights"
                       className="text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Insights
-                    </a>
+                    </Link>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
