@@ -8,6 +8,7 @@ import { PostDetailActions } from './_components/post-detail-actions'
 import { CommentablePostContent } from './_components/commentable-post-content'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
+import { PostNowButton } from './_components/post-now-button'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -75,7 +76,10 @@ export default async function PostPage({ params }: PostPageProps) {
                 {post.status.replace('_', ' ')}
               </span>
             </div>
-            <PostDetailActions postId={post.id} status={post.status} />
+            <div className="flex items-center gap-2">
+              <PostNowButton postId={post.id} status={post.status} />
+              <PostDetailActions postId={post.id} status={post.status} />
+            </div>
           </div>
 
           {/* Post content with inline commenting */}
