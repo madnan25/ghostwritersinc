@@ -65,6 +65,12 @@ export default function RootLayout({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href="/settings"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Settings
+                  </Link>
                   <ThemeToggle />
                 </div>
               </nav>
