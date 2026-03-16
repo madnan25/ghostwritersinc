@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 
 /** GET /api/drafts/:id/comments — get inline feedback from client */
 export async function GET(
@@ -9,6 +10,9 @@ export async function GET(
 ) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
+
+  const limited = rateLimit(`read:${auth.agentName}`, { maxRequests: 60 })
+  if (limited) return limited
 
   if (!auth.permissions.includes('read')) {
     return NextResponse.json(

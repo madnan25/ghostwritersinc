@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 
 const CreateDraftSchema = z.object({
   content: z.string().min(1, 'Content is required'),
@@ -16,6 +17,9 @@ const CreateDraftSchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
+
+  const limited = rateLimit(`write:${auth.agentName}`, { maxRequests: 10 })
+  if (limited) return limited
 
   if (!auth.permissions.includes('write')) {
     return NextResponse.json(
@@ -84,6 +88,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
+
+  const limited = rateLimit(`read:${auth.agentName}`, { maxRequests: 60 })
+  if (limited) return limited
 
   if (!auth.permissions.includes('read')) {
     return NextResponse.json(

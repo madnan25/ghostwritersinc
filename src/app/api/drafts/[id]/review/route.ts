@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition, WorkflowError } from '@/lib/workflow'
 
@@ -18,6 +19,9 @@ export async function POST(
 ) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
+
+  const limited = rateLimit(`write:${auth.agentName}`, { maxRequests: 10 })
+  if (limited) return limited
 
   if (!auth.permissions.includes('review')) {
     return NextResponse.json(
