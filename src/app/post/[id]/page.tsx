@@ -1,10 +1,13 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Bot, User, Calendar, FileText } from 'lucide-react'
-import { getPostById, getPostReviewEvents } from '@/lib/queries/posts'
+import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
+import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
+import { CommentablePostContent } from './_components/commentable-post-content'
+import { CommentThread } from './_components/comment-thread'
+import { OverallCommentForm } from './_components/overall-comment-form'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -33,7 +36,11 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function PostPage({ params }: PostPageProps) {
   const { id } = await params
-  const [post, reviewEvents] = await Promise.all([getPostById(id), getPostReviewEvents(id)])
+  const [post, reviewEvents, comments] = await Promise.all([
+    getPostById(id),
+    getPostReviewEvents(id),
+    getPostComments(id),
+  ])
 
   if (!post) notFound()
 
@@ -71,11 +78,31 @@ export default async function PostPage({ params }: PostPageProps) {
             <PostDetailActions postId={post.id} status={post.status} />
           </div>
 
-          {/* Post content */}
+          {/* Post content with inline commenting */}
           <div className="rounded-xl border border-border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium text-muted-foreground">Full Content</h2>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-              {post.content}
+            <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+              Full Content
+              <span className="ml-2 font-normal text-xs text-muted-foreground/60">
+                — select text to leave an inline comment
+              </span>
+            </h2>
+            <CommentablePostContent postId={post.id} content={post.content} comments={comments} />
+          </div>
+
+          {/* Comment thread + overall comment form */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <MessageSquare className="size-4" />
+              Comments
+              {comments.length > 0 && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                  {comments.length}
+                </span>
+              )}
+            </h2>
+            <CommentThread comments={comments} />
+            <div className="mt-4 pt-4 border-t border-border">
+              <OverallCommentForm postId={post.id} />
             </div>
           </div>
 
