@@ -75,7 +75,7 @@ insert into review_events (post_id, agent_name, action, notes) values
   ('b0000000-0000-0000-0000-000000000001', 'strategist', 'approved', 'Strong hook, clear CTA. Ready for client review.'),
   ('b0000000-0000-0000-0000-000000000003', 'scribe', 'approved', 'Good structure, passed to strategist for final review.');
 
--- Sample agent keys
+-- Sample agent keys (hashes generated dynamically — never commit real credentials)
 insert into agent_keys (organization_id, agent_name, api_key_hash, permissions) values
-  ('a0000000-0000-0000-0000-000000000001', 'strategist', 'dev_hash_strategist', '{read,write,review}'),
-  ('a0000000-0000-0000-0000-000000000001', 'scribe', 'dev_hash_scribe', '{read,write}');
+  ('a0000000-0000-0000-0000-000000000001', 'strategist', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write,review}'),
+  ('a0000000-0000-0000-0000-000000000001', 'scribe', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write}');
