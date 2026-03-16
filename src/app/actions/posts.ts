@@ -31,6 +31,37 @@ export async function addPostComment(
   revalidatePath(`/post/${postId}`)
 }
 
+async function tryCreateNotification(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  notification: {
+    organization_id: string
+    user_id: string
+    type: string
+    title: string
+    body?: string
+    post_id?: string
+  },
+) {
+  // Best-effort — silently ignore if RLS blocks the insert
+  try {
+    await supabase.from('notifications').insert(notification)
+  } catch {
+    // ignore
+  }
+}
+
+async function getPostWithUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string,
+) {
+  const { data } = await supabase
+    .from('posts')
+    .select('user_id, content, organization_id')
+    .eq('id', postId)
+    .single()
+  return data
+}
+
 export async function approvePost(postId: string) {
   const supabase = await createClient()
 
@@ -47,6 +78,18 @@ export async function approvePost(postId: string) {
     action: 'approved',
     notes: null,
   })
+
+  const post = await getPostWithUser(supabase, postId)
+  if (post) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_approved',
+      title: 'Post approved',
+      body: post.content.slice(0, 80),
+      post_id: postId,
+    })
+  }
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
@@ -140,6 +183,21 @@ export async function publishPost(postId: string): Promise<void> {
 
   if (error) throw new Error(error.message)
 
+  const { data: dbPost } = await supabase
+    .from('posts')
+    .select('user_id, organization_id')
+    .eq('id', postId)
+    .single()
+  if (dbPost) {
+    await tryCreateNotification(supabase, {
+      organization_id: dbPost.organization_id,
+      user_id: dbPost.user_id,
+      type: 'post_published',
+      title: 'Post published to LinkedIn',
+      post_id: postId,
+    })
+  }
+
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
 }
@@ -164,6 +222,18 @@ export async function rejectPost(postId: string, reason: string) {
     action: 'rejected',
     notes: reason,
   })
+
+  const post = await getPostWithUser(supabase, postId)
+  if (post) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_rejected',
+      title: 'Post rejected',
+      body: reason.slice(0, 80),
+      post_id: postId,
+    })
+  }
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
