@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 import { getPostById, getPostReviewEvents } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
@@ -32,6 +33,10 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   const { id } = await params
   const [post, reviewEvents] = await Promise.all([getPostById(id), getPostReviewEvents(id)])
 
