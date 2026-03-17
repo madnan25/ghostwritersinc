@@ -123,21 +123,6 @@ export async function getScheduledPosts(): Promise<Post[]> {
   return data ?? []
 }
 
-export async function getReviewChain(postId: string): Promise<ReviewEvent[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('review_events')
-    .select('*')
-    .eq('post_id', postId)
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching review chain:', error)
-    return []
-  }
-  return data ?? []
-}
-
 export async function getPillars(): Promise<ContentPillar[]> {
   const supabase = await createClient()
   const { data, error } = await supabase

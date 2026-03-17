@@ -25,15 +25,6 @@ export interface Organization {
   created_at: string
 }
 
-export interface ContentPillar {
-  id: string
-  organization_id: string
-  name: string
-  weight_pct: number
-  description: string | null
-  created_at: string
-}
-
 export interface Post {
   id: string
   organization_id: string
