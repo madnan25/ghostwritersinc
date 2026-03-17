@@ -5,7 +5,7 @@
 -- =============================================================================
 
 create table content_pillars (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
   name text not null,
   slug text not null,

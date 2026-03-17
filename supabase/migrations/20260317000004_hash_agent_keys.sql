@@ -8,7 +8,7 @@ alter table agent_keys add column key_prefix text;
 update agent_keys set key_prefix = left(api_key_hash, 8);
 
 -- 3. Hash existing plaintext keys in-place using pgcrypto bcrypt
-update agent_keys set api_key_hash = crypt(api_key_hash, gen_salt('bf'));
+update agent_keys set api_key_hash = extensions.crypt(api_key_hash, extensions.gen_salt('bf'));
 
 -- 4. Make key_prefix NOT NULL after backfill
 alter table agent_keys alter column key_prefix set not null;
