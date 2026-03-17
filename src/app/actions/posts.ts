@@ -125,6 +125,20 @@ export async function publishPost(postId: string, linkedinPostUrn?: string) {
   revalidatePath(`/post/${postId}`)
 }
 
+export async function updatePostContent(postId: string, content: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
 export async function reviseDraft(postId: string) {
   await transitionPostStatus(postId, 'draft', 'client', {
     notes: 'Returned to draft for revision',

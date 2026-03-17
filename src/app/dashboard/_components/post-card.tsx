@@ -122,7 +122,7 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Actions */}
-      <PostCardActions postId={post.id} status={post.status} />
+      <PostCardActions postId={post.id} status={post.status} content={post.content} />
     </div>
   )
 }
