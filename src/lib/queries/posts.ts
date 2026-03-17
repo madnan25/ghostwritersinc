@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Post, PostComment, PostStatus, ReviewEvent } from '@/lib/types'
+import type { ContentPillar, Post, PostComment, PostStatus, ReviewEvent } from '@/lib/types'
 
 export async function getPendingReviewPosts(): Promise<Post[]> {
   const supabase = await createClient()
@@ -133,6 +133,20 @@ export async function getReviewChain(postId: string): Promise<ReviewEvent[]> {
 
   if (error) {
     console.error('Error fetching review chain:', error)
+    return []
+  }
+  return data ?? []
+}
+
+export async function getPillars(): Promise<ContentPillar[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('content_pillars')
+    .select('*')
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching pillars:', error)
     return []
   }
   return data ?? []

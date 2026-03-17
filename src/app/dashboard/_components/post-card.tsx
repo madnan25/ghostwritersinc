@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Post } from '@/lib/types'
+import type { ContentPillar, Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
 
 interface PostCardProps {
   post: Post
+  pillar?: ContentPillar
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -16,14 +17,6 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'Scheduled', className: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
   published: { label: 'Published', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
   rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-400 border-red-500/25' },
-}
-
-const PILLAR_COLORS: Record<string, string> = {
-  'thought-leadership': 'bg-blue-500/15 text-blue-400 border-blue-500/25',
-  'personal-story': 'bg-purple-500/15 text-purple-400 border-purple-500/25',
-  'industry-insight': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
-  'how-to': 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  'case-study': 'bg-rose-500/15 text-rose-400 border-rose-500/25',
 }
 
 function getHook(content: string): string {
@@ -41,14 +34,15 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, pillar }: PostCardProps) {
   const hook = getHook(post.content)
-  const pillarColor =
-    post.pillar ? (PILLAR_COLORS[post.pillar] ?? 'bg-muted text-muted-foreground border-border') : null
   const statusConfig = STATUS_CONFIG[post.status]
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
+    <div
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
+      style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: '3px' } : undefined}
+    >
       {/* Status + Pillar tags */}
       <div className="flex items-center gap-2 flex-wrap">
         {statusConfig && (
@@ -61,14 +55,16 @@ export function PostCard({ post }: PostCardProps) {
             {statusConfig.label}
           </span>
         )}
-        {post.pillar && (
+        {pillar && (
           <span
-            className={cn(
-              'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-              pillarColor,
-            )}
+            className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+            style={{
+              backgroundColor: `${pillar.color}26`,
+              color: pillar.color,
+              borderColor: `${pillar.color}40`,
+            }}
           >
-            {post.pillar}
+            {pillar.name}
           </span>
         )}
       </div>

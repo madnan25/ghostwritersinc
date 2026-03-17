@@ -1,15 +1,64 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getAllPosts } from '@/lib/queries/posts'
+import { getAllPosts, getPillars } from '@/lib/queries/posts'
 import { PostGrid } from './_components/post-grid'
+import type { ContentPillar, Post } from '@/lib/types'
+
+export type RotationWarning = {
+  pillar_id: string
+  pillar_name: string
+  run_length: number
+  suggestion: string
+}
+
+function computeRotationWarnings(posts: Post[], pillars: ContentPillar[]): RotationWarning[] {
+  const ordered = posts
+    .filter((p) => p.pillar_id && p.suggested_publish_at)
+    .sort((a, b) => new Date(a.suggested_publish_at!).getTime() - new Date(b.suggested_publish_at!).getTime())
+
+  const warnings: RotationWarning[] = []
+  let currentPillar: string | null = null
+  let runPosts: string[] = []
+
+  for (const post of ordered) {
+    if (post.pillar_id === currentPillar && currentPillar !== null) {
+      runPosts.push(post.id)
+    } else {
+      if (runPosts.length > 2 && currentPillar) {
+        const pillar = pillars.find((p) => p.id === currentPillar)
+        warnings.push({
+          pillar_id: currentPillar,
+          pillar_name: pillar?.name ?? 'Unknown',
+          run_length: runPosts.length,
+          suggestion: `${runPosts.length} consecutive "${pillar?.name ?? 'Unknown'}" posts queued. Mix in other pillars for better variety.`,
+        })
+      }
+      currentPillar = post.pillar_id
+      runPosts = [post.id]
+    }
+  }
+
+  if (runPosts.length > 2 && currentPillar) {
+    const pillar = pillars.find((p) => p.id === currentPillar)
+    warnings.push({
+      pillar_id: currentPillar,
+      pillar_name: pillar?.name ?? 'Unknown',
+      run_length: runPosts.length,
+      suggestion: `${runPosts.length} consecutive "${pillar?.name ?? 'Unknown'}" posts queued. Mix in other pillars for better variety.`,
+    })
+  }
+
+  return warnings
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const posts = await getAllPosts()
+  const [posts, pillars] = await Promise.all([getAllPosts(), getPillars()])
   const needsReview = posts.filter((p) => p.status === 'pending_review' || p.status === 'agent_review').length
+  const rotationWarnings = computeRotationWarnings(posts, pillars)
 
   return (
     <div className="container px-4 py-8">
@@ -24,7 +73,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <PostGrid posts={posts} />
+      <PostGrid posts={posts} pillars={pillars} rotationWarnings={rotationWarnings} />
     </div>
   )
 }
