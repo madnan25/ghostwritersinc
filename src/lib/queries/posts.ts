@@ -78,6 +78,22 @@ export async function getPostsByStatus(status: PostStatus | PostStatus[]): Promi
   return data ?? []
 }
 
+export async function getScheduledPosts(): Promise<Post[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .in('status', ['scheduled', 'approved'])
+    .not('scheduled_publish_at', 'is', null)
+    .order('scheduled_publish_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching scheduled posts:', error)
+    return []
+  }
+  return data ?? []
+}
+
 export async function getReviewChain(postId: string): Promise<ReviewEvent[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
