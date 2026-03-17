@@ -39,8 +39,9 @@ export async function updateSession(request: NextRequest) {
       request.nextUrl.pathname === path ||
       request.nextUrl.pathname.startsWith("/auth/")
   );
+  const isAgentApiPath = request.nextUrl.pathname.startsWith("/api/drafts");
 
-  if (!user && !isPublicPath) {
+  if (!user && !isPublicPath && !isAgentApiPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
