@@ -56,6 +56,23 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Check if org has completed onboarding
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profile) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('onboarded_at')
+      .eq('id', profile.organization_id)
+      .single()
+
+    if (org && !org.onboarded_at) redirect('/onboarding')
+  }
+
   const [posts, pillars] = await Promise.all([getAllPosts(), getPillars()])
   const needsReview = posts.filter((p) => p.status === 'pending_review' || p.status === 'agent_review').length
   const rotationWarnings = computeRotationWarnings(posts, pillars)

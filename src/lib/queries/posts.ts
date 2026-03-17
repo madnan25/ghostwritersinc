@@ -46,20 +46,6 @@ export async function getPostReviewEvents(postId: string): Promise<ReviewEvent[]
   return data ?? []
 }
 
-export async function getAllPosts(): Promise<Post[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('posts')
-    .select('*')
-    .order('suggested_publish_at', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching all posts:', error)
-    return []
-  }
-  return data ?? []
-}
-
 export async function getPostComments(postId: string): Promise<PostComment[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
