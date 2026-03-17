@@ -8,6 +8,7 @@ const UpdateDraftSchema = z.object({
   content: z.string().min(1).optional(),
   content_type: z.enum(['text', 'image', 'document']).optional(),
   pillar: z.string().nullable().optional(),
+  pillar_id: z.string().uuid().nullable().optional(),
   brief_ref: z.string().nullable().optional(),
   suggested_publish_at: z.string().nullable().optional(),
   media_urls: z.array(z.string()).nullable().optional(),
@@ -72,12 +73,18 @@ export async function PATCH(
     )
   }
 
+  const updateFields = {
+    ...parsed.data,
+    updated_at: new Date().toISOString(),
+  }
+
+  if ('media_urls' in parsed.data) {
+    updateFields.media_urls = parsed.data.media_urls ?? []
+  }
+
   const { data: post, error } = await supabase
     .from('posts')
-    .update({
-      ...parsed.data,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateFields)
     .eq('id', id)
     .select()
     .single()
