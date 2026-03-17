@@ -130,3 +130,155 @@ export async function reviseDraft(postId: string) {
     notes: 'Returned to draft for revision',
   })
 }
+
+export async function publishToLinkedIn(
+  postId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  // Fetch post
+  const { data: post, error: postError } = await supabase
+    .from('posts')
+    .select('id, status, content')
+    .eq('id', postId)
+    .single()
+
+  if (postError || !post)
+    return { success: false, error: 'Post not found' }
+
+  if (post.status !== 'approved' && post.status !== 'scheduled')
+    return {
+      success: false,
+      error: 'Post must be approved or scheduled to publish',
+    }
+
+  // Fetch user's LinkedIn credentials
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('linkedin_id, settings')
+    .eq('id', user.id)
+    .single()
+
+  if (userError || !userData)
+    return { success: false, error: 'User profile not found' }
+
+  const linkedinId = userData.linkedin_id
+  const encryptedToken = (userData.settings as Record<string, unknown>)
+    ?.linkedin_access_token_encrypted as string | undefined
+
+  if (!linkedinId || !encryptedToken)
+    return {
+      success: false,
+      error:
+        'LinkedIn account not connected. Please connect your LinkedIn account in settings.',
+    }
+
+  // Decrypt token
+  const { decrypt } = await import('@/lib/crypto')
+  let accessToken: string
+  try {
+    accessToken = decrypt(encryptedToken)
+  } catch {
+    return {
+      success: false,
+      error:
+        'LinkedIn token is invalid. Please reconnect your LinkedIn account.',
+    }
+  }
+
+  // Call LinkedIn API with retry
+  let linkedinPostUrn: string | undefined
+  let lastError: string | undefined
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(
+        'https://api.linkedin.com/rest/posts',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': '202406',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+          body: JSON.stringify({
+            author: `urn:li:person:${linkedinId}`,
+            commentary: post.content,
+            visibility: 'PUBLIC',
+            distribution: {
+              feedDistribution: 'MAIN_FEED',
+              targetEntities: [],
+              thirdPartyDistributionChannels: [],
+            },
+            lifecycleState: 'PUBLISHED',
+            isReshareDisabledByAuthor: false,
+          }),
+        }
+      )
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error:
+            'LinkedIn token expired. Please reconnect your LinkedIn account.',
+        }
+      }
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('retry-after')
+        return {
+          success: false,
+          error: `LinkedIn rate limit reached. Please try again ${retryAfter ? `in ${retryAfter} seconds` : 'later'}.`,
+        }
+      }
+
+      if (!response.ok) {
+        const body = await response.text()
+        lastError = `LinkedIn API error (${response.status}): ${body}`
+        // Retry on 5xx
+        if (response.status >= 500) {
+          await new Promise((r) =>
+            setTimeout(r, Math.pow(2, attempt) * 1000)
+          )
+          continue
+        }
+        return { success: false, error: lastError }
+      }
+
+      linkedinPostUrn =
+        response.headers.get('x-restli-id') ?? undefined
+      break
+    } catch (err) {
+      lastError = `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`
+      if (attempt < 2) {
+        await new Promise((r) =>
+          setTimeout(r, Math.pow(2, attempt) * 1000)
+        )
+        continue
+      }
+    }
+  }
+
+  if (!linkedinPostUrn && lastError) {
+    return { success: false, error: lastError }
+  }
+
+  // Transition to published
+  try {
+    await publishPost(postId, linkedinPostUrn)
+  } catch (err) {
+    return {
+      success: false,
+      error: `Failed to update post status: ${err instanceof Error ? err.message : 'Unknown error'}`,
+    }
+  }
+
+  return { success: true }
+}

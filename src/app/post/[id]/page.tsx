@@ -73,7 +73,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 {post.status.replace('_', ' ')}
               </span>
             </div>
-            <PostDetailActions postId={post.id} status={post.status} />
+            <PostDetailActions postId={post.id} status={post.status} content={post.content} />
           </div>
 
           {/* Post content */}

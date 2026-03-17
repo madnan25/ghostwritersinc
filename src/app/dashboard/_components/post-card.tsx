@@ -101,7 +101,7 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Actions */}
-      <PostCardActions postId={post.id} />
+      <PostCardActions postId={post.id} status={post.status} />
     </div>
   )
 }
