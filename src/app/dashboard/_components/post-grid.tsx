@@ -67,7 +67,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
   const totalPosts = posts.filter((p) => p.pillar_id).length
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Rotation warning banner */}
       {rotationWarnings.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
@@ -83,10 +83,11 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
       {/* Pillar distribution — interactive bar + compact filter pills combined */}
       {pillars.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-muted-foreground">Pillar Distribution</p>
+          {/* Label hidden on mobile — bar is self-explanatory */}
+          <p className="hidden text-xs font-medium text-muted-foreground sm:block">Pillar Distribution</p>
 
-          {/* Tappable stacked bar — each segment filters by that pillar */}
-          <div className="flex h-5 w-full overflow-hidden rounded-full bg-muted">
+          {/* Tappable stacked bar — taller on mobile for easier tap targets */}
+          <div className="flex h-8 w-full overflow-hidden rounded-full bg-muted sm:h-5">
             {pillars.map((pillar) => {
               const count = posts.filter((p) => p.pillar_id === pillar.id).length
               const pct = totalPosts > 0 ? (count / totalPosts) * 100 : 0
@@ -99,7 +100,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
                   title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
                   onClick={() => togglePillar(pillar.id)}
                   className={cn(
-                    'h-full cursor-pointer transition-opacity',
+                    'h-full cursor-pointer transition-opacity duration-150 active:scale-95',
                     selectedPillarIds.size > 0 && !isActive ? 'opacity-30' : 'opacity-100 hover:opacity-80',
                   )}
                   style={{ width: `${pct}%`, backgroundColor: pillar.color }}
@@ -108,52 +109,56 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
             })}
           </div>
 
-          {/* Compact horizontally-scrollable pill row — doubles as filter toggle */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button
-              onClick={() => setSelectedPillarIds(new Set())}
-              className={cn(
-                'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                selectedPillarIds.size === 0
-                  ? 'border-border bg-background text-foreground shadow-sm'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              )}
-            >
-              All
-            </button>
-            {pillars.map((pillar) => {
-              const count = posts.filter((p) => p.pillar_id === pillar.id).length
-              const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
-              const active = selectedPillarIds.has(pillar.id)
-              return (
-                <button
-                  key={pillar.id}
-                  onClick={() => togglePillar(pillar.id)}
-                  title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
-                  className={cn(
-                    'inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-opacity',
-                    selectedPillarIds.size > 0 && !active ? 'opacity-40' : 'opacity-100',
-                  )}
-                  style={
-                    active
-                      ? { backgroundColor: `${pillar.color}26`, color: pillar.color, borderColor: `${pillar.color}40` }
-                      : { borderColor: 'transparent', color: 'var(--muted-foreground)' }
-                  }
-                >
-                  <span
-                    className="inline-block size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: pillar.color }}
-                  />
-                  {pillar.name}
-                </button>
-              )
-            })}
+          {/* Snap-scroll pill row with gradient fade hint at edges */}
+          <div className="relative">
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                onClick={() => setSelectedPillarIds(new Set())}
+                className={cn(
+                  'inline-flex min-h-[44px] shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 [scroll-snap-align:start] active:scale-95 sm:min-h-0',
+                  selectedPillarIds.size === 0
+                    ? 'border-border bg-background text-foreground shadow-sm'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                All
+              </button>
+              {pillars.map((pillar) => {
+                const count = posts.filter((p) => p.pillar_id === pillar.id).length
+                const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
+                const active = selectedPillarIds.has(pillar.id)
+                return (
+                  <button
+                    key={pillar.id}
+                    onClick={() => togglePillar(pillar.id)}
+                    title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
+                    className={cn(
+                      'inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 [scroll-snap-align:start] active:scale-95 sm:min-h-0',
+                      selectedPillarIds.size > 0 && !active ? 'opacity-40' : 'opacity-100',
+                    )}
+                    style={
+                      active
+                        ? { backgroundColor: `${pillar.color}26`, color: pillar.color, borderColor: `${pillar.color}40` }
+                        : { borderColor: 'transparent', color: 'var(--muted-foreground)' }
+                    }
+                  >
+                    <span
+                      className="inline-block size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: pillar.color }}
+                    />
+                    {pillar.name}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Gradient fade at right edge hints at horizontal scrollability */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" />
           </div>
         </div>
       )}
 
-      {/* Status filter tabs */}
-      <div className="flex gap-1 overflow-x-auto rounded-lg bg-muted/40 p-1">
+      {/* Status filter tabs — iOS-style segmented control */}
+      <div className="flex overflow-x-auto rounded-xl bg-muted/50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab, i) => {
           const count = getTabCount(tab)
           return (
@@ -161,7 +166,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
               key={tab.label}
               onClick={() => setActiveTab(i)}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-95',
                 i === activeTab
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground',
