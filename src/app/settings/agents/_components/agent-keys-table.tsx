@@ -139,7 +139,7 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
                       disabled={deletingKeyId === key.id}
                       className="text-destructive hover:text-destructive"
                     >
-                      {deletingKeyId === key.id ? "Deleting..." : "Delete"}
+                      {deletingKeyId === key.id ? "Deleting…" : "Delete"}
                     </Button>
                   </td>
                 </tr>

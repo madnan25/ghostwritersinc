@@ -100,7 +100,7 @@ export function CreateKeyDialog({ onCreated }: CreateKeyDialogProps) {
                 Cancel
               </Button>
               <Button size="sm" onClick={handleSubmit} disabled={isPending}>
-                {isPending ? "Creating..." : "Create Key"}
+                {isPending ? "Creating…" : "Create Key"}
               </Button>
             </div>
           </div>

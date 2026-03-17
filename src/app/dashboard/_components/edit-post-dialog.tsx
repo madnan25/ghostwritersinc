@@ -130,7 +130,7 @@ export function EditPostDialog({ postId, initialContent }: EditPostDialogProps) 
                 <Button
                   onClick={handleSave}
                   disabled={isPending || !content.trim()}
-                  className={mobile ? 'h-[52px] rounded-2xl text-base' : ''}
+                  className={mobile ? 'h-[52px] rounded-xl text-base' : ''}
                   size={mobile ? 'default' : 'sm'}
                 >
                   {isPending ? 'Saving…' : 'Save Changes'}
@@ -139,7 +139,7 @@ export function EditPostDialog({ postId, initialContent }: EditPostDialogProps) 
                   variant="outline"
                   onClick={handleClose}
                   disabled={isPending}
-                  className={mobile ? 'h-[52px] rounded-2xl text-base' : ''}
+                  className={mobile ? 'h-[52px] rounded-xl text-base' : ''}
                   size={mobile ? 'default' : 'sm'}
                 >
                   Cancel

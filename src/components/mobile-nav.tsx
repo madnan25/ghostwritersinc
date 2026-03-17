@@ -151,7 +151,7 @@ export function MobileNav() {
                       href={item.href}
                       onClick={() => setMoreOpen(false)}
                       aria-current={isActive ? 'page' : undefined}
-                      className={`flex items-center gap-3 rounded-2xl px-4 min-h-[56px] transition-colors active:scale-[0.98] ${
+                      className={`flex items-center gap-3 rounded-xl px-4 min-h-[56px] transition-colors active:scale-[0.98] ${
                         isActive
                           ? 'bg-muted text-foreground font-medium'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'

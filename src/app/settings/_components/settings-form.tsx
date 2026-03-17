@@ -80,7 +80,7 @@ export function SettingsForm({
   return (
     <div className="space-y-6">
       {/* Profile display */}
-      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5">
         {avatarUrl ? (
           <Image
             src={avatarUrl}
@@ -124,7 +124,7 @@ export function SettingsForm({
 
         {/* Notifications toggle */}
         <div
-          className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 cursor-pointer min-h-[56px]"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 cursor-pointer min-h-[56px]"
           onClick={() => setNotifications((v) => !v)}
         >
           <div>
@@ -161,8 +161,8 @@ export function SettingsForm({
           />
         </div>
 
-        <Button type="submit" disabled={isPending} className="w-full h-[52px] rounded-2xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
-          {isPending ? "Saving..." : "Save Settings"}
+        <Button type="submit" disabled={isPending} className="w-full h-[52px] rounded-xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
+          {isPending ? "Saving…" : "Save Settings"}
         </Button>
       </form>
 
@@ -172,7 +172,7 @@ export function SettingsForm({
         {linkedInConnected ? (() => {
           const { text, warn } = getExpiryLabel(linkedInExpiresAt);
           return (
-            <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 min-h-[64px]">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-5 min-h-[64px]">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-emerald-500">Connected</p>
                 <p className={`text-xs ${warn ? "text-yellow-500" : "text-muted-foreground"}`}>{text}</p>
@@ -183,7 +183,7 @@ export function SettingsForm({
             </div>
           );
         })() : (
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 min-h-[64px]">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-5 min-h-[64px]">
             <p className="text-sm text-muted-foreground">Not connected</p>
             <Button size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">
               Connect LinkedIn
@@ -195,7 +195,7 @@ export function SettingsForm({
       {/* Logout */}
       <div className="border-t border-border pt-6">
         <form action={signOut}>
-          <Button variant="outline" type="submit" className="w-full h-[52px] rounded-2xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
+          <Button variant="outline" type="submit" className="w-full h-[52px] rounded-xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
             Sign Out
           </Button>
         </form>

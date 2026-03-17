@@ -67,7 +67,7 @@ export function OnboardingForm({ orgName }: OnboardingFormProps) {
       </div>
 
       <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Setting up your workspace..." : "Get started"}
+        {isPending ? "Setting up your workspace…" : "Get started"}
       </Button>
     </form>
   );

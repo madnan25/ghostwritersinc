@@ -46,7 +46,7 @@ export function UploadList() {
       <div>
         <h2 className="mb-3 text-lg font-semibold">Upload History</h2>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         ) : uploads.length === 0 ? (
           <p className="text-sm text-muted-foreground">No uploads yet. Upload a WhatsApp chat export to get started.</p>
         ) : (

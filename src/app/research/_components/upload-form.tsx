@@ -73,7 +73,7 @@ export function UploadForm({ onUploadComplete }: UploadFormProps) {
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
         >
-          {uploading ? 'Uploading...' : 'Choose File'}
+          {uploading ? 'Uploading…' : 'Choose File'}
         </Button>
         <input
           ref={inputRef}

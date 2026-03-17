@@ -25,6 +25,7 @@ export default async function SettingsPage() {
   const linkedInExpiresAt = settings.linkedin_token_expires_at as string | null | undefined;
 
   const isAdmin = ["owner", "admin"].includes(profile.role);
+  const isOwner = profile.role === "owner";
 
   return (
     <div className="container max-w-2xl px-4 py-8">
@@ -38,18 +39,35 @@ export default async function SettingsPage() {
         linkedInConnected={linkedInConnected}
         linkedInExpiresAt={linkedInExpiresAt ?? null}
       />
-      {isAdmin && (
-        <div className="mt-8 rounded-lg border p-4">
-          <h2 className="mb-1 text-sm font-semibold">Admin</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Manage API keys for automated agents.
-          </p>
-          <Link
-            href="/settings/agents"
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            Manage Agent Keys →
-          </Link>
+      {(isAdmin || isOwner) && (
+        <div className="mt-8 rounded-xl border border-border bg-card p-5 space-y-3">
+          <h2 className="text-sm font-semibold">Admin</h2>
+          {isAdmin && (
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">
+                Manage API keys for automated agents.
+              </p>
+              <Link
+                href="/settings/agents"
+                className="text-sm text-primary underline-offset-4 hover:underline"
+              >
+                Manage Agent Keys →
+              </Link>
+            </div>
+          )}
+          {isOwner && (
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">
+                Invite team members and manage user access.
+              </p>
+              <Link
+                href="/settings/users"
+                className="text-sm text-primary underline-offset-4 hover:underline"
+              >
+                Manage Users →
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>
