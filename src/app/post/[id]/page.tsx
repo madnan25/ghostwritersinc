@@ -49,7 +49,7 @@ export default async function PostPage({ params }: PostPageProps) {
     STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
 
   return (
-    <div className="container px-4 py-8">
+    <div className="container px-4 py-8 pb-28 md:pb-8">
       {/* Back link */}
       <Link
         href="/dashboard"
@@ -76,6 +76,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 {post.status.replace('_', ' ')}
               </span>
             </div>
+            {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
             <PostDetailActions postId={post.id} status={post.status} content={post.content} />
           </div>
 

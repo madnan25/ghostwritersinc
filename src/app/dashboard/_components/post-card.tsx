@@ -44,6 +44,7 @@ export function PostCard({ post, pillar }: PostCardProps) {
   return (
     <m.div
       whileHover={{ scale: 1.015, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+      whileTap={{ scale: 0.97, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5"
       style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: '3px' } : undefined}
@@ -81,7 +82,7 @@ export function PostCard({ post, pillar }: PostCardProps) {
       </div>
 
       {/* Hook */}
-      <Link href={`/post/${post.id}`} className="group block">
+      <Link href={`/post/${post.id}`} className="group block min-h-[44px]">
         <p className="line-clamp-3 text-sm leading-relaxed text-foreground group-hover:text-primary">
           {hook}
         </p>

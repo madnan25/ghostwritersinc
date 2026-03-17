@@ -224,38 +224,38 @@ export function CalendarView({ posts }: CalendarViewProps) {
   return (
     <div className="rounded-xl border border-border bg-card">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => navigate(-1)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-lg text-muted-foreground transition-colors active:scale-95 hover:bg-muted hover:text-foreground"
             aria-label="Previous"
           >
             ‹
           </button>
-          <h2 className="min-w-48 text-center text-sm font-semibold">{title}</h2>
+          <h2 className="min-w-[100px] text-center text-sm font-semibold sm:min-w-48">{title}</h2>
           <button
             onClick={() => navigate(1)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-lg text-muted-foreground transition-colors active:scale-95 hover:bg-muted hover:text-foreground"
             aria-label="Next"
           >
             ›
           </button>
           <button
             onClick={() => setAnchor(new Date())}
-            className="ml-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="ml-1 inline-flex min-h-[44px] items-center rounded-xl border border-border px-3 text-xs text-muted-foreground transition-colors active:scale-95 hover:bg-muted hover:text-foreground"
           >
             Today
           </button>
         </div>
 
         {/* View toggle */}
-        <div className="flex rounded-md border border-border p-0.5">
+        <div className="flex rounded-xl border border-border p-0.5">
           {(['month', 'week'] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
+              className={`inline-flex min-h-[36px] items-center rounded-lg px-3 text-xs font-medium capitalize transition-colors active:scale-95 ${
                 view === v
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'

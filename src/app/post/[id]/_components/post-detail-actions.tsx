@@ -51,60 +51,82 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
     window.open('https://www.linkedin.com/feed/', '_blank')
   }
 
-  if (status === 'draft') {
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
-          disabled={isPending}
-        >
-          {isPending ? 'Submitting…' : 'Submit for Review'}
-        </Button>
-        <EditPostDialog postId={postId} initialContent={content} />
-      </div>
-    )
-  }
+  function renderActions(sticky = false) {
+    const wrapClass = sticky ? 'flex w-full items-center gap-2' : 'flex items-center gap-2'
 
-  if (status === 'pending_review') {
-    return (
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={handleApprove} disabled={isPending}>
-          {isPending ? 'Approving…' : 'Approve'}
-        </Button>
-        <RejectDialog postId={postId} />
-      </div>
-    )
-  }
-
-  if (status === 'approved' || status === 'scheduled') {
-    return (
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2">
+    if (status === 'draft') {
+      return (
+        <div className={wrapClass}>
           <Button
             size="sm"
-            onClick={handlePublish}
-            disabled={isPublishing}
+            className={sticky ? 'flex-1' : ''}
+            onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
+            disabled={isPending}
           >
-            {isPublishing ? 'Publishing…' : 'Publish to LinkedIn'}
+            {isPending ? 'Submitting…' : 'Submit for Review'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyAndOpen}>
-            Copy & Open LinkedIn
-          </Button>
+          <EditPostDialog postId={postId} initialContent={content} />
         </div>
-        {publishError && (
-          <p className="text-xs text-destructive">{publishError}</p>
-        )}
-        {copyToast && (
-          <p className="text-xs text-emerald-400">Post copied to clipboard!</p>
-        )}
+      )
+    }
+
+    if (status === 'pending_review') {
+      return (
+        <div className={wrapClass}>
+          <Button size="sm" className={sticky ? 'flex-1' : ''} onClick={handleApprove} disabled={isPending}>
+            {isPending ? 'Approving…' : 'Approve'}
+          </Button>
+          <RejectDialog postId={postId} />
+        </div>
+      )
+    }
+
+    if (status === 'approved' || status === 'scheduled') {
+      return (
+        <div className="flex flex-col gap-2 w-full">
+          <div className={wrapClass}>
+            <Button
+              size="sm"
+              className={sticky ? 'flex-1' : ''}
+              onClick={handlePublish}
+              disabled={isPublishing}
+            >
+              {isPublishing ? 'Publishing…' : 'Publish to LinkedIn'}
+            </Button>
+            <Button variant="outline" size="sm" className={sticky ? 'flex-1' : ''} onClick={handleCopyAndOpen}>
+              Copy & Open LinkedIn
+            </Button>
+          </div>
+          {publishError && (
+            <p className="text-xs text-destructive">{publishError}</p>
+          )}
+          {copyToast && (
+            <p className="text-xs text-emerald-400">Post copied to clipboard!</p>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
+        {status.replace('_', ' ')}
       </div>
     )
   }
 
   return (
-    <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
-      {status.replace('_', ' ')}
-    </div>
+    <>
+      {/* Inline actions — hidden on mobile */}
+      <div className="hidden md:flex items-center">
+        {renderActions(false)}
+      </div>
+
+      {/* Sticky bottom bar — mobile only, sits above the bottom nav (h-16 = 64px) */}
+      <div className="fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
+        style={{ paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom)))' }}
+      >
+        {renderActions(true)}
+      </div>
+    </>
   )
 }
