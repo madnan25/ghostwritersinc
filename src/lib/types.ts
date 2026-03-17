@@ -85,6 +85,18 @@ export interface AgentKey {
   created_at: string
 }
 
+export interface ResearchUpload {
+  id: string
+  organization_id: string
+  uploaded_by: string | null
+  filename: string
+  storage_path: string
+  upload_type: string
+  file_size_bytes: number | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 export interface Notification {
   id: string
   organization_id: string

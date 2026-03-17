@@ -68,6 +68,12 @@ export default function RootLayout({
                     >
                       Team
                     </Link>
+                    <Link
+                      href="/research"
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      Research
+                    </Link>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
