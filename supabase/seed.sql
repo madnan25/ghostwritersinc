@@ -76,6 +76,13 @@ insert into review_events (post_id, agent_name, action, notes) values
   ('b0000000-0000-0000-0000-000000000003', 'scribe', 'approved', 'Good structure, passed to strategist for final review.');
 
 -- Sample agent keys (hashes generated dynamically — never commit real credentials)
-insert into agent_keys (organization_id, agent_name, api_key_hash, permissions) values
-  ('a0000000-0000-0000-0000-000000000001', 'strategist', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write,review}'),
-  ('a0000000-0000-0000-0000-000000000001', 'scribe', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write}');
+-- Keys are bcrypt-hashed; key_prefix stores first 8 chars for lookup
+do $$
+declare
+  key1 text := gen_random_uuid()::text;
+  key2 text := gen_random_uuid()::text;
+begin
+  insert into agent_keys (organization_id, agent_name, key_prefix, api_key_hash, permissions) values
+    ('a0000000-0000-0000-0000-000000000001', 'strategist', left(key1, 8), crypt(key1, gen_salt('bf')), '{read,write,review}'),
+    ('a0000000-0000-0000-0000-000000000001', 'scribe', left(key2, 8), crypt(key2, gen_salt('bf')), '{read,write}');
+end $$;

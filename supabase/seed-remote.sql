@@ -340,8 +340,14 @@ The distinction matters more now than it did six months ago.',
 -- 3. Seed agent keys for real org
 -- ============================================================
 
-INSERT INTO agent_keys (organization_id, agent_name, api_key_hash, permissions)
-VALUES
-  ('da7e88ce-3841-4a0a-91b9-61f56f7405a7', 'strategist', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write,review}'),
-  ('da7e88ce-3841-4a0a-91b9-61f56f7405a7', 'scribe', crypt(gen_random_uuid()::text, gen_salt('bf')), '{read,write}')
-ON CONFLICT DO NOTHING;
+DO $$
+DECLARE
+  key1 text := gen_random_uuid()::text;
+  key2 text := gen_random_uuid()::text;
+BEGIN
+  INSERT INTO agent_keys (organization_id, agent_name, key_prefix, api_key_hash, permissions)
+  VALUES
+    ('da7e88ce-3841-4a0a-91b9-61f56f7405a7', 'strategist', left(key1, 8), crypt(key1, gen_salt('bf')), '{read,write,review}'),
+    ('da7e88ce-3841-4a0a-91b9-61f56f7405a7', 'scribe', left(key2, 8), crypt(key2, gen_salt('bf')), '{read,write}')
+  ON CONFLICT DO NOTHING;
+END $$;

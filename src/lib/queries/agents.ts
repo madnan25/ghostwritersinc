@@ -5,7 +5,7 @@ export async function getAgentKeys(): Promise<AgentKey[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('agent_keys')
-    .select('*')
+    .select('id, organization_id, agent_name, key_prefix, permissions, created_at')
     .order('created_at', { ascending: true })
 
   if (error) {

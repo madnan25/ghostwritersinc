@@ -81,7 +81,7 @@ export interface AgentKey {
   id: string
   organization_id: string
   agent_name: string
-  api_key_hash: string
+  key_prefix: string
   permissions: string[]
   created_at: string
 }
