@@ -56,10 +56,12 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Onboarding redirect: skip if cookie indicates already onboarded (avoids 2 DB queries per nav)
+    // Cookie value is tied to user ID to prevent trivial forgery
     const onboardedCookie = request.cookies.get("onboarded");
+    const cookieValid = onboardedCookie?.value === user?.id;
     if (
       user &&
-      !onboardedCookie &&
+      !cookieValid &&
       !isPublicPath &&
       request.nextUrl.pathname !== "/onboarding" &&
       !request.nextUrl.pathname.startsWith("/api/")
@@ -85,7 +87,7 @@ export async function updateSession(request: NextRequest) {
 
         // Org is onboarded — set cookie to skip future checks
         if (org?.onboarded_at) {
-          supabaseResponse.cookies.set("onboarded", "1", {
+          supabaseResponse.cookies.set("onboarded", user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
