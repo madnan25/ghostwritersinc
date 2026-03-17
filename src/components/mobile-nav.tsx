@@ -38,7 +38,7 @@ export function MobileNav() {
       {/* Bottom Tab Bar */}
       <nav
         aria-label="Mobile navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 dark:border-primary/12 dark:shadow-[0_-1px_0_0_oklch(0.63_0.27_278/0.10),0_-4px_24px_-6px_oklch(0.09_0.025_280/0.85)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch justify-around h-16">
@@ -61,7 +61,7 @@ export function MobileNav() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       transition={{ duration: 0.15, ease: 'easeOut' }}
-                      className="absolute inset-1 rounded-xl bg-primary/12 dark:bg-primary/15"
+                      className="absolute inset-1 rounded-xl bg-primary/12 dark:bg-primary/18 dark:shadow-[0_0_12px_2px_oklch(0.63_0.27_278/0.20)]"
                     />
                   )}
                 </AnimatePresence>
@@ -120,7 +120,7 @@ export function MobileNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl bg-background border-t border-border"
+              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl bg-popover border-t border-border dark:border-primary/12 dark:shadow-[0_-8px_40px_-4px_oklch(0.09_0.025_280/0.80)]"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
             >
               {/* Drag handle */}

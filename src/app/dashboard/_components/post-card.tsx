@@ -43,8 +43,8 @@ export function PostCard({ post, pillar }: PostCardProps) {
 
   return (
     <m.div
-      whileHover={{ scale: 1.015, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
-      whileTap={{ scale: 0.97, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+      whileHover={{ scale: 1.015, boxShadow: '0 8px 28px rgba(0,0,0,0.22), 0 0 0 1px rgba(120,80,255,0.15)' }}
+      whileTap={{ scale: 0.97, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5"
       style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: '3px' } : undefined}

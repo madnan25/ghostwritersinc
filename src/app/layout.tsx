@@ -41,7 +41,7 @@ export default function RootLayout({
         >
           <MotionProvider>
           <div className="flex min-h-screen flex-col">
-            <header className="relative sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <header className="relative sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 dark:border-primary/12 dark:shadow-[0_1px_0_0_oklch(0.63_0.27_278/0.10),0_4px_24px_-6px_oklch(0.09_0.025_280/0.85)]">
               <nav className="container flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-6">
                   <Link href="/dashboard" className="text-lg font-semibold active:opacity-60">
