@@ -84,6 +84,13 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
+    // Redirect logged-in users from / to /dashboard
+    if (user && request.nextUrl.pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
     return supabaseResponse;
   } catch {
     return NextResponse.next();
