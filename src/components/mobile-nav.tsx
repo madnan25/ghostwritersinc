@@ -61,18 +61,18 @@ export function MobileNav() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       transition={{ duration: 0.15, ease: 'easeOut' }}
-                      className="absolute inset-1 rounded-xl bg-muted"
+                      className="absolute inset-1 rounded-xl bg-primary/12 dark:bg-primary/15"
                     />
                   )}
                 </AnimatePresence>
                 <Icon
                   className={`relative z-10 size-5 transition-colors duration-150 ${
-                    isActive ? 'text-foreground' : 'text-muted-foreground'
+                    isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 />
                 <span
                   className={`relative z-10 text-[10px] font-medium leading-none transition-colors duration-150 ${
-                    isActive ? 'text-foreground' : 'text-muted-foreground'
+                    isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 >
                   {tab.label}

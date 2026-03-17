@@ -12,6 +12,9 @@ interface PostCardActionsProps {
   content: string
 }
 
+// Shared button class for consistent 44px touch targets on mobile
+const btnClass = 'min-h-[44px] flex-1 sm:flex-none sm:min-h-0'
+
 export function PostCardActions({ postId, status, content }: PostCardActionsProps) {
   const [isPending, startTransition] = useTransition()
 
@@ -35,9 +38,10 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
 
   if (status === 'draft') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 w-full">
         <Button
           size="sm"
+          className={btnClass}
           onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
           disabled={isPending}
         >
@@ -53,8 +57,8 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button size="sm" onClick={handleApprove} disabled={isPending}>
+    <div className="flex items-center gap-2 w-full">
+      <Button size="sm" className={btnClass} onClick={handleApprove} disabled={isPending}>
         {isPending ? 'Approving…' : status === 'agent_review' ? 'Approve for Review' : 'Approve'}
       </Button>
       <EditPostDialog postId={postId} initialContent={content} />
