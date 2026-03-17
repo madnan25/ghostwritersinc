@@ -67,12 +67,13 @@ export function RejectDialog({ postId }: RejectDialogProps) {
             <m.div
               onClick={(e) => e.stopPropagation()}
               initial={mobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 8 }}
-              animate={mobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
-              exit={mobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 8 }}
-              transition={
-                mobile
-                  ? { type: 'spring', stiffness: 380, damping: 32 }
-                  : { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
+              animate={mobile
+                ? { y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } }
+                : { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] } }
+              }
+              exit={mobile
+                ? { y: '100%', transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }
+                : { opacity: 0, scale: 0.95, y: 8, transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } }
               }
               className={cn(
                 'w-full bg-card border-border shadow-2xl',
