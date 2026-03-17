@@ -95,11 +95,11 @@ export default function RootLayout({
                   </Link>
                   <NotificationBellWrapper />
                   <ThemeToggle />
-                  <MobileNav />
                 </div>
               </nav>
             </header>
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 pb-16 md:pb-0">{children}</main>
+            <MobileNav />
           </div>
           </MotionProvider>
         </ThemeProvider>
