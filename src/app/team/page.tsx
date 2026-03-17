@@ -150,10 +150,9 @@ export default async function TeamPage() {
     getAllRecentReviewEvents(50),
   ])
 
-  // Merge DB agents with hardcoded known agents (Strategist, Scribe always show)
-  const knownAgents = ['Strategist', 'Scribe']
+  // Only show content-producing agents (Strategist and Scribe)
+  const allAgentNames = ['Strategist', 'Scribe']
   const dbAgentNames = agentKeys.map((k) => k.agent_name)
-  const allAgentNames = Array.from(new Set([...knownAgents, ...dbAgentNames]))
 
   // Group recent events by agent
   const eventsByAgent: Record<string, ReviewEvent[]> = {}
