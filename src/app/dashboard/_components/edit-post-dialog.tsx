@@ -73,7 +73,7 @@ export function EditPostDialog({ postId, initialContent }: EditPostDialogProps) 
               transition={
                 mobile
                   ? { type: 'spring', stiffness: 380, damping: 32 }
-                  : { duration: 0.2, ease: 'easeOut' }
+                  : { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
               }
               className={cn(
                 'w-full bg-card border-border shadow-2xl',
