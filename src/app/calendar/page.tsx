@@ -1,18 +1,39 @@
-import { getAllPosts } from '@/lib/queries/posts'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { getScheduledPosts } from '@/lib/queries/posts'
 import { CalendarView } from './_components/calendar-view'
 
 export default async function CalendarPage() {
-  const posts = await getAllPosts()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const posts = await getScheduledPosts()
 
   return (
     <div className="container px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Content Calendar</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">Content Calendar</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Schedule view of all posts — color-coded by content pillar
+          {posts.length === 0
+            ? 'No posts scheduled yet'
+            : `${posts.length} post${posts.length !== 1 ? 's' : ''} scheduled or approved`}
         </p>
       </div>
-      <CalendarView posts={posts} />
+
+      {posts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
+            📅
+          </div>
+          <h3 className="mt-4 text-base font-semibold">Nothing scheduled</h3>
+          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            Approved or scheduled posts will appear here once they have a publish date.
+          </p>
+        </div>
+      ) : (
+        <CalendarView posts={posts} />
+      )}
     </div>
   )
 }

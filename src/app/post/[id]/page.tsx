@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
@@ -8,7 +9,6 @@ import { PostDetailActions } from './_components/post-detail-actions'
 import { CommentablePostContent } from './_components/commentable-post-content'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
-import { PostNowButton } from './_components/post-now-button'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -36,6 +36,10 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   const { id } = await params
   const [post, reviewEvents, comments] = await Promise.all([
     getPostById(id),
@@ -76,10 +80,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 {post.status.replace('_', ' ')}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <PostNowButton postId={post.id} status={post.status} />
-              <PostDetailActions postId={post.id} status={post.status} />
-            </div>
+            <PostDetailActions postId={post.id} status={post.status} content={post.content} />
           </div>
 
           {/* Post content with inline commenting */}

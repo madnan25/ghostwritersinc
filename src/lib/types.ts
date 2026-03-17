@@ -30,6 +30,7 @@ export interface Post {
   content_type: ContentType
   media_urls: string[] | null
   pillar: string | null
+  pillar_id: string | null
   brief_ref: string | null
   suggested_publish_at: string | null
   scheduled_publish_at: string | null
@@ -80,9 +81,37 @@ export interface AgentKey {
   id: string
   organization_id: string
   agent_name: string
-  api_key_hash: string
+  key_prefix: string
   permissions: string[]
   created_at: string
+}
+
+export interface ResearchUpload {
+  id: string
+  organization_id: string
+  uploaded_by: string | null
+  filename: string
+  storage_path: string
+  upload_type: string
+  file_size_bytes: number | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface ContentPillar {
+  id: string
+  organization_id: string
+  name: string
+  slug: string
+  description: string | null
+  color: string
+  weight_pct: number
+  audience_summary: string | null
+  example_hooks: string[]
+  sort_order: number
+  brief_ref: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Notification {

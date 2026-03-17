@@ -18,6 +18,10 @@ export default async function SettingsPage() {
 
   if (!profile) redirect("/login");
 
+  const settings = (profile.settings ?? {}) as Record<string, unknown>;
+  const linkedInConnected = !!(profile.linkedin_id && settings.linkedin_access_token_encrypted);
+  const linkedInExpiresAt = settings.linkedin_token_expires_at as string | null | undefined;
+
   return (
     <div className="container max-w-2xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold">Settings</h1>
@@ -26,9 +30,9 @@ export default async function SettingsPage() {
         email={profile.email}
         avatarUrl={profile.avatar_url}
         timezone={profile.timezone}
-        notificationsEnabled={
-          (profile.settings as Record<string, unknown>)?.notifications_enabled !== false
-        }
+        notificationsEnabled={settings.notifications_enabled !== false}
+        linkedInConnected={linkedInConnected}
+        linkedInExpiresAt={linkedInExpiresAt ?? null}
       />
     </div>
   );

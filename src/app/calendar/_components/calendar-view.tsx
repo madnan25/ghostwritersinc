@@ -1,149 +1,138 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 import type { Post } from '@/lib/types'
-
-interface Props {
-  posts: Post[]
-}
 
 type ViewMode = 'month' | 'week'
 
-const PILLAR_COLORS: Record<string, string> = {
-  'Thought Leadership': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  'Industry Insights': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  'Personal Story': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  'Product Update': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  Engagement: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+interface CalendarViewProps {
+  posts: Post[]
 }
 
-const STATUS_DOT: Record<string, string> = {
-  draft: 'bg-muted-foreground/50',
-  agent_review: 'bg-blue-400',
-  pending_review: 'bg-amber-400',
-  approved: 'bg-emerald-400',
-  scheduled: 'bg-purple-400',
-  published: 'bg-emerald-600',
-  rejected: 'bg-destructive',
-}
-
-function pillarColor(pillar: string | null): string {
-  if (!pillar) return 'bg-muted text-muted-foreground border-border'
-  return PILLAR_COLORS[pillar] ?? 'bg-muted text-muted-foreground border-border'
-}
-
-function toDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-function postDateKey(post: Post): string | null {
-  const raw = post.suggested_publish_at ?? post.scheduled_publish_at
-  if (!raw) return null
-  return toDateKey(new Date(raw))
-}
-
-function buildPostMap(posts: Post[]): Map<string, Post[]> {
-  const map = new Map<string, Post[]>()
-  for (const post of posts) {
-    const key = postDateKey(post)
-    if (!key) continue
-    const existing = map.get(key) ?? []
-    existing.push(post)
-    map.set(key, existing)
+function getStatusColor(status: Post['status']): string {
+  switch (status) {
+    case 'scheduled': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+    case 'approved': return 'bg-green-500/20 text-green-400 border-green-500/30'
+    default: return 'bg-muted text-muted-foreground border-border'
   }
-  return map
 }
 
-function PostChip({ post }: { post: Post }) {
-  const color = pillarColor(post.pillar)
-  const dot = STATUS_DOT[post.status] ?? 'bg-muted-foreground/50'
+function startOfWeek(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  d.setDate(d.getDate() - day)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function isSameDay(a: Date, b: Date): boolean {
   return (
-    <Link
-      href={`/post/${post.id}`}
-      className={`flex min-w-0 items-center gap-1 rounded border px-1.5 py-0.5 text-xs transition-opacity hover:opacity-80 ${color}`}
-      title={`${post.status.replace('_', ' ')} — ${post.pillar ?? 'No pillar'}`}
-    >
-      <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
-      <span className="truncate">{post.content.slice(0, 40)}</span>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function formatMonthYear(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+function formatWeekRange(start: Date): string {
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
+}
+
+function PostPill({ post }: { post: Post }) {
+  const time = post.scheduled_publish_at
+    ? new Date(post.scheduled_publish_at).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : ''
+
+  return (
+    <Link href={`/post/${post.id}`}>
+      <div
+        className={`truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)}`}
+        title={post.content}
+      >
+        {time && <span className="mr-1 opacity-70">{time}</span>}
+        <span>{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</span>
+      </div>
     </Link>
   )
 }
 
-// ── Month view ──────────────────────────────────────────────────────────────
+// ─── Month View ───────────────────────────────────────────────────────────────
 
-function MonthView({ year, month, postMap }: { year: number; month: number; postMap: Map<string, Post[]> }) {
+function MonthView({ posts, anchor }: { posts: Post[]; anchor: Date }) {
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth()
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
-  const startOffset = firstDay.getDay() // 0=Sun
-  const totalCells = Math.ceil((startOffset + lastDay.getDate()) / 7) * 7
 
-  const today = toDateKey(new Date())
+  // Build grid: pad start to Sunday
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < firstDay.getDay(); i++) cells.push(null)
+  for (let d = 1; d <= lastDay.getDate(); d++) cells.push(new Date(year, month, d))
 
-  const days: Array<{ key: string | null; date: number | null; isCurrentMonth: boolean }> = []
+  const today = new Date()
 
-  // Leading empty cells from previous month
-  const prevMonthLastDay = new Date(year, month, 0).getDate()
-  for (let i = startOffset - 1; i >= 0; i--) {
-    const d = prevMonthLastDay - i
-    const key = toDateKey(new Date(year, month - 1, d))
-    days.push({ key, date: d, isCurrentMonth: false })
+  const postsByDay = new Map<string, Post[]>()
+  for (const post of posts) {
+    if (!post.scheduled_publish_at) continue
+    const d = new Date(post.scheduled_publish_at)
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    if (!postsByDay.has(key)) postsByDay.set(key, [])
+    postsByDay.get(key)!.push(post)
   }
 
-  // Current month
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    const key = toDateKey(new Date(year, month, d))
-    days.push({ key, date: d, isCurrentMonth: true })
-  }
-
-  // Trailing cells
-  let trailing = 1
-  while (days.length < totalCells) {
-    const key = toDateKey(new Date(year, month + 1, trailing))
-    days.push({ key, date: trailing, isCurrentMonth: false })
-    trailing++
-  }
-
-  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   return (
     <div>
-      {/* Weekday headers */}
       <div className="grid grid-cols-7 border-b border-border">
-        {WEEKDAYS.map((d) => (
-          <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">
-            {d}
+        {weekdays.map((w) => (
+          <div key={w} className="py-2 text-center text-xs font-medium text-muted-foreground">
+            {w}
           </div>
         ))}
       </div>
-      {/* Day grid */}
       <div className="grid grid-cols-7">
-        {days.map((day, i) => {
-          const posts = day.key ? (postMap.get(day.key) ?? []) : []
-          const isToday = day.key === today
+        {cells.map((date, i) => {
+          if (!date) {
+            return <div key={`empty-${i}`} className="min-h-24 border-b border-r border-border/50" />
+          }
+          const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+          const dayPosts = postsByDay.get(key) ?? []
+          const isToday = isSameDay(date, today)
+
           return (
             <div
-              key={i}
-              className={`min-h-[100px] border-b border-r border-border p-1.5 ${
-                !day.isCurrentMonth ? 'bg-muted/20' : ''
-              } ${i % 7 === 0 ? 'border-l' : ''}`}
+              key={key}
+              className={`min-h-24 border-b border-r border-border/50 p-1.5 ${
+                i % 7 === 0 ? 'border-l' : ''
+              }`}
             >
               <div
                 className={`mb-1 flex size-6 items-center justify-center rounded-full text-xs font-medium ${
                   isToday
                     ? 'bg-primary text-primary-foreground'
-                    : day.isCurrentMonth
-                      ? 'text-foreground'
-                      : 'text-muted-foreground/40'
+                    : 'text-muted-foreground'
                 }`}
               >
-                {day.date}
+                {date.getDate()}
               </div>
               <div className="flex flex-col gap-0.5">
-                {posts.map((p) => (
-                  <PostChip key={p.id} post={p} />
+                {dayPosts.slice(0, 3).map((post) => (
+                  <PostPill key={post.id} post={post} />
                 ))}
+                {dayPosts.length > 3 && (
+                  <span className="text-xs text-muted-foreground">+{dayPosts.length - 3} more</span>
+                )}
               </div>
             </div>
           )
@@ -153,43 +142,54 @@ function MonthView({ year, month, postMap }: { year: number; month: number; post
   )
 }
 
-// ── Week view ───────────────────────────────────────────────────────────────
+// ─── Week View ────────────────────────────────────────────────────────────────
 
-function WeekView({ weekStart, postMap }: { weekStart: Date; postMap: Map<string, Post[]> }) {
-  const today = toDateKey(new Date())
-  const days = Array.from({ length: 7 }, (_, i) => {
+function WeekView({ posts, anchor }: { posts: Post[]; anchor: Date }) {
+  const weekStart = startOfWeek(anchor)
+  const days: Date[] = []
+  for (let i = 0; i < 7; i++) {
     const d = new Date(weekStart)
-    d.setDate(weekStart.getDate() + i)
-    return d
-  })
+    d.setDate(d.getDate() + i)
+    days.push(d)
+  }
+
+  const today = new Date()
+
+  const postsByDay = new Map<string, Post[]>()
+  for (const post of posts) {
+    if (!post.scheduled_publish_at) continue
+    const d = new Date(post.scheduled_publish_at)
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    if (!postsByDay.has(key)) postsByDay.set(key, [])
+    postsByDay.get(key)!.push(post)
+  }
 
   return (
-    <div className="grid grid-cols-7 gap-px bg-border">
-      {days.map((day) => {
-        const key = toDateKey(day)
-        const posts = postMap.get(key) ?? []
-        const isToday = key === today
+    <div className="divide-y divide-border">
+      {days.map((date) => {
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+        const dayPosts = postsByDay.get(key) ?? []
+        const isToday = isSameDay(date, today)
+
         return (
-          <div key={key} className="min-h-[200px] bg-card p-2">
-            {/* Day header */}
-            <div className="mb-2 text-center">
-              <div className="text-xs text-muted-foreground">
-                {day.toLocaleDateString('en-US', { weekday: 'short' })}
-              </div>
+          <div key={key} className="flex gap-4 px-4 py-3">
+            <div className="w-20 shrink-0 pt-0.5 text-right">
               <div
-                className={`mx-auto flex size-7 items-center justify-center rounded-full text-sm font-medium ${
-                  isToday ? 'bg-primary text-primary-foreground' : 'text-foreground'
-                }`}
+                className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-foreground'}`}
               >
-                {day.getDate()}
+                {date.toLocaleDateString('en-US', { weekday: 'short' })}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </div>
             </div>
-            {/* Posts */}
-            <div className="flex flex-col gap-1">
-              {posts.length === 0 ? (
-                <p className="text-center text-xs text-muted-foreground/40">—</p>
+            <div className="flex flex-1 flex-col gap-1.5">
+              {dayPosts.length === 0 ? (
+                <span className="text-xs text-muted-foreground/50 pt-1">No posts</span>
               ) : (
-                posts.map((p) => <PostChip key={p.id} post={p} />)
+                dayPosts.map((post) => (
+                  <PostPill key={post.id} post={post} />
+                ))
               )}
             </div>
           </div>
@@ -199,97 +199,61 @@ function WeekView({ weekStart, postMap }: { weekStart: Date; postMap: Map<string
   )
 }
 
-// ── Main CalendarView ────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-export function CalendarView({ posts }: Props) {
-  const today = new Date()
+export function CalendarView({ posts }: CalendarViewProps) {
   const [view, setView] = useState<ViewMode>('month')
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
-  const [weekStart, setWeekStart] = useState(() => {
-    const d = new Date(today)
-    d.setDate(today.getDate() - today.getDay())
-    return d
-  })
+  const [anchor, setAnchor] = useState(() => new Date())
 
-  const postMap = buildPostMap(posts)
-
-  function prevMonth() {
-    if (month === 0) {
-      setYear((y) => y - 1)
-      setMonth(11)
-    } else {
-      setMonth((m) => m - 1)
-    }
-  }
-
-  function nextMonth() {
-    if (month === 11) {
-      setYear((y) => y + 1)
-      setMonth(0)
-    } else {
-      setMonth((m) => m + 1)
-    }
-  }
-
-  function prevWeek() {
-    setWeekStart((ws) => {
-      const d = new Date(ws)
-      d.setDate(ws.getDate() - 7)
-      return d
+  function navigate(dir: -1 | 1) {
+    setAnchor((prev) => {
+      const next = new Date(prev)
+      if (view === 'month') {
+        next.setMonth(next.getMonth() + dir)
+      } else {
+        next.setDate(next.getDate() + dir * 7)
+      }
+      return next
     })
   }
 
-  function nextWeek() {
-    setWeekStart((ws) => {
-      const d = new Date(ws)
-      d.setDate(ws.getDate() + 7)
-      return d
-    })
-  }
-
-  const monthLabel = new Date(year, month).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
-
-  const weekEndDate = new Date(weekStart)
-  weekEndDate.setDate(weekStart.getDate() + 6)
-  const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-
-  // Legend
-  const pillars = Object.keys(PILLAR_COLORS)
+  const title = view === 'month' ? formatMonthYear(anchor) : formatWeekRange(startOfWeek(anchor))
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="rounded-xl border border-border bg-card">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Nav */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={view === 'month' ? prevMonth : prevWeek}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(-1)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Previous"
           >
-            <ChevronLeft className="size-4" />
+            ‹
           </button>
-          <span className="min-w-[200px] text-center text-sm font-medium">
-            {view === 'month' ? monthLabel : weekLabel}
-          </span>
+          <h2 className="min-w-48 text-center text-sm font-semibold">{title}</h2>
           <button
-            onClick={view === 'month' ? nextMonth : nextWeek}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate(1)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Next"
           >
-            <ChevronRight className="size-4" />
+            ›
+          </button>
+          <button
+            onClick={() => setAnchor(new Date())}
+            className="ml-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Today
           </button>
         </div>
 
         {/* View toggle */}
-        <div className="flex rounded-lg border border-border p-0.5">
-          {(['month', 'week'] as ViewMode[]).map((v) => (
+        <div className="flex rounded-md border border-border p-0.5">
+          {(['month', 'week'] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1 text-sm capitalize transition-colors ${
+              className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
                 view === v
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
@@ -301,32 +265,24 @@ export function CalendarView({ posts }: Props) {
         </div>
       </div>
 
+      {/* Calendar body */}
+      {view === 'month' ? (
+        <MonthView posts={posts} anchor={anchor} />
+      ) : (
+        <WeekView posts={posts} anchor={anchor} />
+      )}
+
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3">
-        {pillars.map((p) => (
-          <span key={p} className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${PILLAR_COLORS[p]}`}>
-            {p}
-          </span>
-        ))}
-      </div>
-
-      {/* Calendar */}
-      <div className="overflow-hidden rounded-xl border border-border">
-        {view === 'month' ? (
-          <MonthView year={year} month={month} postMap={postMap} />
-        ) : (
-          <WeekView weekStart={weekStart} postMap={postMap} />
-        )}
-      </div>
-
-      {/* Status legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        {Object.entries(STATUS_DOT).map(([status, dot]) => (
-          <span key={status} className="flex items-center gap-1.5 capitalize">
-            <span className={`size-2 rounded-full ${dot}`} />
-            {status.replace('_', ' ')}
-          </span>
-        ))}
+      <div className="flex items-center gap-4 border-t border-border px-4 py-2">
+        <span className="text-xs text-muted-foreground">Status:</span>
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block size-2 rounded-full bg-blue-400" />
+          <span className="text-muted-foreground">Scheduled</span>
+        </span>
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block size-2 rounded-full bg-green-400" />
+          <span className="text-muted-foreground">Approved</span>
+        </span>
       </div>
     </div>
   )
