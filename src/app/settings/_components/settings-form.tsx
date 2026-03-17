@@ -174,7 +174,7 @@ export function SettingsForm({
           return (
             <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 min-h-[64px]">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-green-500">Connected</p>
+                <p className="text-sm font-medium text-emerald-500">Connected</p>
                 <p className={`text-xs ${warn ? "text-yellow-500" : "text-muted-foreground"}`}>{text}</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
+import { useState, useRef, useTransition, useEffect } from 'react'
 import { addPostComment } from '@/app/actions/posts'
 import type { PostComment } from '@/lib/types'
 
@@ -58,8 +58,17 @@ function buildSegments(content: string, inlineComments: PostComment[]): Segment[
 export function CommentablePostContent({ postId, content, comments }: Props) {
   const [selection, setSelection] = useState<SelectionState | null>(null)
   const [commentText, setCommentText] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelection(null)
+    }
+    if (selection) document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selection])
 
   const inlineComments = comments.filter(
     (c) => c.selection_start !== null && c.selection_end !== null,
@@ -104,10 +113,15 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
 
   function handleSubmit() {
     if (!commentText.trim() || !selection) return
+    setError(null)
     startTransition(async () => {
-      await addPostComment(postId, commentText.trim(), selection.text, selection.start, selection.end)
-      setSelection(null)
-      setCommentText('')
+      try {
+        await addPostComment(postId, commentText.trim(), selection.text, selection.start, selection.end)
+        setSelection(null)
+        setCommentText('')
+      } catch {
+        setError('Failed to save comment. Please try again.')
+      }
     })
   }
 
@@ -150,6 +164,9 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
               autoFocus
               className="w-full resize-none rounded border border-input bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring/50"
             />
+            {error && (
+              <p className="mt-1 text-xs text-destructive">{error}</p>
+            )}
             <div className="mt-2 flex justify-end gap-2">
               <button
                 onClick={() => setSelection(null)}

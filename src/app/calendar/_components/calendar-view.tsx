@@ -255,7 +255,7 @@ export function CalendarView({ posts }: CalendarViewProps) {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`inline-flex min-h-[36px] items-center rounded-lg px-3 text-xs font-medium capitalize transition-colors active:scale-95 ${
+              className={`inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 text-xs font-medium capitalize transition-colors active:scale-95 ${
                 view === v
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'

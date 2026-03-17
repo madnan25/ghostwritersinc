@@ -109,7 +109,7 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Metadata */}
-          <div className="grid gap-3 rounded-xl border border-border bg-card p-5 text-sm sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-5 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2">
               <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>

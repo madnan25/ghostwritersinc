@@ -38,7 +38,7 @@ export function NotificationBell({ initialNotifications }: Props) {
 
   const unread = notifications.filter((n) => !n.read).length
 
-  // Close panel on outside click
+  // Close panel on outside click or ESC key
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
@@ -49,8 +49,17 @@ export function NotificationBell({ initialNotifications }: Props) {
         setOpen(false)
       }
     }
-    if (open) document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClick)
+      document.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open])
 
   function handleMarkRead(id: string) {
@@ -70,6 +79,7 @@ export function NotificationBell({ initialNotifications }: Props) {
         onClick={() => setOpen((v) => !v)}
         className="relative flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground"
         aria-label="Notifications"
+        aria-expanded={open}
       >
         <Bell className="size-5" />
         {unread > 0 && (
@@ -104,14 +114,14 @@ export function NotificationBell({ initialNotifications }: Props) {
             </div>
 
             {/* Notification list */}
-            <div className="max-h-96 overflow-y-auto">
+            <ul className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">
+                <li className="py-8 text-center text-sm text-muted-foreground">
                   No notifications yet
-                </div>
+                </li>
               ) : (
                 notifications.map((n) => (
-                  <div
+                  <li
                     key={n.id}
                     className={`border-b border-border last:border-0 ${!n.read ? 'bg-muted/30' : ''}`}
                   >
@@ -134,10 +144,10 @@ export function NotificationBell({ initialNotifications }: Props) {
                         <NotificationItem notification={n} />
                       </div>
                     )}
-                  </div>
+                  </li>
                 ))
               )}
-            </div>
+            </ul>
           </m.div>
         )}
       </AnimatePresence>

@@ -10,13 +10,19 @@ interface Props {
 
 export function OverallCommentForm({ postId }: Props) {
   const [body, setBody] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleSubmit() {
     if (!body.trim()) return
+    setError(null)
     startTransition(async () => {
-      await addPostComment(postId, body.trim())
-      setBody('')
+      try {
+        await addPostComment(postId, body.trim())
+        setBody('')
+      } catch {
+        setError('Failed to post comment. Please try again.')
+      }
     })
   }
 
@@ -32,6 +38,9 @@ export function OverallCommentForm({ postId }: Props) {
           'placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50',
         )}
       />
+      {error && (
+        <p className="text-xs text-destructive">{error}</p>
+      )}
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}

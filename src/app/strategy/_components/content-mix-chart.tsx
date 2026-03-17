@@ -63,7 +63,7 @@ export function ContentMixChart({ pillars, posts }: ContentMixChartProps) {
             key={p}
             onClick={() => setPeriod(p)}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+              'flex min-h-[44px] items-center rounded-full px-4 text-xs font-medium transition-colors',
               period === p
                 ? 'bg-foreground text-background'
                 : 'text-muted-foreground hover:text-foreground',
