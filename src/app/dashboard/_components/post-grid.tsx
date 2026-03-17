@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post, PostStatus } from '@/lib/types'
 import type { RotationWarning } from '../page'
@@ -29,7 +29,6 @@ interface PostGridProps {
 export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
-  const [legendExpanded, setLegendExpanded] = useState(false)
 
   const pillarMap = new Map(pillars.map((p) => [p.id, p]))
 
@@ -81,110 +80,75 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
         </div>
       )}
 
-      {/* Pillar distribution widget */}
+      {/* Pillar distribution — interactive bar + compact filter pills combined */}
       {pillars.length > 0 && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">Pillar Distribution</p>
-            <button
-              onClick={() => setLegendExpanded((v) => !v)}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground md:hidden"
-            >
-              {legendExpanded ? (
-                <>Hide <ChevronUp className="size-3" /></>
-              ) : (
-                <>Details <ChevronDown className="size-3" /></>
-              )}
-            </button>
-          </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+          <p className="text-xs font-medium text-muted-foreground">Pillar Distribution</p>
+
+          {/* Tappable stacked bar — each segment filters by that pillar */}
+          <div className="flex h-5 w-full overflow-hidden rounded-full bg-muted">
             {pillars.map((pillar) => {
               const count = posts.filter((p) => p.pillar_id === pillar.id).length
               const pct = totalPosts > 0 ? (count / totalPosts) * 100 : 0
               if (pct === 0) return null
+              const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
+              const isActive = selectedPillarIds.has(pillar.id)
               return (
                 <button
                   key={pillar.id}
-                  title={`${pillar.name}: ${count} post${count !== 1 ? 's' : ''} (target ${pillar.weight_pct}%)`}
+                  title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
                   onClick={() => togglePillar(pillar.id)}
-                  className="h-full cursor-pointer transition-opacity hover:opacity-80"
+                  className={cn(
+                    'h-full cursor-pointer transition-opacity',
+                    selectedPillarIds.size > 0 && !isActive ? 'opacity-30' : 'opacity-100 hover:opacity-80',
+                  )}
                   style={{ width: `${pct}%`, backgroundColor: pillar.color }}
                 />
               )
             })}
           </div>
-          <div className={cn('flex-wrap gap-x-4 gap-y-1', legendExpanded ? 'flex' : 'hidden md:flex')}>
+
+          {/* Compact horizontally-scrollable pill row — doubles as filter toggle */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              onClick={() => setSelectedPillarIds(new Set())}
+              className={cn(
+                'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                selectedPillarIds.size === 0
+                  ? 'border-border bg-background text-foreground shadow-sm'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              All
+            </button>
             {pillars.map((pillar) => {
               const count = posts.filter((p) => p.pillar_id === pillar.id).length
               const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
+              const active = selectedPillarIds.has(pillar.id)
               return (
                 <button
                   key={pillar.id}
                   onClick={() => togglePillar(pillar.id)}
+                  title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
                   className={cn(
-                    'flex items-center gap-1.5 text-xs transition-opacity',
-                    selectedPillarIds.size > 0 && !selectedPillarIds.has(pillar.id)
-                      ? 'opacity-40'
-                      : 'opacity-100',
+                    'inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-opacity',
+                    selectedPillarIds.size > 0 && !active ? 'opacity-40' : 'opacity-100',
                   )}
+                  style={
+                    active
+                      ? { backgroundColor: `${pillar.color}26`, color: pillar.color, borderColor: `${pillar.color}40` }
+                      : { borderColor: 'transparent', color: 'var(--muted-foreground)' }
+                  }
                 >
                   <span
-                    className="inline-block size-2 shrink-0 rounded-full"
+                    className="inline-block size-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: pillar.color }}
                   />
-                  <span className="text-muted-foreground">
-                    {pillar.name}
-                    <span className="ml-1 tabular-nums">
-                      {actual}% <span className="text-muted-foreground/60">/ {pillar.weight_pct}% target</span>
-                    </span>
-                  </span>
+                  {pillar.name}
                 </button>
               )
             })}
           </div>
-        </div>
-      )}
-
-      {/* Pillar filter pills */}
-      {pillars.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button
-            onClick={() => setSelectedPillarIds(new Set())}
-            className={cn(
-              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              selectedPillarIds.size === 0
-                ? 'border-border bg-background text-foreground shadow-sm'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            All Pillars
-          </button>
-          {pillars.map((pillar) => {
-            const active = selectedPillarIds.has(pillar.id)
-            return (
-              <button
-                key={pillar.id}
-                onClick={() => togglePillar(pillar.id)}
-                className={cn(
-                  'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  active
-                    ? 'border-transparent text-foreground shadow-sm'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                )}
-                style={
-                  active
-                    ? { backgroundColor: `${pillar.color}26`, color: pillar.color, borderColor: `${pillar.color}40` }
-                    : undefined
-                }
-              >
-                <span
-                  className="inline-block size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: pillar.color }}
-                />
-                {pillar.name}
-              </button>
-            )
-          })}
         </div>
       )}
 
