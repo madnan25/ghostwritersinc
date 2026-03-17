@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { m, AnimatePresence, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post, PostStatus } from '@/lib/types'
 import type { RotationWarning } from '../page'
@@ -19,6 +20,20 @@ const TABS: FilterTab[] = [
   { label: 'Approved', statuses: ['approved', 'scheduled'] },
   { label: 'Published', statuses: ['published', 'rejected'] },
 ]
+
+const cardContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.05 },
+  },
+  exit: {},
+}
+
+const cardItemVariants: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] } },
+  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
+}
 
 interface PostGridProps {
   posts: Post[]
@@ -95,15 +110,18 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
               const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
               const isActive = selectedPillarIds.has(pillar.id)
               return (
-                <button
+                <m.button
                   key={pillar.id}
                   title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
                   onClick={() => togglePillar(pillar.id)}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
                   className={cn(
                     'h-full cursor-pointer transition-opacity duration-150 active:scale-95',
                     selectedPillarIds.size > 0 && !isActive ? 'opacity-30' : 'opacity-100 hover:opacity-80',
                   )}
-                  style={{ width: `${pct}%`, backgroundColor: pillar.color }}
+                  style={{ backgroundColor: pillar.color }}
                 />
               )
             })}
@@ -157,8 +175,8 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
         </div>
       )}
 
-      {/* Status filter tabs — iOS-style segmented control */}
-      <div className="flex overflow-x-auto rounded-xl bg-muted/50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Status filter tabs — iOS-style segmented control with animated indicator */}
+      <div className="relative flex overflow-x-auto rounded-xl bg-muted/50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab, i) => {
           const count = getTabCount(tab)
           return (
@@ -166,16 +184,23 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
               key={tab.label}
               onClick={() => setActiveTab(i)}
               className={cn(
-                'flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-95',
+                'relative flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-95',
                 i === activeTab
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {tab.label}
+              {i === activeTab && (
+                <m.span
+                  layoutId="tab-indicator"
+                  className="absolute inset-0 rounded-md bg-background shadow-sm"
+                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10">{tab.label}</span>
               <span
                 className={cn(
-                  'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums',
+                  'relative z-10 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums',
                   i === activeTab
                     ? 'bg-primary/15 text-primary'
                     : 'bg-muted text-muted-foreground',
@@ -189,31 +214,48 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
       </div>
 
       {/* Grid or empty state */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
-            ✓
-          </div>
-          <h3 className="mt-4 text-base font-semibold">
-            {activeTab === 0 && selectedPillarIds.size === 0 ? 'No posts yet' : 'No posts match this filter'}
-          </h3>
-          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            {activeTab === 0 && selectedPillarIds.size === 0
-              ? 'Your agents are working on the next batch.'
-              : 'Try adjusting the status tab or pillar filter.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {filtered.length === 0 ? (
+          <m.div
+            key="empty"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center"
+          >
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
+              ✓
+            </div>
+            <h3 className="mt-4 text-base font-semibold">
+              {activeTab === 0 && selectedPillarIds.size === 0 ? 'No posts yet' : 'No posts match this filter'}
+            </h3>
+            <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+              {activeTab === 0 && selectedPillarIds.size === 0
+                ? 'Your agents are working on the next batch.'
+                : 'Try adjusting the status tab or pillar filter.'}
+            </p>
+          </m.div>
+        ) : (
+          <m.div
+            key={`grid-${activeTab}-${Array.from(selectedPillarIds).join(',')}`}
+            variants={cardContainerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {filtered.map((post) => (
+              <m.div key={post.id} variants={cardItemVariants}>
+                <PostCard
+                  post={post}
+                  pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                />
+              </m.div>
+            ))}
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

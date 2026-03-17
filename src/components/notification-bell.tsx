@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { Bell } from 'lucide-react'
+import { m, AnimatePresence } from 'framer-motion'
 import { markNotificationRead, markAllNotificationsRead } from '@/app/actions/notifications'
 import type { Notification } from '@/lib/types'
 
@@ -78,62 +79,68 @@ export function NotificationBell({ initialNotifications }: Props) {
         )}
       </button>
 
-      {open && (
-        <div
-          ref={panelRef}
-          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-medium">Notifications</span>
-            {unread > 0 && (
-              <button
-                onClick={handleMarkAll}
-                disabled={isPending}
-                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-              >
-                Mark all read
-              </button>
-            )}
-          </div>
-
-          {/* Notification list */}
-          <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No notifications yet
-              </div>
-            ) : (
-              notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className={`border-b border-border last:border-0 ${!n.read ? 'bg-muted/30' : ''}`}
+      <AnimatePresence>
+        {open && (
+          <m.div
+            ref={panelRef}
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <span className="text-sm font-medium">Notifications</span>
+              {unread > 0 && (
+                <button
+                  onClick={handleMarkAll}
+                  disabled={isPending}
+                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
-                  {n.post_id ? (
-                    <Link
-                      href={`/post/${n.post_id}`}
-                      onClick={() => {
-                        if (!n.read) handleMarkRead(n.id)
-                        setOpen(false)
-                      }}
-                      className="block px-4 py-3 hover:bg-muted/50"
-                    >
-                      <NotificationItem notification={n} />
-                    </Link>
-                  ) : (
-                    <div
-                      className="px-4 py-3"
-                      onClick={() => !n.read && handleMarkRead(n.id)}
-                    >
-                      <NotificationItem notification={n} />
-                    </div>
-                  )}
+                  Mark all read
+                </button>
+              )}
+            </div>
+
+            {/* Notification list */}
+            <div className="max-h-96 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  No notifications yet
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`border-b border-border last:border-0 ${!n.read ? 'bg-muted/30' : ''}`}
+                  >
+                    {n.post_id ? (
+                      <Link
+                        href={`/post/${n.post_id}`}
+                        onClick={() => {
+                          if (!n.read) handleMarkRead(n.id)
+                          setOpen(false)
+                        }}
+                        className="block px-4 py-3 hover:bg-muted/50"
+                      >
+                        <NotificationItem notification={n} />
+                      </Link>
+                    ) : (
+                      <div
+                        className="px-4 py-3"
+                        onClick={() => !n.read && handleMarkRead(n.id)}
+                      >
+                        <NotificationItem notification={n} />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBellWrapper } from "@/components/notification-bell-wrapper";
 import { MobileNav } from "@/components/mobile-nav";
+import { MotionProvider } from "@/components/motion-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <MotionProvider>
           <div className="flex min-h-screen flex-col">
             <header className="relative sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <nav className="container flex h-14 items-center justify-between px-4">
@@ -99,6 +101,7 @@ export default function RootLayout({
             </header>
             <main className="flex-1">{children}</main>
           </div>
+          </MotionProvider>
         </ThemeProvider>
       </body>
     </html>

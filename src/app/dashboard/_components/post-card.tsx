@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
+import { m } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
@@ -39,24 +42,32 @@ export function PostCard({ post, pillar }: PostCardProps) {
   const statusConfig = STATUS_CONFIG[post.status]
 
   return (
-    <div
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
+    <m.div
+      whileHover={{ scale: 1.015, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5"
       style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: '3px' } : undefined}
     >
       {/* Status + Pillar tags */}
       <div className="flex items-center gap-2 flex-wrap">
         {statusConfig && (
-          <span
+          <m.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
             className={cn(
               'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
               statusConfig.className,
             )}
           >
             {statusConfig.label}
-          </span>
+          </m.span>
         )}
         {pillar && (
-          <span
+          <m.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
             className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
             style={{
               backgroundColor: `${pillar.color}26`,
@@ -65,7 +76,7 @@ export function PostCard({ post, pillar }: PostCardProps) {
             }}
           >
             {pillar.name}
-          </span>
+          </m.span>
         )}
       </div>
 
@@ -119,6 +130,6 @@ export function PostCard({ post, pillar }: PostCardProps) {
 
       {/* Actions */}
       <PostCardActions postId={post.id} status={post.status} content={post.content} />
-    </div>
+    </m.div>
   )
 }
