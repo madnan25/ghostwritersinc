@@ -69,6 +69,12 @@ export default function RootLayout({
                       Team
                     </Link>
                     <Link
+                      href="/strategy"
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      Strategy
+                    </Link>
+                    <Link
                       href="/research"
                       className="text-muted-foreground transition-colors hover:text-foreground"
                     >
