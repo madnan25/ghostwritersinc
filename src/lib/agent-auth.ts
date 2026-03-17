@@ -1,8 +1,29 @@
+import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
-import { compare } from 'bcryptjs'
+import bcrypt from 'bcryptjs'
 import { createAdminClient } from './supabase/admin'
 
+const { compare } = bcrypt
+const AGENT_KEY_PREFIX = 'gw_agent_'
 const KEY_PREFIX_LENGTH = 8
+const BCRYPT_ROUNDS = 12
+
+/** Default permissions per agent type */
+export const DEFAULT_AGENT_PERMISSIONS: Record<string, string[]> = {
+  scribe: ['posts:read', 'posts:write', 'comments:read', 'comments:write'],
+  strategist: ['posts:read', 'pillars:read', 'pillars:write', 'comments:read'],
+  inspector: ['posts:read', 'reviews:read', 'reviews:write', 'comments:read'],
+}
+
+/** Generate a random agent API key. Format: gw_agent_<32 random hex chars> */
+export function generateAgentKey(): string {
+  return `${AGENT_KEY_PREFIX}${randomBytes(32).toString('hex')}`
+}
+
+/** Hash an agent API key for storage. */
+export async function hashAgentKey(plainKey: string): Promise<string> {
+  return bcrypt.hash(plainKey, BCRYPT_ROUNDS)
+}
 
 export interface AgentContext {
   agentName: string

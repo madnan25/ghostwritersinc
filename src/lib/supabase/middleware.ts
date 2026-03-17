@@ -47,5 +47,34 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Onboarding redirect: if user is logged in but org hasn't completed onboarding,
+  // redirect to /onboarding (unless already there or on a public/API path)
+  if (
+    user &&
+    !isPublicPath &&
+    request.nextUrl.pathname !== "/onboarding" &&
+    !request.nextUrl.pathname.startsWith("/api/")
+  ) {
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (dbUser) {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("onboarded_at")
+        .eq("id", dbUser.organization_id)
+        .single();
+
+      if (org && !org.onboarded_at) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   return supabaseResponse;
 }

@@ -19,6 +19,18 @@ export interface Organization {
   id: string
   name: string
   slug: string
+  onboarded_at: string | null
+  linkedin_profile_url: string | null
+  content_goals: string | null
+  created_at: string
+}
+
+export interface ContentPillar {
+  id: string
+  organization_id: string
+  name: string
+  weight_pct: number
+  description: string | null
   created_at: string
 }
 
