@@ -113,7 +113,7 @@ function MonthView({ posts, anchor }: { posts: Post[]; anchor: Date }) {
           return (
             <div
               key={key}
-              className={`min-h-24 border-b border-r border-border/50 p-1.5 ${
+              className={`min-h-[44px] border-b border-r border-border/50 p-1.5 sm:min-h-24 ${
                 i % 7 === 0 ? 'border-l' : ''
               }`}
             >
@@ -202,7 +202,9 @@ function WeekView({ posts, anchor }: { posts: Post[]; anchor: Date }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CalendarView({ posts }: CalendarViewProps) {
-  const [view, setView] = useState<ViewMode>('month')
+  const [view, setView] = useState<ViewMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'week' : 'month',
+  )
   const [anchor, setAnchor] = useState(() => new Date())
 
   function navigate(dir: -1 | 1) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBellWrapper } from "@/components/notification-bell-wrapper";
+import { MobileNav } from "@/components/mobile-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,7 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="flex min-h-screen flex-col">
-            <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <header className="relative sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <nav className="container flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-6">
                   <Link href="/" className="text-lg font-semibold">
@@ -86,12 +87,13 @@ export default function RootLayout({
                 <div className="flex items-center gap-2">
                   <Link
                     href="/settings"
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
                   >
                     Settings
                   </Link>
                   <NotificationBellWrapper />
                   <ThemeToggle />
+                  <MobileNav />
                 </div>
               </nav>
             </header>

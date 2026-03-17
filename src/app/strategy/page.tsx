@@ -86,7 +86,7 @@ export default async function StrategyPage() {
         <p className="text-sm font-medium text-muted-foreground">{orgName}</p>
         <h1 className="mt-1 text-2xl font-bold">Content Strategy</h1>
 
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           <div className="rounded-lg border border-border bg-card px-4 py-3">
             <p className="text-2xl font-bold">{pillars.length}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Content pillars</p>

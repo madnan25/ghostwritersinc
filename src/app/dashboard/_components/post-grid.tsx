@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post, PostStatus } from '@/lib/types'
 import type { RotationWarning } from '../page'
@@ -29,6 +29,7 @@ interface PostGridProps {
 export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
+  const [legendExpanded, setLegendExpanded] = useState(false)
 
   const pillarMap = new Map(pillars.map((p) => [p.id, p]))
 
@@ -83,7 +84,19 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
       {/* Pillar distribution widget */}
       {pillars.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-muted-foreground">Pillar Distribution</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Pillar Distribution</p>
+            <button
+              onClick={() => setLegendExpanded((v) => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground md:hidden"
+            >
+              {legendExpanded ? (
+                <>Hide <ChevronUp className="size-3" /></>
+              ) : (
+                <>Details <ChevronDown className="size-3" /></>
+              )}
+            </button>
+          </div>
           <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
             {pillars.map((pillar) => {
               const count = posts.filter((p) => p.pillar_id === pillar.id).length
@@ -100,7 +113,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
               )
             })}
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className={cn('flex-wrap gap-x-4 gap-y-1', legendExpanded ? 'flex' : 'hidden md:flex')}>
             {pillars.map((pillar) => {
               const count = posts.filter((p) => p.pillar_id === pillar.id).length
               const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
@@ -134,11 +147,11 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
 
       {/* Pillar filter pills */}
       {pillars.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setSelectedPillarIds(new Set())}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
               selectedPillarIds.size === 0
                 ? 'border-border bg-background text-foreground shadow-sm'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -153,7 +166,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
                 key={pillar.id}
                 onClick={() => togglePillar(pillar.id)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                   active
                     ? 'border-transparent text-foreground shadow-sm'
                     : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -222,7 +235,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((post) => (
             <PostCard
               key={post.id}
