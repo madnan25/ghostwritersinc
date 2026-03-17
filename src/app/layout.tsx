@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBellWrapper } from "@/components/notification-bell-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -89,6 +90,7 @@ export default function RootLayout({
                   >
                     Settings
                   </Link>
+                  <NotificationBellWrapper />
                   <ThemeToggle />
                 </div>
               </nav>

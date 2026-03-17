@@ -5,6 +5,41 @@ import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition } from '@/lib/workflow'
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function tryCreateNotification(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  notification: {
+    organization_id: string
+    user_id: string
+    type: string
+    title: string
+    body?: string
+    post_id?: string
+  },
+) {
+  // Best-effort — silently ignore if RLS blocks the insert
+  try {
+    await supabase.from('notifications').insert(notification)
+  } catch {
+    // ignore
+  }
+}
+
+async function getPostWithUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string,
+) {
+  const { data } = await supabase
+    .from('posts')
+    .select('user_id, content, organization_id')
+    .eq('id', postId)
+    .single()
+  return data
+}
+
 async function transitionPostStatus(
   postId: string,
   to: PostStatus,
@@ -56,14 +91,76 @@ async function transitionPostStatus(
   revalidatePath(`/post/${postId}`)
 }
 
+// ---------------------------------------------------------------------------
+// Inline comments
+// ---------------------------------------------------------------------------
+
+export async function addPostComment(
+  postId: string,
+  body: string,
+  selectedText?: string,
+  selectionStart?: number,
+  selectionEnd?: number,
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase.from('post_comments').insert({
+    post_id: postId,
+    author_type: 'user',
+    author_id: user.id,
+    body,
+    selected_text: selectedText ?? null,
+    selection_start: selectionStart ?? null,
+    selection_end: selectionEnd ?? null,
+  })
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/post/${postId}`)
+}
+
+// ---------------------------------------------------------------------------
+// Review actions
+// ---------------------------------------------------------------------------
+
 export async function approvePost(postId: string) {
   await transitionPostStatus(postId, 'approved', 'client')
+
+  const supabase = await createClient()
+  const post = await getPostWithUser(supabase, postId)
+  if (post?.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_approved',
+      title: 'Post approved',
+      body: post.content.slice(0, 80),
+      post_id: postId,
+    })
+  }
 }
 
 export async function rejectPost(postId: string, reason: string) {
   await transitionPostStatus(postId, 'rejected', 'client', {
     rejectionReason: reason,
   })
+
+  const supabase = await createClient()
+  const post = await getPostWithUser(supabase, postId)
+  if (post?.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_rejected',
+      title: 'Post rejected',
+      body: reason.slice(0, 80),
+      post_id: postId,
+    })
+  }
 }
 
 export async function submitForAgentReview(postId: string, notes?: string) {
@@ -121,6 +218,17 @@ export async function publishPost(postId: string, linkedinPostUrn?: string) {
 
   if (error) throw new Error(error.message)
 
+  const post = await getPostWithUser(supabase, postId)
+  if (post?.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_published',
+      title: 'Post published to LinkedIn',
+      post_id: postId,
+    })
+  }
+
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
 }
@@ -144,6 +252,10 @@ export async function reviseDraft(postId: string) {
     notes: 'Returned to draft for revision',
   })
 }
+
+// ---------------------------------------------------------------------------
+// LinkedIn publishing
+// ---------------------------------------------------------------------------
 
 export async function publishToLinkedIn(
   postId: string

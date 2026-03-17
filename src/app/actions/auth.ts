@@ -9,6 +9,42 @@ export async function signOut() {
   redirect("/login");
 }
 
+export async function completeOnboarding(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const orgName = formData.get("orgName") as string;
+  const linkedinProfileUrl = formData.get("linkedinProfileUrl") as string;
+  const contentGoals = formData.get("contentGoals") as string;
+
+  // Get the user's organization_id
+  const { data: profile } = await supabase
+    .from("users")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) throw new Error("User profile not found");
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({
+      name: orgName,
+      linkedin_profile_url: linkedinProfileUrl || null,
+      content_goals: contentGoals || null,
+      onboarded_at: new Date().toISOString(),
+    })
+    .eq("id", profile.organization_id);
+
+  if (error) throw new Error(error.message);
+
+  redirect("/dashboard");
+}
+
 export async function updateUserSettings(formData: FormData) {
   const supabase = await createClient();
   const {
