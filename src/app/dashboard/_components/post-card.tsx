@@ -8,6 +8,16 @@ interface PostCardProps {
   post: Post
 }
 
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Draft', className: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25' },
+  agent_review: { label: 'Agent Review', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' },
+  pending_review: { label: 'Needs Review', className: 'bg-orange-500/15 text-orange-400 border-orange-500/25' },
+  approved: { label: 'Approved', className: 'bg-green-500/15 text-green-400 border-green-500/25' },
+  scheduled: { label: 'Scheduled', className: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
+  published: { label: 'Published', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
+  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-400 border-red-500/25' },
+}
+
 const PILLAR_COLORS: Record<string, string> = {
   'thought-leadership': 'bg-blue-500/15 text-blue-400 border-blue-500/25',
   'personal-story': 'bg-purple-500/15 text-purple-400 border-purple-500/25',
@@ -35,12 +45,23 @@ export function PostCard({ post }: PostCardProps) {
   const hook = getHook(post.content)
   const pillarColor =
     post.pillar ? (PILLAR_COLORS[post.pillar] ?? 'bg-muted text-muted-foreground border-border') : null
+  const statusConfig = STATUS_CONFIG[post.status]
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
-      {/* Pillar tag */}
-      {post.pillar && (
-        <div className="flex items-center gap-2">
+      {/* Status + Pillar tags */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {statusConfig && (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+              statusConfig.className,
+            )}
+          >
+            {statusConfig.label}
+          </span>
+        )}
+        {post.pillar && (
           <span
             className={cn(
               'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
@@ -49,8 +70,8 @@ export function PostCard({ post }: PostCardProps) {
           >
             {post.pillar}
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Hook */}
       <Link href={`/post/${post.id}`} className="group block">

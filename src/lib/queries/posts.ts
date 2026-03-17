@@ -78,6 +78,35 @@ export async function getPostsByStatus(status: PostStatus | PostStatus[]): Promi
   return data ?? []
 }
 
+export async function getAllPosts(): Promise<Post[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .order('suggested_publish_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching all posts:', error)
+    return []
+  }
+
+  const STATUS_ORDER: Record<string, number> = {
+    pending_review: 0,
+    agent_review: 1,
+    draft: 2,
+    approved: 3,
+    scheduled: 4,
+    published: 5,
+    rejected: 6,
+  }
+
+  return (data ?? []).sort((a, b) => {
+    const aOrder = STATUS_ORDER[a.status] ?? 99
+    const bOrder = STATUS_ORDER[b.status] ?? 99
+    return aOrder - bOrder
+  })
+}
+
 export async function getScheduledPosts(): Promise<Post[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
