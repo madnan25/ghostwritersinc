@@ -44,43 +44,43 @@ export default function RootLayout({
             <header className="relative sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <nav className="container flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-6">
-                  <Link href="/dashboard" className="text-lg font-semibold">
+                  <Link href="/dashboard" className="text-lg font-semibold active:opacity-60">
                     Ghostwriters Inc.
                   </Link>
                   <div className="hidden items-center gap-4 text-sm md:flex">
                     <Link
                       href="/dashboard"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Dashboard
                     </Link>
                     <Link
                       href="/calendar"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Calendar
                     </Link>
                     <Link
                       href="/insights"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Insights
                     </Link>
                     <Link
                       href="/team"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Team
                     </Link>
                     <Link
                       href="/strategy"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Strategy
                     </Link>
                     <Link
                       href="/research"
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground transition-colors hover:text-foreground active:opacity-60"
                     >
                       Research
                     </Link>
@@ -89,7 +89,7 @@ export default function RootLayout({
                 <div className="flex items-center gap-2">
                   <Link
                     href="/settings"
-                    className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
+                    className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground active:opacity-60 md:block"
                   >
                     Settings
                   </Link>
