@@ -8,7 +8,7 @@
 -- ============================================================
 
 -- week1-post1: What agentic AI actually means for your agency
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -53,12 +53,13 @@ What''s the most expensive manual workflow in your business right now?',
   'text',
   'ai-agents',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-18T09:00:00Z'
 );
 
 -- week1-post2: $100M+ pipeline — the system behind it
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -106,12 +107,13 @@ What''s the one metric you wish your marketing team reported on but doesn''t?',
   'text',
   'advertising-accountability',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-20T09:00:00Z'
 );
 
 -- week1-post3: 45 customer discovery interviews
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -145,12 +147,13 @@ What''s a skill from a completely different role that you use every day now?',
   'text',
   'operators-playbook',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-22T09:00:00Z'
 );
 
 -- week2-post1: The real math on replacing a community manager with an AI agent
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -188,12 +191,13 @@ What''s a role on your team where you''ve considered automation but haven''t pul
   'text',
   'ai-agents',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-25T09:00:00Z'
 );
 
 -- week2-post2: A client sued us after running out of money
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -239,12 +243,13 @@ What''s the hardest lesson a client has taught you about contracts?',
   'text',
   'custom-software',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-27T09:00:00Z'
 );
 
 -- week2-post3: LinkedIn BD campaigns — real outreach numbers
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -282,12 +287,13 @@ What''s your approach to LinkedIn outreach? Automation, manual, or some mix of b
   'text',
   'ai-agents',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-29T09:00:00Z'
 );
 
 -- meta-whatsapp-ai-policy: WhatsApp AI community management
-INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, suggested_publish_at)
+INSERT INTO posts (organization_id, user_id, content, content_type, pillar, status, created_by_agent, reviewed_by_agent, suggested_publish_at)
 VALUES (
   'da7e88ce-3841-4a0a-91b9-61f56f7405a7',
   '17567dc0-335b-4afb-8b1f-3e258aa9e286',
@@ -325,7 +331,8 @@ The distinction matters more now than it did six months ago.',
   'text',
   'industry-insights',
   'draft',
-  'import',
+  'scribe',
+  'strategist',
   '2026-03-31T09:00:00Z'
 );
 
