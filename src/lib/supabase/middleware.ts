@@ -104,6 +104,9 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse;
   } catch {
-    return NextResponse.next();
+    // Never silently pass through on auth failure — redirect to login
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 }
