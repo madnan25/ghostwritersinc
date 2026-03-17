@@ -3,8 +3,9 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { approvePost, publishToLinkedIn } from '@/app/actions/posts'
+import { approvePost, publishToLinkedIn, submitForAgentReview } from '@/app/actions/posts'
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
+import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
 
 interface PostDetailActionsProps {
   postId: string
@@ -48,6 +49,21 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
     setCopyToast(true)
     setTimeout(() => setCopyToast(false), 3000)
     window.open('https://www.linkedin.com/feed/', '_blank')
+  }
+
+  if (status === 'draft') {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
+          disabled={isPending}
+        >
+          {isPending ? 'Submitting…' : 'Submit for Review'}
+        </Button>
+        <EditPostDialog postId={postId} initialContent={content} />
+      </div>
+    )
   }
 
   if (status === 'pending_review') {

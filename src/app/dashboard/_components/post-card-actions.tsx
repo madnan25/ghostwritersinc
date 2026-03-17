@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { approvePost, submitForClientReview } from '@/app/actions/posts'
+import { approvePost, submitForAgentReview, submitForClientReview } from '@/app/actions/posts'
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
 
@@ -28,6 +28,21 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
   if (status === 'approved') {
     return (
       <div className="flex items-center gap-2">
+        <EditPostDialog postId={postId} initialContent={content} />
+      </div>
+    )
+  }
+
+  if (status === 'draft') {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
+          disabled={isPending}
+        >
+          {isPending ? 'Submitting…' : 'Submit for Review'}
+        </Button>
         <EditPostDialog postId={postId} initialContent={content} />
       </div>
     )
