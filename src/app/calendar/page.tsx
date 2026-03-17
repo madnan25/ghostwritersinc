@@ -1,13 +1,8 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { getScheduledPosts } from '@/lib/queries/posts'
 import { CalendarView } from './_components/calendar-view'
 
 export default async function CalendarPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+  // Auth handled by middleware
   const posts = await getScheduledPosts()
 
   return (

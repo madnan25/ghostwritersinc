@@ -55,10 +55,11 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Onboarding redirect: if user is logged in but org hasn't completed onboarding,
-    // redirect to /onboarding (unless already there or on a public/API path)
+    // Onboarding redirect: skip if cookie indicates already onboarded (avoids 2 DB queries per nav)
+    const onboardedCookie = request.cookies.get("onboarded");
     if (
       user &&
+      !onboardedCookie &&
       !isPublicPath &&
       request.nextUrl.pathname !== "/onboarding" &&
       !request.nextUrl.pathname.startsWith("/api/")
@@ -80,6 +81,16 @@ export async function updateSession(request: NextRequest) {
           const url = request.nextUrl.clone();
           url.pathname = "/onboarding";
           return NextResponse.redirect(url);
+        }
+
+        // Org is onboarded — set cookie to skip future checks
+        if (org?.onboarded_at) {
+          supabaseResponse.cookies.set("onboarded", "1", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24, // 24h
+          });
         }
       }
     }

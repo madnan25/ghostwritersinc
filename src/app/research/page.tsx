@@ -1,13 +1,8 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { UploadList } from './_components/upload-list'
 import { WhatsAppInstructions } from './_components/whatsapp-instructions'
 
-export default async function ResearchPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+export default function ResearchPage() {
+  // Auth handled by middleware
   return (
     <div className="container px-4 py-8">
       <div className="mb-8">

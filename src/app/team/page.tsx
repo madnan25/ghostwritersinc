@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { getAgentKeys, getAllRecentReviewEvents } from '@/lib/queries/agents'
 import type { ReviewEvent } from '@/lib/types'
 
@@ -139,12 +137,7 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
 }
 
 export default async function TeamPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+  // Auth handled by middleware
   const [agentKeys, recentEvents] = await Promise.all([
     getAgentKeys(),
     getAllRecentReviewEvents(50),

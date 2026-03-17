@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SettingsForm } from "./_components/settings-form";
 
 export default async function SettingsPage() {
+  // Auth handled by middleware; user needed for profile query
   const supabase = await createClient();
   const {
     data: { user },

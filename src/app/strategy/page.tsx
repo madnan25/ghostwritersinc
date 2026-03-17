@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getPillars, getAllPosts } from '@/lib/queries/posts'
 import { PillarCard } from './_components/pillar-card'
@@ -42,27 +41,29 @@ function getPostsThisMonth(posts: Post[]): number {
 }
 
 export default async function StrategyPage() {
+  // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const [{ data: { user } }, pillars, posts] = await Promise.all([
+    supabase.auth.getUser(),
+    getPillars(),
+    getAllPosts(),
+  ])
 
-  // Get org name
-  const { data: orgMember } = await supabase
-    .from('organization_members')
-    .select('organizations(name)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .single()
+  // Get org name (needs user ID)
+  let orgName = 'Your Organization'
+  if (user) {
+    const { data: orgMember } = await supabase
+      .from('organization_members')
+      .select('organizations(name)')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single()
 
-  const orgData = orgMember?.organizations
-  const orgName =
-    orgData && !Array.isArray(orgData)
-      ? (orgData as { name: string }).name
-      : 'Your Organization'
-
-  const [pillars, posts] = await Promise.all([getPillars(), getAllPosts()])
+    const orgData = orgMember?.organizations
+    if (orgData && !Array.isArray(orgData)) {
+      orgName = (orgData as { name: string }).name
+    }
+  }
 
   const postsThisMonth = getPostsThisMonth(posts)
   const balance = getPillarBalance(posts, pillars)

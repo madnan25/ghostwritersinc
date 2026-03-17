@@ -1,11 +1,5 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-
-export default async function InsightsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+export default function InsightsPage() {
+  // Auth handled by middleware
   return (
     <div className="container px-4 py-8">
       <div className="mb-8">

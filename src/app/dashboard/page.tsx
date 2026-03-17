@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { getAllPosts, getPillars } from '@/lib/queries/posts'
 import { PostGrid } from './_components/post-grid'
 import type { ContentPillar, Post } from '@/lib/types'
@@ -52,27 +50,7 @@ function computeRotationWarnings(posts: Post[], pillars: ContentPillar[]): Rotat
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  // Check if org has completed onboarding
-  const { data: profile } = await supabase
-    .from('users')
-    .select('organization_id')
-    .eq('id', user.id)
-    .single()
-
-  if (profile) {
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('onboarded_at')
-      .eq('id', profile.organization_id)
-      .single()
-
-    if (org && !org.onboarded_at) redirect('/onboarding')
-  }
-
+  // Auth + onboarding handled by middleware
   const [posts, pillars] = await Promise.all([getAllPosts(), getPillars()])
   const needsReview = posts.filter((p) => p.status === 'pending_review' || p.status === 'agent_review').length
   const rotationWarnings = computeRotationWarnings(posts, pillars)
