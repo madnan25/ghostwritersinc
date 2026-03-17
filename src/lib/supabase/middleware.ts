@@ -2,14 +2,21 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  try {
+    let supabaseResponse = NextResponse.next({
+      request,
+    });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return supabaseResponse;
+    }
+
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -26,56 +33,59 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const publicPaths = ["/login", "/auth/callback", "/", "/onboarding"];
+    const isPublicPath = publicPaths.some(
+      (path) =>
+        request.nextUrl.pathname === path ||
+        request.nextUrl.pathname.startsWith("/auth/")
+    );
+    const isAgentApiPath =
+      request.nextUrl.pathname.startsWith("/api/drafts") ||
+      request.nextUrl.pathname.startsWith("/api/health");
+
+    if (!user && !isPublicPath && !isAgentApiPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
     }
-  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const publicPaths = ["/login", "/auth/callback", "/", "/onboarding"];
-  const isPublicPath = publicPaths.some(
-    (path) =>
-      request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith("/auth/")
-  );
-  const isAgentApiPath = request.nextUrl.pathname.startsWith("/api/drafts") ||
-    request.nextUrl.pathname.startsWith("/api/health");
-
-  if (!user && !isPublicPath && !isAgentApiPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  // Onboarding redirect: if user is logged in but org hasn't completed onboarding,
-  // redirect to /onboarding (unless already there or on a public/API path)
-  if (
-    user &&
-    !isPublicPath &&
-    request.nextUrl.pathname !== "/onboarding" &&
-    !request.nextUrl.pathname.startsWith("/api/")
-  ) {
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (dbUser) {
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("onboarded_at")
-        .eq("id", dbUser.organization_id)
+    // Onboarding redirect: if user is logged in but org hasn't completed onboarding,
+    // redirect to /onboarding (unless already there or on a public/API path)
+    if (
+      user &&
+      !isPublicPath &&
+      request.nextUrl.pathname !== "/onboarding" &&
+      !request.nextUrl.pathname.startsWith("/api/")
+    ) {
+      const { data: dbUser } = await supabase
+        .from("users")
+        .select("organization_id")
+        .eq("id", user.id)
         .single();
 
-      if (org && !org.onboarded_at) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/onboarding";
-        return NextResponse.redirect(url);
+      if (dbUser) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("onboarded_at")
+          .eq("id", dbUser.organization_id)
+          .single();
+
+        if (org && !org.onboarded_at) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/onboarding";
+          return NextResponse.redirect(url);
+        }
       }
     }
-  }
 
-  return supabaseResponse;
+    return supabaseResponse;
+  } catch {
+    return NextResponse.next();
+  }
 }
