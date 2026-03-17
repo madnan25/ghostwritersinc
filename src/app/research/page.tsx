@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { UploadList } from './_components/upload-list'
+import { WhatsAppInstructions } from './_components/whatsapp-instructions'
 
 export default async function ResearchPage() {
   const supabase = await createClient()
@@ -16,7 +17,8 @@ export default async function ResearchPage() {
         </p>
       </div>
 
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-6">
+        <WhatsAppInstructions />
         <UploadList />
       </div>
     </div>
