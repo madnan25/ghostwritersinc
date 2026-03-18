@@ -5,22 +5,41 @@ import {
   hashAgentKey,
   DEFAULT_AGENT_PERMISSIONS,
 } from "@/lib/agent-auth";
-import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeAgentName, titleizeAgentName } from "@/lib/agent-permissions";
+import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 
 export async function POST(request: Request) {
-  const auth = await requireOrgUser(["owner", "admin"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
 
-  const { supabase, profile } = auth;
+  const adminClient = createAdminClient();
 
   const body = await request.json();
   const agentName: string = body.agent_name;
+  const organizationId: string = body.organization_id;
+  const userId: string = body.user_id;
+  const allowSharedContext = body.allow_shared_context === true;
 
   if (!agentName || typeof agentName !== "string") {
     return NextResponse.json(
       { error: "agent_name is required" },
+      { status: 400 }
+    );
+  }
+
+  if (!organizationId || typeof organizationId !== "string") {
+    return NextResponse.json(
+      { error: "organization_id is required" },
+      { status: 400 }
+    );
+  }
+
+  if (!userId || typeof userId !== "string") {
+    return NextResponse.json(
+      { error: "user_id is required" },
       { status: 400 }
     );
   }
@@ -33,18 +52,63 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check if key already exists for this agent in this org
-  const { data: existing } = await supabase
-    .from("agent_keys")
+  const normalizedName = normalizeAgentName(agentName);
+  const { data: commissionedUser } = await adminClient
+    .from("users")
     .select("id")
-    .eq("organization_id", profile.organization_id)
-    .eq("agent_name", agentName)
-    .single();
+    .eq("id", userId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
 
-  if (existing) {
+  if (!commissionedUser) {
     return NextResponse.json(
-      { error: `Agent key for "${agentName}" already exists. Delete it first to regenerate.` },
-      { status: 409 }
+      { error: "Target user not found in the selected organization" },
+      { status: 404 }
+    );
+  }
+
+  const { data: existingAgent } = await adminClient
+    .from("agents")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .eq("agent_type", agentName)
+    .maybeSingle();
+  const permissions =
+    DEFAULT_AGENT_PERMISSIONS[agentName as keyof typeof DEFAULT_AGENT_PERMISSIONS];
+
+  let agentId = existingAgent?.id ?? null;
+
+  if (!agentId) {
+    const { data: createdAgent, error: agentError } = await adminClient
+      .from("agents")
+      .insert({
+        organization_id: organizationId,
+        user_id: userId,
+        name: titleizeAgentName(agentName),
+        slug: normalizedName,
+        provider: "ghostwriters",
+        agent_type: agentName,
+        status: "active",
+        allow_shared_context: allowSharedContext,
+        commissioned_by: auth.profile.id,
+      })
+      .select("id")
+      .single();
+
+    if (agentError || !createdAgent) {
+      return NextResponse.json(
+        { error: "Failed to create commissioned agent" },
+        { status: 500 }
+      );
+    }
+
+    agentId = createdAgent.id;
+    await adminClient.from("agent_permissions").insert(
+      permissions.map((permission: string) => ({
+        agent_id: agentId,
+        permission,
+      }))
     );
   }
 
@@ -52,18 +116,23 @@ export async function POST(request: Request) {
   const plainKey = generateAgentKey();
   const keyHash = await hashAgentKey(plainKey);
   const keyPrefix = getAgentKeyPrefix(plainKey);
-  const permissions = DEFAULT_AGENT_PERMISSIONS[agentName];
 
-  const { data: agentKey, error } = await supabase
+  const { data: agentKey, error } = await adminClient
     .from("agent_keys")
     .insert({
-      organization_id: profile.organization_id,
+      agent_id: agentId,
+      organization_id: organizationId,
+      user_id: userId,
       agent_name: agentName,
       api_key_hash: keyHash,
       key_prefix: keyPrefix,
       permissions,
+      allow_shared_context: allowSharedContext,
+      commissioned_by: auth.profile.id,
     })
-    .select("id, agent_name, key_prefix, permissions, created_at")
+    .select(
+      "id, agent_id, organization_id, user_id, agent_name, key_prefix, permissions, allow_shared_context, commissioned_by, created_at"
+    )
     .single();
 
   if (error) {
@@ -82,12 +151,12 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireOrgUser(["owner", "admin"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
 
-  const { supabase, profile } = auth;
+  const adminClient = createAdminClient();
   const { searchParams } = new URL(request.url);
   const keyId = searchParams.get("id");
 
@@ -95,11 +164,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const { data: deletedKey, error } = await supabase
+  const { data: deletedKey, error } = await adminClient
     .from("agent_keys")
     .delete()
     .eq("id", keyId)
-    .eq("organization_id", profile.organization_id)
     .select("id")
     .maybeSingle();
 

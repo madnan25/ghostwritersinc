@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/types";
 
-const DEFAULT_PROFILE_SELECT = "id, organization_id, role, is_active";
+const DEFAULT_PROFILE_SELECT =
+  "id, organization_id, role, is_active, is_platform_admin";
 
 type OrgProfile = {
   id: string;
   organization_id: string;
   role: UserRole;
-  is_active?: boolean;
+  is_active: boolean;
+  is_platform_admin: boolean;
+  linkedin_id?: string | null;
+  name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  timezone?: string | null;
+  settings?: Record<string, unknown> | null;
 };
 
 export type AuthenticatedOrgUser = {
@@ -20,6 +28,8 @@ export type AuthenticatedOrgUser = {
 export type CurrentOrgUserResult =
   | { status: "unauthenticated" }
   | { status: "profile_missing"; user: { id: string } }
+  | { status: "inactive"; user: { id: string }; profile: OrgProfile }
+  | { status: "query_error"; user: { id: string }; message: string }
   | { status: "authenticated"; context: AuthenticatedOrgUser };
 
 export async function getCurrentOrgUser(
@@ -34,11 +44,19 @@ export async function getCurrentOrgUser(
     return { status: "unauthenticated" };
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("users")
     .select(profileSelect)
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    return {
+      status: "query_error",
+      user: { id: user.id },
+      message: error.message,
+    };
+  }
 
   if (!profile) {
     return {
@@ -47,12 +65,22 @@ export async function getCurrentOrgUser(
     };
   }
 
+  const typedProfile = profile as unknown as OrgProfile;
+
+  if (typedProfile.is_active === false) {
+    return {
+      status: "inactive",
+      user: { id: user.id },
+      profile: typedProfile,
+    };
+  }
+
   return {
     status: "authenticated",
     context: {
       supabase,
       user: { id: user.id },
-      profile: profile as unknown as OrgProfile,
+      profile: typedProfile,
     },
   };
 }
@@ -73,17 +101,37 @@ export async function requireOrgUser(
     );
   }
 
-  const { context } = result;
+  if (result.status === "query_error") {
+    return NextResponse.json(
+      { error: "Failed to load workspace profile" },
+      { status: 500 }
+    );
+  }
 
-  if (context.profile.is_active === false) {
+  if (result.status === "inactive") {
     return NextResponse.json({ error: "Account disabled" }, { status: 403 });
   }
+
+  const { context } = result;
 
   if (allowedRoles && !allowedRoles.includes(context.profile.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return context;
+}
+
+export async function requirePlatformAdmin(): Promise<AuthenticatedOrgUser | NextResponse> {
+  const auth = await requireOrgUser();
+  if (!isAuthenticatedOrgUser(auth)) {
+    return auth;
+  }
+
+  if (!auth.profile.is_platform_admin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return auth;
 }
 
 export function isAuthenticatedOrgUser(

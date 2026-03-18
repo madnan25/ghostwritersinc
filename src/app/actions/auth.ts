@@ -55,10 +55,10 @@ export async function updateUserSettings(formData: FormData) {
 
   const timezone = formData.get("timezone") as string;
 
-  // Get existing settings to merge
+  // Get existing settings and org context to merge updates safely.
   const { data: existingUser } = await supabase
     .from("users")
-    .select("settings")
+    .select("settings, organization_id, role, is_platform_admin")
     .eq("id", user.id)
     .single();
 
@@ -74,4 +74,17 @@ export async function updateUserSettings(formData: FormData) {
     .eq("id", user.id);
 
   if (error) throw new Error(error.message);
+
+  const canManageOrgSettings =
+    existingUser?.role === "admin" || existingUser?.is_platform_admin === true;
+
+  if (canManageOrgSettings && existingUser?.organization_id) {
+    const contextSharingEnabled = formData.get("contextSharingEnabled") === "on";
+    const { error: orgError } = await supabase
+      .from("organizations")
+      .update({ context_sharing_enabled: contextSharingEnabled })
+      .eq("id", existingUser.organization_id);
+
+    if (orgError) throw new Error(orgError.message);
+  }
 }

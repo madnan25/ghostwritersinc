@@ -19,14 +19,15 @@ export default function AccountDisabledPage() {
         </div>
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
-            Account Disabled
+            Account Pending Activation
           </h1>
           <p className="text-muted-foreground">
-            Your account has been disabled. Contact your organization
-            administrator to regain access.
+            Your LinkedIn sign-in succeeded, but this workspace account still needs
+            platform-admin approval before you can use the app. If you believe this
+            is a mistake, contact Dayem.
           </p>
         </div>
-        <Button size="lg" variant="outline" className="w-full" onClick={handleSignOut}>
+        <Button size="lg" variant="destructive" className="w-full" onClick={handleSignOut}>
           Sign out
         </Button>
       </div>

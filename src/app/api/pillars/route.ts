@@ -5,6 +5,8 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
+  requireSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -29,41 +31,64 @@ export async function GET(request: NextRequest) {
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'read')) {
+  if (!hasAgentPermission(auth.permissions, 'pillars:read')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: read access required' },
+      { error: 'Insufficient permissions: pillars:read access required' },
       { status: 403 }
     )
   }
 
   const supabase = createAdminClient()
 
-  const { data: pillars, error } = await supabase
+  // Get scoped post counts per pillar.
+  let countsQuery = supabase
+    .from('posts')
+    .select('pillar_id')
+    .eq('organization_id', auth.organizationId)
+    .not('pillar_id', 'is', null)
+
+  if (!isSharedOrgAgentContext(auth)) {
+    countsQuery = countsQuery.eq('user_id', auth.userId)
+  }
+
+  const { data: counts, error: countsError } = await countsQuery
+
+  if (countsError) {
+    console.error('[pillars] DB error listing pillar counts:', countsError)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  const countMap: Record<string, number> = {}
+  const referencedPillarIds = new Set<string>()
+  for (const row of counts ?? []) {
+    if (row.pillar_id) {
+      countMap[row.pillar_id] = (countMap[row.pillar_id] ?? 0) + 1
+      referencedPillarIds.add(row.pillar_id)
+    }
+  }
+
+  let pillarsQuery = supabase
     .from('content_pillars')
     .select('*')
     .eq('organization_id', auth.organizationId)
     .order('sort_order', { ascending: true })
+
+  if (!isSharedOrgAgentContext(auth)) {
+    const scopedPillarIds = [...referencedPillarIds]
+    if (scopedPillarIds.length === 0) {
+      return NextResponse.json([])
+    }
+    pillarsQuery = pillarsQuery.in('id', scopedPillarIds)
+  }
+
+  const { data: pillars, error } = await pillarsQuery
 
   if (error) {
     console.error('[pillars] DB error listing pillars:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
-  // Get post counts per pillar
-  const { data: counts } = await supabase
-    .from('posts')
-    .select('pillar_id')
-    .eq('organization_id', auth.organizationId)
-    .not('pillar_id', 'is', null)
-
-  const countMap: Record<string, number> = {}
-  for (const row of counts ?? []) {
-    if (row.pillar_id) {
-      countMap[row.pillar_id] = (countMap[row.pillar_id] ?? 0) + 1
-    }
-  }
-
-  const result = pillars.map((p) => ({
+  const result = (pillars ?? []).map((p) => ({
     ...p,
     post_count: countMap[p.id] ?? 0,
   }))
@@ -79,11 +104,16 @@ export async function POST(request: NextRequest) {
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'write')) {
+  if (!hasAgentPermission(auth.permissions, 'pillars:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: write access required' },
+      { error: 'Insufficient permissions: pillars:write access required' },
       { status: 403 }
     )
+  }
+
+  const sharedContextError = requireSharedOrgAgentContext(auth)
+  if (sharedContextError) {
+    return sharedContextError
   }
 
   let body: unknown

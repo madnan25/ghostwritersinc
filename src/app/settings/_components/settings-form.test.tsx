@@ -33,6 +33,8 @@ describe("SettingsForm", () => {
         notificationsEnabled={true}
         linkedInConnected={false}
         linkedInExpiresAt={null}
+        canManageOrgSettings={false}
+        contextSharingEnabled={false}
       />
     );
 
@@ -55,10 +57,45 @@ describe("SettingsForm", () => {
         notificationsEnabled={true}
         linkedInConnected={false}
         linkedInExpiresAt={null}
+        canManageOrgSettings={false}
+        contextSharingEnabled={false}
       />
     );
 
     await user.click(screen.getAllByRole("button", { name: "Connect LinkedIn" })[0]);
     expect(mockStartLinkedInOAuth).toHaveBeenCalledWith("/settings");
+  });
+
+  it("only enables save when settings have changed", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <SettingsForm
+        name="Alex"
+        email="alex@example.com"
+        avatarUrl={null}
+        timezone="UTC"
+        notificationsEnabled={true}
+        linkedInConnected={false}
+        linkedInExpiresAt={null}
+        canManageOrgSettings={false}
+        contextSharingEnabled={false}
+      />
+    );
+
+    const saveButton = screen.getAllByRole("button", { name: "Save Settings" }).at(-1);
+    expect(saveButton).toBeDefined();
+    if (!saveButton) throw new Error("Save Settings button not found");
+    expect(saveButton).toBeDisabled();
+
+    const notificationsSwitch = screen.getAllByRole("switch").at(-1);
+    expect(notificationsSwitch).toBeDefined();
+    if (!notificationsSwitch) throw new Error("Notifications switch not found");
+
+    await user.click(notificationsSwitch);
+    expect(saveButton).toBeEnabled();
+
+    await user.click(notificationsSwitch);
+    expect(saveButton).toBeDisabled();
   });
 });

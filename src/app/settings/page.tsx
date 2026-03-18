@@ -1,24 +1,47 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { OrgAccessLinks } from "./_components/org-access-links";
+import { getCurrentOrgUser } from "@/lib/server-auth";
+import { PlatformAdminLinks } from "./_components/platform-admin-links";
 import { SettingsForm } from "./_components/settings-form";
 
 export default async function SettingsPage() {
-  // Auth handled by middleware; user needed for profile query
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const result = await getCurrentOrgUser(
+    "id, organization_id, linkedin_id, name, email, avatar_url, timezone, settings, role, is_active, is_platform_admin"
+  );
+  if (result.status === "unauthenticated") redirect("/login");
+  if (result.status === "inactive") redirect("/account-disabled");
+  if (result.status === "profile_missing" || result.status === "query_error") {
+    return (
+      <div className="premium-page max-w-4xl space-y-6">
+        <div className="dashboard-frame relative overflow-hidden p-7 sm:p-8">
+          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(145,255,88,0.12)_0%,transparent_70%)] blur-3xl" />
+          <p className="premium-kicker">Workspace Preferences</p>
+          <h1 className="mt-4 text-4xl font-semibold tracking-[-0.055em] text-foreground">
+            Settings
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-foreground/68">
+            Your session is active, but your workspace profile could not be loaded for
+            this screen.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-6 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/login");
+  const { context } = result;
+  const { profile } = context;
+  const { data: organization } = await context.supabase
+    .from("organizations")
+    .select("context_sharing_enabled")
+    .eq("id", profile.organization_id)
+    .maybeSingle();
 
   const settings = (profile.settings ?? {}) as Record<string, unknown>;
   const linkedInConnected = !!(profile.linkedin_id && settings.linkedin_access_token_encrypted);
@@ -33,8 +56,10 @@ export default async function SettingsPage() {
     ? linkedInProfileAvatarUrl ?? profile.avatar_url
     : profile.avatar_url;
 
-  const isAdmin = ["owner", "admin"].includes(profile.role);
-  const isOwner = profile.role === "owner";
+  const isAdmin = profile.role === "admin";
+  const isPlatformAdmin = profile.is_platform_admin;
+  const canManageOrgSettings = isAdmin || isPlatformAdmin;
+  const canAccessAdminAreas = isAdmin || isPlatformAdmin;
 
   return (
     <div className="premium-page max-w-6xl space-y-6">
@@ -42,63 +67,50 @@ export default async function SettingsPage() {
         <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(145,255,88,0.14)_0%,transparent_70%)] blur-3xl" />
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div>
-          <p className="premium-kicker">
-            Workspace Preferences
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-[-0.055em] text-foreground sm:text-5xl">
-            Settings
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-foreground/68 sm:text-base">
-            Refine your personal environment, reconnect LinkedIn when needed, and manage who or what can operate inside the workspace.
-          </p>
+            <p className="premium-kicker">
+              Workspace Preferences
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.055em] text-foreground sm:text-5xl">
+              Settings
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-foreground/68 sm:text-base">
+              Refine your personal environment, reconnect LinkedIn when needed, and manage who or what can operate inside the workspace.
+            </p>
           </div>
 
-          {(isAdmin || isOwner) && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            {isAdmin && (
-                <div className="dashboard-rail p-5">
-                <p className="premium-kicker text-[0.68rem]">Agent Access</p>
-                <p className="mt-3 text-sm leading-7 text-foreground/66">
-                  Create and revoke org-scoped bearer keys for Ghostwriters agents like
-                  strategist, scribe, and inspector. These keys authenticate calls into
-                  your workspace APIs, not model providers.
-                </p>
-                <Link
-                  href="/settings/agents"
-                    className="mt-4 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  Manage Agent Keys →
-                </Link>
-              </div>
-            )}
-            {isOwner && (
-                <div className="dashboard-rail p-5">
-                <p className="premium-kicker text-[0.68rem]">Team Access</p>
-                <p className="mt-3 text-sm leading-7 text-foreground/66">
-                  Invite collaborators, adjust roles, and keep the editorial workspace secure.
-                </p>
-                <Link
-                  href="/settings/users"
-                    className="mt-4 inline-flex text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  Manage Users →
-                </Link>
-              </div>
-            )}
-          </div>
-          )}
+          <OrgAccessLinks disabled={!canAccessAdminAreas} />
         </div>
       </div>
 
+      {isPlatformAdmin && (
+        <div className="dashboard-frame p-6 sm:p-8">
+          <div className="space-y-2">
+            <p className="premium-kicker">Platform Admin</p>
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+              Platform Controls
+            </h2>
+            <p className="max-w-3xl text-sm leading-7 text-foreground/66">
+              Manage platform-only operations like commissioned agent infrastructure,
+              platform-level user access, and internal product references.
+            </p>
+          </div>
+          <div className="mt-6">
+            <PlatformAdminLinks />
+          </div>
+        </div>
+      )}
+
       <div className="dashboard-frame p-6 sm:p-8">
         <SettingsForm
-          name={displayName}
-          email={displayEmail}
-          avatarUrl={displayAvatarUrl}
-          timezone={profile.timezone}
+          name={displayName ?? ""}
+          email={displayEmail ?? ""}
+          avatarUrl={displayAvatarUrl ?? null}
+          timezone={profile.timezone ?? "UTC"}
           notificationsEnabled={settings.notifications_enabled !== false}
           linkedInConnected={linkedInConnected}
           linkedInExpiresAt={linkedInExpiresAt ?? null}
+          canManageOrgSettings={canManageOrgSettings}
+          contextSharingEnabled={organization?.context_sharing_enabled ?? false}
         />
       </div>
     </div>

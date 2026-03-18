@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  canAccessAgentUserRecord,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -19,6 +21,43 @@ const UpdateDraftSchema = z.object({
   media_urls: z.array(z.string().url()).nullable().optional(),
 })
 
+/** GET /api/drafts/:id — fetch a single draft */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authenticateAgent(request)
+  if (!isAgentContext(auth)) return auth
+
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+  if (limited) return limited
+
+  if (!hasAgentPermission(auth.permissions, 'drafts:read')) {
+    return NextResponse.json(
+      { error: 'Insufficient permissions: drafts:read access required' },
+      { status: 403 }
+    )
+  }
+
+  const { id } = await params
+  const supabase = createAdminClient()
+  const { data: post, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  if (!post || !canAccessAgentUserRecord(auth, post)) {
+    return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  return NextResponse.json(post)
+}
+
 /** PATCH /api/drafts/:id — update draft content/metadata */
 export async function PATCH(
   request: NextRequest,
@@ -30,9 +69,9 @@ export async function PATCH(
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'write')) {
+  if (!hasAgentPermission(auth.permissions, 'drafts:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: write access required' },
+      { error: 'Insufficient permissions: drafts:write access required' },
       { status: 403 }
     )
   }
@@ -59,7 +98,7 @@ export async function PATCH(
   // Verify the post belongs to the agent's organization
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, status')
+    .select('organization_id, user_id, status')
     .eq('id', id)
     .single()
 
@@ -67,7 +106,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  if (existing.organization_id !== auth.organizationId) {
+  if (!canAccessAgentUserRecord(auth, existing)) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
@@ -87,12 +126,17 @@ export async function PATCH(
     updateFields.media_urls = parsed.data.media_urls ?? []
   }
 
-  const { data: post, error } = await supabase
+  let mutation = supabase
     .from('posts')
     .update(updateFields)
     .eq('id', id)
-    .select()
-    .single()
+    .eq('organization_id', auth.organizationId)
+
+  if (!isSharedOrgAgentContext(auth)) {
+    mutation = mutation.eq('user_id', auth.userId)
+  }
+
+  const { data: post, error } = await mutation.select().single()
 
   if (error) {
     console.error('[drafts] DB error updating draft:', error)

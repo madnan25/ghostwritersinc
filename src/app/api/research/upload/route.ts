@@ -1,29 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { authenticateAgent, hasAgentPermission, isAgentContext } from '@/lib/agent-auth'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_TYPES = ['text/plain', 'application/zip']
 const ALLOWED_EXTENSIONS = ['.txt', '.zip']
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  let organizationId: string | null = null
+  let uploadedBy: string | null = null
+  let agentId: string | null = null
 
-  // Get user's organization
+  if (request.headers.get('authorization')?.startsWith('Bearer ')) {
+    const auth = await authenticateAgent(request)
+    if (!isAgentContext(auth)) return auth
+
+    if (!hasAgentPermission(auth.permissions, 'research:write')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions: research:write access required' },
+        { status: 403 }
+      )
+    }
+
+    organizationId = auth.organizationId
+    uploadedBy = auth.userId
+    agentId = auth.agentId
+  } else {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user's organization
+    const admin = createAdminClient()
+    const { data: dbUser } = await admin
+      .from('users')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    organizationId = dbUser.organization_id
+    uploadedBy = user.id
+  }
   const admin = createAdminClient()
-  const { data: dbUser } = await admin
-    .from('users')
-    .select('organization_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!dbUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  }
 
   const formData = await request.formData()
   const file = formData.get('file') as File | null
@@ -54,7 +79,7 @@ export async function POST(request: NextRequest) {
   // Upload to Supabase Storage
   const timestamp = Date.now()
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storagePath = `${dbUser.organization_id}/${timestamp}-${safeName}`
+  const storagePath = `${organizationId}/${timestamp}-${safeName}`
 
   const { error: uploadError } = await admin.storage
     .from('research')
@@ -71,9 +96,12 @@ export async function POST(request: NextRequest) {
   const { data: record, error: dbError } = await admin
     .from('research_uploads')
     .insert({
-      organization_id: dbUser.organization_id,
-      uploaded_by: user.id,
+      organization_id: organizationId,
+      uploaded_by: uploadedBy,
+      agent_id: agentId,
       filename: file.name,
+      title: file.name,
+      source_kind: 'upload',
       storage_path: storagePath,
       upload_type: 'whatsapp_chat',
       file_size_bytes: file.size,

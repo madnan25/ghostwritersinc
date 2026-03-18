@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import type { Invitation } from "./types";
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
   admin: "Admin",
   member: "Member",
 };
@@ -15,13 +14,13 @@ interface InvitationsPanelProps {
   invitations: Invitation[];
   revokePending: boolean;
   inviteEmail: string;
-  inviteRole: "owner" | "admin" | "member";
+  inviteRole: "admin" | "member";
   inviteError: string;
   inviteLink: string;
   invitePending: boolean;
   onRevoke: (invitationId: string) => void;
   onInviteEmailChange: (value: string) => void;
-  onInviteRoleChange: (value: "owner" | "admin" | "member") => void;
+  onInviteRoleChange: (value: "admin" | "member") => void;
   onInvite: (event: React.FormEvent) => void;
 }
 
@@ -81,7 +80,11 @@ export function InvitationsPanel({
       <div className="dashboard-rail space-y-4 p-5">
         <div>
           <p className="premium-kicker text-[0.68rem]">Invite Flow</p>
-          <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">Invite a new member</h2>
+          <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">Current direct invite flow</h2>
+          <p className="mt-2 text-sm leading-6 text-foreground/66">
+            This is the existing platform-admin invitation path for the current
+            organization. Org-admin invite requests should move into an approval flow.
+          </p>
         </div>
         <form onSubmit={onInvite} className="space-y-3">
           <div className="space-y-1.5">
@@ -106,13 +109,12 @@ export function InvitationsPanel({
               id="invite-role"
               value={inviteRole}
               onChange={(e) =>
-                onInviteRoleChange(e.target.value as "owner" | "admin" | "member")
+                onInviteRoleChange(e.target.value as "admin" | "member")
               }
               className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-ring/50"
             >
               <option value="member">Member</option>
               <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
             </select>
           </div>
 

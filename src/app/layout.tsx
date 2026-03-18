@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BrandWordmark } from "@/components/brand-wordmark";
+import { HeaderProfileLink } from "@/components/header-profile-link";
 import { ThemeProvider } from "@/components/theme-provider";
 import {
   NotificationBellFallback,
@@ -77,12 +78,7 @@ export default function RootLayout({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Link
-                    href="/settings"
-                    className="hidden rounded-full border border-border/60 bg-card/48 px-4 py-2 text-sm text-foreground/80 transition-colors hover:bg-card hover:text-foreground md:block"
-                  >
-                    Settings
-                  </Link>
+                  <HeaderProfileLink />
                   <Suspense fallback={<NotificationBellFallback />}>
                     <NotificationBellWrapper />
                   </Suspense>

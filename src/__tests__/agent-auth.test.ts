@@ -35,17 +35,25 @@ describe("agent auth helpers", () => {
     expect(hasAgentPermission(["review"], "reviews:write")).toBe(true);
   });
 
-  it("keys rate limits by organization and key identity", () => {
+  it("keys rate limits by organization, user, and key identity", () => {
     expect(
       getAgentRateLimitKey(
         {
           keyId: "key-123",
+          agentId: "agent-123",
           agentName: "scribe",
+          agentSlug: "scribe",
+          agentType: "scribe",
+          provider: "ghostwriters",
+          status: "active",
           organizationId: "org-1",
+          userId: "user-1",
           permissions: ["posts:read"],
+          allowSharedContext: false,
+          scopeMode: "user",
         },
         "read"
       )
-    ).toBe("read:org-1:key-123");
+    ).toBe("read:org-1:user-1:key-123");
   });
 });

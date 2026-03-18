@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
+import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: invitationId } = await params;
-  const auth = await requireOrgUser(["owner"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }

@@ -12,11 +12,13 @@ export function LoginClient() {
 
   const errorMessage =
     error === "no_invitation"
-      ? "You need an invitation to join. Contact the organization owner."
+      ? "You need an invitation to join. Contact your workspace administrator."
       : error === "invalid_invitation"
-        ? "This invitation is invalid or has expired. Ask the organization owner for a new invite."
+        ? "This invitation is invalid or has expired. Ask your workspace administrator for a new invite."
         : error === "invite_email_mismatch"
           ? "Sign in with the same email address that received the invitation."
+          : error === "profile_load_failed"
+            ? "Your session started, but your workspace profile could not be loaded. Please try again."
           : null;
 
   async function handleLinkedInLogin() {
@@ -52,7 +54,7 @@ export function LoginClient() {
         </div>
         <Button
           size="lg"
-          className="w-full justify-center text-sm shadow-none hover:translate-y-0 hover:shadow-none"
+          className="w-full justify-center text-sm"
           onClick={handleLinkedInLogin}
         >
           <svg

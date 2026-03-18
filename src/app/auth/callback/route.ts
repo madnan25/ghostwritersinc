@@ -9,6 +9,7 @@ import {
   INVITE_COOKIE_NAME,
   normalizeInviteEmail,
 } from "@/lib/invitations";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function getLinkedInProfile(user: {
@@ -83,73 +84,112 @@ export async function GET(request: Request) {
       const linkedInProfile = getLinkedInProfile(user);
       const inviteCookie = cookieStore.get(INVITE_COOKIE_NAME)?.value;
       const inviteToken = inviteCookie ? decodeInviteCookie(inviteCookie) : null;
+      const adminClient = createAdminClient();
+
+      async function getPlatformOrganizationId() {
+        const { data: platformAdmin } = await adminClient
+          .from("users")
+          .select("organization_id")
+          .eq("is_platform_admin", true)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        return platformAdmin?.organization_id ?? null;
+      }
 
       // Check if user exists in our users table
       const { data: existingUser } = await supabase
         .from("users")
-        .select("id")
+        .select("id, organization_id, is_active, is_platform_admin")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (!existingUser) {
+        const isPlatformAdmin = isPlatformAdminEmail(linkedInProfile.email);
+
         if (!inviteToken) {
-          await supabase.auth.signOut();
-          return redirectWithInviteClear("/login?error=no_invitation");
-        }
+          const organizationId = await getPlatformOrganizationId();
 
-        const adminClient = createAdminClient();
-        const invitation = await getPendingInvitationByToken(adminClient, inviteToken);
+          if (!organizationId || !linkedInProfile.email) {
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=auth_callback_failed");
+          }
 
-        if (!invitation) {
-          await supabase.auth.signOut();
-          return redirectWithInviteClear("/login?error=invalid_invitation");
-        }
+          const { error: insertError } = await adminClient
+            .from("users")
+            .insert({
+              id: user.id,
+              organization_id: organizationId,
+              linkedin_id: linkedInProfile.linkedinId,
+              name: linkedInProfile.name,
+              email: linkedInProfile.email,
+              avatar_url: linkedInProfile.avatarUrl,
+              role: isPlatformAdmin ? "admin" : "member",
+              is_active: isPlatformAdmin,
+              is_platform_admin: isPlatformAdmin,
+            });
 
-        const normalizedUserEmail = normalizeInviteEmail(user.email ?? "");
-        if (!normalizedUserEmail || normalizedUserEmail !== invitation.email) {
-          await supabase.auth.signOut();
-          return redirectWithInviteClear("/login?error=invite_email_mismatch");
-        }
+          if (insertError) {
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=auth_callback_failed");
+          }
+        } else {
+          const invitation = await getPendingInvitationByToken(adminClient, inviteToken);
 
-        // Atomically claim the invitation first to prevent double-spend.
-        // The `.is("accepted_at", null)` condition ensures only one concurrent
-        // request can claim it — the loser gets zero rows updated.
-        const acceptedAt = new Date().toISOString();
-        const { data: claimed } = await adminClient
-          .from("user_invitations")
-          .update({ accepted_at: acceptedAt })
-          .eq("id", invitation.id)
-          .is("accepted_at", null)
-          .select("id");
+          if (!invitation) {
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=invalid_invitation");
+          }
 
-        if (!claimed || claimed.length === 0) {
-          // Another request already claimed this token
-          await supabase.auth.signOut();
-          return redirectWithInviteClear("/login?error=invalid_invitation");
-        }
+          const normalizedUserEmail = normalizeInviteEmail(user.email ?? "");
+          if (!normalizedUserEmail || normalizedUserEmail !== invitation.email) {
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=invite_email_mismatch");
+          }
 
-        // Create user in the invitation's org with the invited role
-        const { error: insertError } = await adminClient
-          .from("users")
-          .insert({
-            id: user.id,
-            organization_id: invitation.organization_id,
-            linkedin_id: linkedInProfile.linkedinId,
-            name: linkedInProfile.name,
-            email: linkedInProfile.email!,
-            avatar_url: linkedInProfile.avatarUrl,
-            role: invitation.role,
-            is_active: true,
-          });
-
-        if (insertError) {
-          // Rollback invitation claim so it can be retried
-          await adminClient
+          // Atomically claim the invitation first to prevent double-spend.
+          // The `.is("accepted_at", null)` condition ensures only one concurrent
+          // request can claim it — the loser gets zero rows updated.
+          const acceptedAt = new Date().toISOString();
+          const { data: claimed } = await adminClient
             .from("user_invitations")
-            .update({ accepted_at: null })
-            .eq("id", invitation.id);
-          await supabase.auth.signOut();
-          return redirectWithInviteClear("/login?error=auth_callback_failed");
+            .update({ accepted_at: acceptedAt })
+            .eq("id", invitation.id)
+            .is("accepted_at", null)
+            .select("id");
+
+          if (!claimed || claimed.length === 0) {
+            // Another request already claimed this token
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=invalid_invitation");
+          }
+
+          // Create user in the invitation's org with the invited role,
+          // but keep them inactive until the platform admin enables the account.
+          const { error: insertError } = await adminClient
+            .from("users")
+            .insert({
+              id: user.id,
+              organization_id: invitation.organization_id,
+              linkedin_id: linkedInProfile.linkedinId,
+              name: linkedInProfile.name,
+              email: linkedInProfile.email!,
+              avatar_url: linkedInProfile.avatarUrl,
+              role: invitation.role,
+              is_active: false,
+              is_platform_admin: false,
+            });
+
+          if (insertError) {
+            // Rollback invitation claim so it can be retried
+            await adminClient
+              .from("user_invitations")
+              .update({ accepted_at: null })
+              .eq("id", invitation.id);
+            await supabase.auth.signOut();
+            return redirectWithInviteClear("/login?error=auth_callback_failed");
+          }
         }
       } else {
         // Keep the stored profile aligned with the connected LinkedIn account.
@@ -195,6 +235,16 @@ export async function GET(request: Request) {
             },
           })
           .eq("id", user.id);
+      }
+
+      const { data: finalProfile } = await supabase
+        .from("users")
+        .select("is_active")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!finalProfile?.is_active) {
+        return redirectWithInviteClear("/account-disabled");
       }
 
       return redirectWithInviteClear(next);

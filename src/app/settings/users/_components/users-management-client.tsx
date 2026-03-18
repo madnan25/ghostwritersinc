@@ -21,6 +21,8 @@ export function UsersManagementClient({
   // Toggle active state
   const [confirmToggle, setConfirmToggle] = useState<string | null>(null);
   const [togglePending, startToggleTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deletePending, startDeleteTransition] = useTransition();
 
   // Role change
   const [rolePending, startRoleTransition] = useTransition();
@@ -30,7 +32,7 @@ export function UsersManagementClient({
 
   // Invite form
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"owner" | "admin" | "member">("member");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [inviteError, setInviteError] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [invitePending, startInviteTransition] = useTransition();
@@ -111,6 +113,28 @@ export function UsersManagementClient({
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  function handleDeleteUser(userId: string) {
+    if (confirmDelete === userId) {
+      setConfirmDelete(null);
+      setActionError("");
+      startDeleteTransition(async () => {
+        const res = await fetch(`/api/admin/users/${userId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          setUsers((prev) => prev.filter((user) => user.id !== userId));
+          return;
+        }
+
+        const data = await res.json();
+        setActionError(data.error ?? "Failed to delete user.");
+      });
+      return;
+    }
+
+    setConfirmDelete(userId);
+  }
+
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     setInviteError("");
@@ -183,10 +207,14 @@ export function UsersManagementClient({
           currentUserId={currentUserId}
           users={users}
           confirmToggle={confirmToggle}
+          confirmDelete={confirmDelete}
           togglePending={togglePending}
           rolePending={rolePending}
+          deletePending={deletePending}
           onToggleActive={handleToggleActive}
           onCancelToggle={() => setConfirmToggle(null)}
+          onDeleteUser={handleDeleteUser}
+          onCancelDelete={() => setConfirmDelete(null)}
           onRoleChange={handleRoleChange}
         />
       )}

@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createAdminClient } from './supabase/admin'
+import { DEFAULT_AGENT_PERMISSIONS } from './agent-permissions'
+export { DEFAULT_AGENT_PERMISSIONS } from './agent-permissions'
 
 const { compare } = bcrypt
 const AGENT_KEY_PREFIX = 'gw_agent_'
@@ -10,8 +12,23 @@ const KEY_LOOKUP_HEX_LENGTH = 16
 const BCRYPT_ROUNDS = 12
 
 const CAPABILITY_TO_PERMISSIONS: Record<string, string[]> = {
-  read: ['posts:read', 'pillars:read', 'comments:read', 'reviews:read'],
-  write: ['posts:write', 'pillars:write', 'comments:write'],
+  read: [
+    'posts:read',
+    'drafts:read',
+    'comments:read',
+    'reviews:read',
+    'pillars:read',
+    'research:read',
+    'strategy:read',
+  ],
+  write: [
+    'posts:write',
+    'drafts:write',
+    'comments:write',
+    'pillars:write',
+    'research:write',
+    'strategy:write',
+  ],
   review: ['reviews:write'],
 }
 
@@ -23,13 +40,6 @@ function getKeyLookupPrefix(apiKey: string): string {
 
 function getLegacyKeyPrefix(apiKey: string): string {
   return apiKey.slice(0, LEGACY_KEY_PREFIX_LENGTH)
-}
-
-/** Default permissions per agent type */
-export const DEFAULT_AGENT_PERMISSIONS: Record<string, string[]> = {
-  scribe: ['posts:read', 'posts:write', 'comments:read', 'comments:write'],
-  strategist: ['posts:read', 'pillars:read', 'pillars:write', 'comments:read'],
-  inspector: ['posts:read', 'reviews:read', 'reviews:write', 'comments:read'],
 }
 
 /** Generate a random agent API key. Format: gw_agent_<32 random hex chars> */
@@ -49,9 +59,17 @@ export async function hashAgentKey(plainKey: string): Promise<string> {
 export interface AgentContext {
   keyId?: string
   keyPrefix?: string
+  agentId: string
   agentName: string
+  agentSlug: string
+  agentType: string
+  provider: string
+  status: string
   organizationId: string
+  userId: string
   permissions: string[]
+  allowSharedContext: boolean
+  scopeMode: 'user' | 'shared_org'
 }
 
 /**
@@ -84,7 +102,9 @@ export async function authenticateAgent(
 
   const { data: candidates, error } = await supabase
     .from('agent_keys')
-    .select('id, agent_name, organization_id, permissions, api_key_hash, key_prefix')
+    .select(
+      'id, agent_id, agent_name, organization_id, user_id, permissions, api_key_hash, key_prefix, allow_shared_context'
+    )
     .in('key_prefix', prefixes)
 
   if (error || !candidates || candidates.length === 0) {
@@ -97,12 +117,120 @@ export async function authenticateAgent(
   for (const candidate of candidates) {
     const match = await compare(apiKey, candidate.api_key_hash)
     if (match) {
+      const fallbackAgentType =
+        typeof candidate.agent_name === 'string' && candidate.agent_name in DEFAULT_AGENT_PERMISSIONS
+          ? candidate.agent_name
+          : 'custom'
+
+      const { data: agent, error: agentError } = candidate.agent_id
+        ? await supabase
+            .from('agents')
+            .select(
+              'id, name, slug, provider, agent_type, status, organization_id, user_id, allow_shared_context, last_used_at'
+            )
+            .eq('id', candidate.agent_id)
+            .maybeSingle()
+        : {
+            data: {
+              id: `legacy-${candidate.id}`,
+              name: candidate.agent_name,
+              slug: candidate.agent_name,
+              provider: 'ghostwriters',
+              agent_type: fallbackAgentType,
+              status: 'active',
+              organization_id: candidate.organization_id,
+              user_id: candidate.user_id,
+              allow_shared_context: candidate.allow_shared_context === true,
+            },
+            error: null,
+          }
+
+      if (agentError || !agent) {
+        return NextResponse.json(
+          { error: 'Agent identity could not be resolved for this key' },
+          { status: 403 }
+        )
+      }
+
+      if (!agent.user_id) {
+        return NextResponse.json(
+          { error: 'Agent key must be reassigned by a platform admin' },
+          { status: 403 }
+        )
+      }
+
+      if (agent.status !== 'active') {
+        return NextResponse.json(
+          { error: 'This commissioned agent is not active' },
+          { status: 403 }
+        )
+      }
+
+      const { data: permissionRows, error: permissionError } =
+        candidate.agent_id
+          ? await supabase
+              .from('agent_permissions')
+              .select('permission')
+              .eq('agent_id', candidate.agent_id)
+          : {
+              data: (candidate.permissions ?? []).map((permission: string) => ({ permission })),
+              error: null,
+            }
+
+      if (permissionError) {
+        return NextResponse.json(
+          { error: 'Failed to resolve agent permissions' },
+          { status: 500 }
+        )
+      }
+
+      const { data: organization, error: orgError } = await supabase
+        .from('organizations')
+        .select('context_sharing_enabled')
+        .eq('id', agent.organization_id)
+        .maybeSingle()
+
+      if (orgError) {
+        return NextResponse.json(
+          { error: 'Failed to resolve agent scope' },
+          { status: 500 }
+        )
+      }
+
+      const permissions =
+        permissionRows?.map((row: { permission: string }) => row.permission).filter(Boolean) ??
+        candidate.permissions ??
+        []
+      const allowSharedContext = agent.allow_shared_context === true
+      const scopeMode =
+        allowSharedContext && organization?.context_sharing_enabled
+          ? 'shared_org'
+          : 'user'
+
+      if (candidate.agent_id) {
+        void supabase
+          .from('agents')
+          .update({
+            last_used_at: new Date().toISOString(),
+            last_used_by_route: request.nextUrl.pathname,
+          })
+          .eq('id', candidate.agent_id)
+      }
+
       return {
         keyId: candidate.id,
         keyPrefix: candidate.key_prefix,
-        agentName: candidate.agent_name,
-        organizationId: candidate.organization_id,
-        permissions: candidate.permissions,
+        agentId: agent.id,
+        agentName: agent.name,
+        agentSlug: agent.slug,
+        agentType: agent.agent_type,
+        provider: agent.provider,
+        status: agent.status,
+        organizationId: agent.organization_id,
+        userId: agent.user_id,
+        permissions,
+        allowSharedContext,
+        scopeMode,
       }
     }
   }
@@ -130,6 +258,14 @@ export function hasAgentPermission(
     return mappedPermissions.some((permission) => permissions.includes(permission))
   }
 
+  const broadCapability = Object.entries(CAPABILITY_TO_PERMISSIONS).find(([, granularPermissions]) =>
+    granularPermissions.includes(requiredPermission)
+  )?.[0]
+
+  if (broadCapability && permissions.includes(broadCapability)) {
+    return true
+  }
+
   return Object.entries(CAPABILITY_TO_PERMISSIONS).some(
     ([capability, granularPermissions]) =>
       permissions.includes(capability) &&
@@ -141,6 +277,40 @@ export function getAgentRateLimitKey(
   auth: AgentContext,
   capability: 'read' | 'write' | 'review'
 ): string {
-  const identity = auth.keyId ?? auth.keyPrefix ?? auth.agentName
-  return `${capability}:${auth.organizationId}:${identity}`
+  const identity = auth.keyId ?? auth.keyPrefix ?? `${auth.agentName}:${auth.userId}`
+  return `${capability}:${auth.organizationId}:${auth.userId}:${identity}`
+}
+
+export function isSharedOrgAgentContext(auth: AgentContext): boolean {
+  return auth.scopeMode === 'shared_org'
+}
+
+export function canAccessAgentUserRecord(
+  auth: AgentContext,
+  record: { organization_id: string; user_id: string | null }
+): boolean {
+  return (
+    record.organization_id === auth.organizationId &&
+    (auth.scopeMode === 'shared_org' || record.user_id === auth.userId)
+  )
+}
+
+export function canAccessAgentOrgRecord(
+  auth: AgentContext,
+  record: { organization_id: string }
+): boolean {
+  return record.organization_id === auth.organizationId
+}
+
+export function requireSharedOrgAgentContext(
+  auth: AgentContext
+): NextResponse | null {
+  if (isSharedOrgAgentContext(auth)) {
+    return null
+  }
+
+  return NextResponse.json(
+    { error: 'Shared org context is disabled for this agent key' },
+    { status: 403 }
+  )
 }

@@ -5,6 +5,7 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -31,9 +32,9 @@ export async function POST(request: NextRequest) {
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'write')) {
+  if (!hasAgentPermission(auth.permissions, 'drafts:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: write access required' },
+      { error: 'Insufficient permissions: drafts:write access required' },
       { status: 403 }
     )
   }
@@ -55,18 +56,17 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // Get the oldest user for the organization to assign the post to (deterministic)
+  // Require the commissioned user to exist in the target org.
   const { data: user } = await supabase
     .from('users')
     .select('id')
+    .eq('id', auth.userId)
     .eq('organization_id', auth.organizationId)
-    .order('created_at', { ascending: true })
-    .limit(1)
     .single()
 
   if (!user) {
     return NextResponse.json(
-      { error: 'No user found for this organization' },
+      { error: 'Assigned user not found for this organization' },
       { status: 400 }
     )
   }
@@ -105,9 +105,9 @@ export async function GET(request: NextRequest) {
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'read')) {
+  if (!hasAgentPermission(auth.permissions, 'drafts:read')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: read access required' },
+      { error: 'Insufficient permissions: drafts:read access required' },
       { status: 403 }
     )
   }
@@ -121,6 +121,10 @@ export async function GET(request: NextRequest) {
     .select('*')
     .eq('organization_id', auth.organizationId)
     .order('suggested_publish_at', { ascending: true })
+
+  if (!isSharedOrgAgentContext(auth)) {
+    query = query.eq('user_id', auth.userId)
+  }
 
   if (status) {
     const statuses = status.split(',')

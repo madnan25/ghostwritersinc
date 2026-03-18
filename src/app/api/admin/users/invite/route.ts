@@ -5,10 +5,10 @@ import {
   hashInviteToken,
   normalizeInviteEmail,
 } from "@/lib/invitations";
-import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
+import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 
 export async function POST(request: Request) {
-  const auth = await requireOrgUser(["owner"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const validRoles = ["owner", "admin", "member"];
+  const validRoles = ["admin", "member"];
   const inviteRole = role && validRoles.includes(role) ? role : "member";
   const normalizedEmail = normalizeInviteEmail(email);
 

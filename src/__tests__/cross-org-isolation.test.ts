@@ -8,7 +8,7 @@
  * resources belonging to org B.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // ---------------------------------------------------------------------------
 // Org fixtures
@@ -21,21 +21,53 @@ const POST_ID_ORG_B = 'post-bbbb-0001'
 const PILLAR_ID_ORG_A = 'pillar-aaaa-0001'
 const PILLAR_ID_ORG_B = 'pillar-bbbb-0001'
 const USER_ID_ORG_A = 'user-aaaa-0001'
+const USER_ID_ORG_A_SECONDARY = 'user-aaaa-0002'
 
 // ---------------------------------------------------------------------------
 // Mock: authenticateAgent — returns org-A context
 // ---------------------------------------------------------------------------
 vi.mock('@/lib/agent-auth', () => ({
   authenticateAgent: vi.fn().mockResolvedValue({
+    agentId: 'agent-aaaa-0001',
     agentName: 'scribe',
+    agentSlug: 'scribe',
+    agentType: 'scribe',
+    provider: 'ghostwriters',
+    status: 'active',
     organizationId: ORG_A,
+    userId: USER_ID_ORG_A,
     permissions: ['posts:read', 'posts:write', 'comments:read', 'comments:write', 'read', 'write', 'review'],
+    allowSharedContext: false,
+    scopeMode: 'user',
   }),
-  getAgentRateLimitKey: vi.fn((auth: { organizationId: string; agentName: string }, capability: string) =>
-    `${capability}:${auth.organizationId}:${auth.agentName}`
+  getAgentRateLimitKey: vi.fn((auth: { organizationId: string; userId: string; agentName: string }, capability: string) =>
+    `${capability}:${auth.organizationId}:${auth.userId}:${auth.agentName}`
   ),
   hasAgentPermission: vi.fn(() => true),
   isAgentContext: vi.fn((r: unknown) => !(r instanceof Response)),
+  isSharedOrgAgentContext: vi.fn((auth: { scopeMode: string }) => auth.scopeMode === 'shared_org'),
+  canAccessAgentUserRecord: vi.fn(
+    (
+      auth: { organizationId: string; userId: string; scopeMode: string },
+      record: { organization_id: string; user_id: string | null }
+    ) =>
+      record.organization_id === auth.organizationId &&
+      (auth.scopeMode === 'shared_org' || record.user_id === auth.userId)
+  ),
+  canAccessAgentOrgRecord: vi.fn(
+    (
+      auth: { organizationId: string },
+      record: { organization_id: string }
+    ) => record.organization_id === auth.organizationId
+  ),
+  requireSharedOrgAgentContext: vi.fn((auth: { scopeMode: string }) =>
+    auth.scopeMode === 'shared_org'
+      ? null
+      : NextResponse.json(
+          { error: 'Shared org context is disabled for this agent key' },
+          { status: 403 }
+        )
+  ),
   DEFAULT_AGENT_PERMISSIONS: {
     scribe: ['posts:read', 'posts:write'],
     strategist: ['posts:read'],
@@ -83,7 +115,15 @@ const MOCK_DB: Record<string, Record<string, unknown>[]> = {
       user_id: USER_ID_ORG_A,
       content: 'Org A post',
       status: 'draft',
-      pillar_id: null,
+      pillar_id: PILLAR_ID_ORG_A,
+    },
+    {
+      id: 'post-aaaa-0002',
+      organization_id: ORG_A,
+      user_id: USER_ID_ORG_A_SECONDARY,
+      content: 'Org A teammate post',
+      status: 'draft',
+      pillar_id: PILLAR_ID_ORG_A,
     },
     {
       id: POST_ID_ORG_B,
@@ -91,7 +131,7 @@ const MOCK_DB: Record<string, Record<string, unknown>[]> = {
       user_id: 'user-bbbb-0001',
       content: 'Org B post',
       status: 'draft',
-      pillar_id: null,
+      pillar_id: PILLAR_ID_ORG_B,
     },
   ],
   content_pillars: [
@@ -102,6 +142,7 @@ const MOCK_DB: Record<string, Record<string, unknown>[]> = {
   review_events: [],
   users: [
     { id: USER_ID_ORG_A, organization_id: ORG_A },
+    { id: USER_ID_ORG_A_SECONDARY, organization_id: ORG_A },
   ],
 }
 
@@ -160,7 +201,11 @@ function makeRequest(
   method = 'GET',
   body?: Record<string, unknown>
 ): NextRequest {
-  const init: RequestInit = {
+  const init: {
+    method: string
+    headers: Record<string, string>
+    body?: string
+  } = {
     method,
     headers: { Authorization: 'Bearer gw_agent_fakekey', 'Content-Type': 'application/json' },
   }
@@ -177,7 +222,7 @@ describe('Cross-org isolation — Drafts', () => {
     vi.clearAllMocks()
   })
 
-  it('GET /api/drafts — returns only org A drafts', async () => {
+  it('GET /api/drafts — returns only the assigned user drafts by default', async () => {
     const { GET } = await import('@/app/api/drafts/route')
     const req = makeRequest('http://localhost:3000/api/drafts')
     const res = await GET(req)
@@ -187,7 +232,32 @@ describe('Cross-org isolation — Drafts', () => {
     expect(json[0]).toMatchObject({
       id: POST_ID_ORG_A,
       organization_id: ORG_A,
+      user_id: USER_ID_ORG_A,
     })
+  })
+
+  it('GET /api/drafts — can read other org-user drafts only when sharing is enabled', async () => {
+    const { authenticateAgent } = await import('@/lib/agent-auth')
+    vi.mocked(authenticateAgent).mockResolvedValueOnce({
+      agentId: 'agent-aaaa-0002',
+      agentName: 'strategist',
+      agentSlug: 'strategist',
+      agentType: 'strategist',
+      provider: 'ghostwriters',
+      status: 'active',
+      organizationId: ORG_A,
+      userId: USER_ID_ORG_A,
+      permissions: ['posts:read', 'read'],
+      allowSharedContext: true,
+      scopeMode: 'shared_org',
+    })
+
+    const { GET } = await import('@/app/api/drafts/route')
+    const req = makeRequest('http://localhost:3000/api/drafts')
+    const res = await GET(req)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(json).toHaveLength(2)
   })
 
   it('PATCH /api/drafts/:id — rejects update to org B post', async () => {
@@ -200,6 +270,19 @@ describe('Cross-org isolation — Drafts', () => {
     const res = await PATCH(req, { params: Promise.resolve({ id: POST_ID_ORG_B }) })
     const json = await res.json()
     // Should get 404 because the post belongs to org B, not org A
+    expect(res.status).toBe(404)
+    expect(json.error).toBe('Post not found')
+  })
+
+  it('PATCH /api/drafts/:id — rejects update to another user in same org when sharing is off', async () => {
+    const { PATCH } = await import('@/app/api/drafts/[id]/route')
+    const req = makeRequest(
+      'http://localhost:3000/api/drafts/post-aaaa-0002',
+      'PATCH',
+      { content: 'hacked teammate content' }
+    )
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'post-aaaa-0002' }) })
+    const json = await res.json()
     expect(res.status).toBe(404)
     expect(json.error).toBe('Post not found')
   })
@@ -236,6 +319,17 @@ describe('Cross-org isolation — Comments', () => {
     )
     const res = await GET(req, { params: Promise.resolve({ id: POST_ID_ORG_A }) })
     expect(res.status).not.toBe(404)
+  })
+
+  it('GET /api/drafts/:id/comments — rejects access to another user in same org when sharing is off', async () => {
+    const { GET } = await import('@/app/api/drafts/[id]/comments/route')
+    const req = makeRequest(
+      'http://localhost:3000/api/drafts/post-aaaa-0002/comments'
+    )
+    const res = await GET(req, { params: Promise.resolve({ id: 'post-aaaa-0002' }) })
+    const json = await res.json()
+    expect(res.status).toBe(404)
+    expect(json.error).toBe('Post not found')
   })
 })
 

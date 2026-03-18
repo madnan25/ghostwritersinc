@@ -64,23 +64,37 @@ export async function updateSession(request: NextRequest) {
       request.nextUrl.pathname !== "/onboarding" &&
       !isApiPath
     ) {
-      const { data: dbUser } = await supabase
+      const { data: dbUser, error: dbUserError } = await supabase
         .from("users")
-        .select("is_active, organizations(onboarded_at)")
+        .select("organization_id, is_active")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (dbUser) {
-        // Check if user account is active
-        if (dbUser.is_active === false) {
-          const url = request.nextUrl.clone();
-          url.pathname = "/account-disabled";
-          return NextResponse.redirect(url);
+      if (dbUserError) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("error", "profile_load_failed");
+        return NextResponse.redirect(url);
+      }
+
+      if (!dbUser || dbUser.is_active === false) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/account-disabled";
+        return NextResponse.redirect(url);
+      }
+
+      if (dbUser.organization_id) {
+        const { data: org, error: orgError } = await supabase
+          .from("organizations")
+          .select("onboarded_at")
+          .eq("id", dbUser.organization_id)
+          .maybeSingle();
+
+        if (orgError) {
+          // If org onboarding fields are missing from the live schema,
+          // don't block valid sign-ins. Skip the onboarding gate instead.
+          return supabaseResponse;
         }
-
-        const org = Array.isArray(dbUser.organizations)
-          ? dbUser.organizations[0]
-          : dbUser.organizations;
 
         if (org && !org.onboarded_at) {
           const url = request.nextUrl.clone();

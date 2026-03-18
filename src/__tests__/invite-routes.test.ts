@@ -59,7 +59,7 @@ describe("invite routes", () => {
     mockGetPendingInvitationByToken.mockResolvedValueOnce({
       id: "invite-1",
       organization_id: "org-1",
-      email: "owner@example.com",
+      email: "admin@example.com",
       role: "member",
     });
 
@@ -85,7 +85,11 @@ describe("invite routes", () => {
     const response = await POST(
       new Request("http://localhost/api/auth/invite/session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost",
+          Host: "localhost",
+        },
         body: JSON.stringify({ token: "valid-token" }),
       })
     );
@@ -101,7 +105,11 @@ describe("invite routes", () => {
     const response = await POST(
       new Request("http://localhost/api/auth/invite/session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost",
+          Host: "localhost",
+        },
         body: JSON.stringify({ token: "invalid-token" }),
       })
     );

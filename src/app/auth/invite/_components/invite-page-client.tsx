@@ -87,7 +87,7 @@ export function InvitePageClient() {
         <div className="space-y-5">
           <div className="editorial-card p-5">
             <p className="premium-copy text-sm leading-7">
-              Invitations are time-bound and tied to your workspace. If this was sent recently, ask the owner to issue a fresh link.
+              Invitations are time-bound and tied to your workspace. If this was sent recently, ask an administrator to issue a fresh link.
             </p>
           </div>
           <Link
@@ -119,7 +119,7 @@ export function InvitePageClient() {
         </div>
         <Button
           size="lg"
-          className="w-full shadow-none hover:translate-y-0 hover:shadow-none"
+          className="w-full"
           onClick={handleSignIn}
         >
           <svg

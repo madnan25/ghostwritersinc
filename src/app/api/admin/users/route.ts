@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
+import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 
 export async function GET() {
-  const auth = await requireOrgUser(["owner"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
@@ -11,7 +11,7 @@ export async function GET() {
   const adminClient = createAdminClient();
   const { data: users, error } = await adminClient
     .from("users")
-    .select("id, name, email, avatar_url, role, is_active, created_at")
+    .select("id, name, email, avatar_url, role, is_active, is_platform_admin, created_at")
     .eq("organization_id", auth.profile.organization_id)
     .order("created_at", { ascending: true });
 

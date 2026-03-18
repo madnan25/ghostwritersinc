@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
+import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 
 export async function GET() {
-  const auth = await requireOrgUser(["owner"]);
+  const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  canAccessAgentUserRecord,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -28,9 +30,9 @@ export async function POST(
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'review'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'review')) {
+  if (!hasAgentPermission(auth.permissions, 'reviews:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: review access required' },
+      { error: 'Insufficient permissions: reviews:write access required' },
       { status: 403 }
     )
   }
@@ -57,7 +59,7 @@ export async function POST(
   // Fetch the post
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, status')
+    .select('organization_id, user_id, status')
     .eq('id', id)
     .single()
 
@@ -65,7 +67,7 @@ export async function POST(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  if (post.organization_id !== auth.organizationId) {
+  if (!canAccessAgentUserRecord(auth, post)) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
@@ -92,13 +94,20 @@ export async function POST(
     })
 
     // Update post
-    const { error: updateError } = await supabase
+    let mutation = supabase
       .from('posts')
       .update({
         ...updateFields,
         reviewed_by_agent: auth.agentName,
       })
       .eq('id', id)
+      .eq('organization_id', auth.organizationId)
+
+    if (!isSharedOrgAgentContext(auth)) {
+      mutation = mutation.eq('user_id', auth.userId)
+    }
+
+    const { error: updateError } = await mutation
 
     if (updateError) {
       console.error('[drafts] DB error updating review:', updateError)
@@ -108,6 +117,7 @@ export async function POST(
     // Create review event
     await supabase.from('review_events').insert({
       post_id: id,
+      agent_id: auth.agentId,
       agent_name: auth.agentName,
       action: reviewAction,
       notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,

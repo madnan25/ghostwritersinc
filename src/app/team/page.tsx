@@ -1,4 +1,4 @@
-import { getAgentKeys, getAllRecentReviewEvents } from '@/lib/queries/agents'
+import { getAllRecentReviewEvents, getCommissionedAgents } from '@/lib/queries/agents'
 import type { ReviewEvent } from '@/lib/types'
 
 // Hardcoded metadata for known agents
@@ -6,17 +6,35 @@ const AGENT_META: Record<
   string,
   { icon: string; role: string; description: string; capabilities: string[] }
 > = {
-  Strategist: {
+  strategist: {
     icon: '🧠',
     role: 'Content Strategist',
     description: 'Plans content pillars, researches topics, and briefs the writing team.',
     capabilities: ['Topic research', 'Content briefs', 'Pillar planning', 'Audience targeting'],
   },
-  Scribe: {
+  scribe: {
     icon: '✍️',
     role: 'Content Writer',
     description: 'Drafts LinkedIn posts from briefs, optimised for engagement and voice.',
     capabilities: ['Post drafting', 'Voice matching', 'Hook writing', 'CTA optimisation'],
+  },
+  inspector: {
+    icon: '🛡️',
+    role: 'Review Inspector',
+    description: 'Checks draft quality, policy fit, and review readiness before client approval.',
+    capabilities: ['Review decisions', 'QA checks', 'Workflow validation', 'Feedback triage'],
+  },
+  researcher: {
+    icon: '🔎',
+    role: 'Research Analyst',
+    description: 'Collects, organizes, and summarizes source material for downstream agents.',
+    capabilities: ['Research ingestion', 'Source synthesis', 'Brief support', 'Knowledge retrieval'],
+  },
+  reviewer: {
+    icon: '✅',
+    role: 'Editorial Reviewer',
+    description: 'Reviews commissioned drafts and surfaces approval or escalation decisions.',
+    capabilities: ['Review queue', 'Escalation', 'Editorial QA', 'Decision logging'],
   },
 }
 
@@ -24,7 +42,7 @@ const DEFAULT_META = {
   icon: '🤖',
   role: 'Content Agent',
   description: 'AI-powered content assistant for the Ghostwriters Inc. platform.',
-  capabilities: ['Content creation', 'Post review', 'Workflow automation'],
+  capabilities: ['Drafting', 'Review', 'Workflow automation'],
 }
 
 function formatRelativeTime(date: string): string {
@@ -45,12 +63,32 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 
 interface AgentCardProps {
   name: string
+  provider: string
+  assignedUser: string | null
+  permissions: string[]
+  status: 'active' | 'inactive' | 'revoked'
+  lastUsedAt: string | null
   recentEvents: ReviewEvent[]
-  isActive: boolean
 }
 
-function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
-  const meta = AGENT_META[name] ?? DEFAULT_META
+function formatPermission(permission: string): string {
+  return permission
+    .replace(':', ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase())
+}
+
+function AgentCard({
+  name,
+  provider,
+  assignedUser,
+  permissions,
+  status,
+  lastUsedAt,
+  recentEvents,
+}: AgentCardProps) {
+  const meta = AGENT_META[name.toLowerCase()] ?? DEFAULT_META
+  const isActive = status === 'active'
+  const capabilityLabels = permissions.length > 0 ? permissions.map(formatPermission) : meta.capabilities
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-6 gap-5">
@@ -60,7 +98,7 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
           {meta.icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold truncate">{name}</h3>
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -74,8 +112,14 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
               />
               {isActive ? 'Active' : 'Inactive'}
             </span>
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-muted-foreground">
+              {provider}
+            </span>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{meta.role}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {assignedUser ? `Attached to ${assignedUser}` : 'No assigned user'}
+          </p>
         </div>
       </div>
 
@@ -88,7 +132,7 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
           Capabilities
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {meta.capabilities.map((cap) => (
+          {capabilityLabels.map((cap) => (
             <span
               key={cap}
               className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
@@ -105,7 +149,9 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
           Recent Activity
         </p>
         {recentEvents.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No recent activity</p>
+          <p className="text-xs text-muted-foreground">
+            {lastUsedAt ? `Last runtime usage ${formatRelativeTime(lastUsedAt)}` : 'No recent activity'}
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {recentEvents.map((event) => {
@@ -138,39 +184,30 @@ function AgentCard({ name, recentEvents, isActive }: AgentCardProps) {
 
 export default async function TeamPage() {
   // Auth handled by middleware
-  const [agentKeys, recentEvents] = await Promise.all([
-    getAgentKeys(),
+  const [agents, recentEvents] = await Promise.all([
+    getCommissionedAgents(),
     getAllRecentReviewEvents(50),
   ])
-
-  // Only show content-producing agents (Strategist and Scribe)
-  const allAgentNames = ['Strategist', 'Scribe']
-  const dbAgentNames = agentKeys.map((k) => k.agent_name)
 
   // Group recent events by agent
   const eventsByAgent: Record<string, ReviewEvent[]> = {}
   for (const event of recentEvents) {
-    if (!eventsByAgent[event.agent_name]) eventsByAgent[event.agent_name] = []
-    eventsByAgent[event.agent_name].push(event)
+    const key = event.agent_id ?? event.agent_name.toLowerCase()
+    if (!eventsByAgent[key]) eventsByAgent[key] = []
+    eventsByAgent[key].push(event)
   }
-
-  // An agent is "active" if it has a key in the DB or has recent events
-  const activeAgentNames = new Set([
-    ...dbAgentNames,
-    ...recentEvents.map((e) => e.agent_name),
-  ])
 
   return (
     <div className="container px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Content Team</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your AI content agents — {allAgentNames.length} team member
-          {allAgentNames.length !== 1 ? 's' : ''}
+          Your commissioned AI agents — {agents.length} team member
+          {agents.length !== 1 ? 's' : ''}
         </p>
       </div>
 
-      {allAgentNames.length === 0 ? (
+      {agents.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
             🤖
@@ -182,12 +219,16 @@ export default async function TeamPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {allAgentNames.map((name) => (
+          {agents.map((agent) => (
             <AgentCard
-              key={name}
-              name={name}
-              recentEvents={(eventsByAgent[name] ?? []).slice(0, 5)}
-              isActive={activeAgentNames.has(name)}
+              key={agent.id}
+              name={agent.name}
+              provider={agent.provider}
+              assignedUser={agent.assigned_user_name}
+              permissions={agent.permissions ?? []}
+              status={agent.status}
+              lastUsedAt={agent.last_used_at}
+              recentEvents={(eventsByAgent[agent.id] ?? eventsByAgent[agent.name.toLowerCase()] ?? []).slice(0, 5)}
             />
           ))}
         </div>

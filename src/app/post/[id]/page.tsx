@@ -43,7 +43,7 @@ export default async function PostPage({ params }: PostPageProps) {
         {/* Left column: full content + actions */}
         <div className="flex flex-col gap-6">
           {/* Header */}
-          <div className="premium-panel flex flex-wrap items-start justify-between gap-4 p-6 sm:p-7">
+          <div className="dashboard-frame flex flex-wrap items-start justify-between gap-4 p-6 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
               {post.pillar && (
                 <span className="rounded-full border border-border/60 bg-muted/45 px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -61,7 +61,7 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Post content with inline commenting */}
-          <div className="premium-panel p-6 sm:p-7">
+          <div className="dashboard-frame p-6 sm:p-7">
             <h2 className="mb-4 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">
               Full Content
               <span className="ml-2 font-normal text-[0.72rem] tracking-normal text-muted-foreground/70">
@@ -72,7 +72,7 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Comment thread + overall comment form */}
-          <div className="premium-panel p-6 sm:p-7">
+          <div className="dashboard-frame p-6 sm:p-7">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">
               <MessageSquare className="size-4" />
               Comments
@@ -89,7 +89,7 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Metadata */}
-          <div className="premium-subtle-panel grid grid-cols-1 gap-4 p-6 text-sm sm:grid-cols-2">
+          <div className="dashboard-rail grid grid-cols-1 gap-4 p-6 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2">
               <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>
@@ -142,12 +142,12 @@ export default async function PostPage({ params }: PostPageProps) {
 
         {/* Right column: LinkedIn preview + review chain */}
         <div className="flex flex-col gap-6">
-          <div className="premium-panel p-5 sm:p-6">
+          <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">LinkedIn Preview</h2>
             <LinkedInPreview content={post.content} />
           </div>
 
-          <div className="premium-panel p-5 sm:p-6">
+          <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>
             <ReviewChain events={reviewEvents} />
           </div>

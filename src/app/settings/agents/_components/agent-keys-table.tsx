@@ -7,10 +7,26 @@ import { CreateKeyDialog } from "./create-key-dialog";
 
 interface AgentKey {
   id: string;
+  organization_id: string;
+  user_id: string | null;
   agent_name: string;
   key_prefix: string;
   permissions: string[];
+  allow_shared_context: boolean;
+  commissioned_by: string | null;
   created_at: string;
+}
+
+interface OrganizationOption {
+  id: string;
+  name: string;
+}
+
+interface UserOption {
+  id: string;
+  organization_id: string;
+  name: string;
+  email: string;
 }
 
 interface NewKeyReveal {
@@ -20,14 +36,30 @@ interface NewKeyReveal {
 
 interface AgentKeysTableProps {
   initialKeys: AgentKey[];
+  organizations: OrganizationOption[];
+  users: UserOption[];
 }
 
-export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
+export function AgentKeysTable({
+  initialKeys,
+  organizations,
+  users,
+}: AgentKeysTableProps) {
   const [keys, setKeys] = useState<AgentKey[]>(initialKeys);
   const [newKey, setNewKey] = useState<NewKeyReveal | null>(null);
   const [, startDeleteTransition] = useTransition();
   const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const organizationMap = new Map(organizations.map((organization) => [organization.id, organization.name]));
+  const userMap = new Map(
+    users.map((user) => [
+      user.id,
+      {
+        name: user.name,
+        email: user.email,
+      },
+    ])
+  );
 
   function handleCreated(data: AgentKey & { api_key: string }) {
     const { api_key, ...key } = data;
@@ -97,12 +129,16 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
             {keys.length} {keys.length === 1 ? "key" : "keys"}
           </h2>
           <p className="max-w-2xl text-sm leading-6 text-foreground/62">
-            These keys authenticate internal Ghostwriters agents against your org. The
-            token value is shown only once, while the stored prefix helps you identify
-            which key is in use.
+            These keys authenticate internal Ghostwriters agents against specific org
+            and user assignments. The token value is shown only once, while the stored
+            prefix helps you identify which key is in use.
           </p>
         </div>
-        <CreateKeyDialog onCreated={handleCreated} />
+        <CreateKeyDialog
+          organizations={organizations}
+          users={users}
+          onCreated={handleCreated}
+        />
       </div>
 
       {/* Table */}
@@ -116,8 +152,11 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
           <table className="w-full text-sm">
             <thead className="border-b border-border/50 bg-background/30">
               <tr>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Organization</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">User</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Agent</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Key Prefix</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Scope</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Permissions</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th>
                 <th className="px-4 py-3" />
@@ -126,9 +165,20 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
             <tbody className="divide-y divide-border/40">
               {keys.map((key) => (
                 <tr key={key.id} className="transition-colors hover:bg-background/28">
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {organizationMap.get(key.organization_id) ?? key.organization_id}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {key.user_id
+                      ? `${userMap.get(key.user_id)?.name ?? "Unknown"} (${userMap.get(key.user_id)?.email ?? key.user_id})`
+                      : "Unassigned"}
+                  </td>
                   <td className="px-4 py-3 font-medium capitalize">{key.agent_name}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground">
                     {key.key_prefix}••••••••
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {key.allow_shared_context ? "Shared eligible" : "User only"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">

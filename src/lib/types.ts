@@ -13,7 +13,7 @@ export type AuthorType = 'user' | 'agent'
 
 export type ReviewAction = 'approved' | 'rejected' | 'escalated'
 
-export type UserRole = 'owner' | 'admin' | 'member'
+export type UserRole = 'admin' | 'member'
 
 export interface Organization {
   id: string
@@ -22,6 +22,7 @@ export interface Organization {
   onboarded_at: string | null
   linkedin_profile_url: string | null
   content_goals: string | null
+  context_sharing_enabled: boolean
   created_at: string
 }
 
@@ -53,6 +54,7 @@ export interface PostComment {
   post_id: string
   author_type: AuthorType
   author_id: string
+  author_name?: string | null
   body: string
   selected_text: string | null
   selection_start: number | null
@@ -74,18 +76,44 @@ export interface PostMetrics {
 export interface ReviewEvent {
   id: string
   post_id: string
+  agent_id?: string | null
   agent_name: string
   action: ReviewAction
   notes: string | null
   created_at: string
 }
 
-export interface AgentKey {
+export interface Agent {
   id: string
   organization_id: string
+  user_id: string
+  name: string
+  slug: string
+  provider: string
+  provider_agent_ref: string | null
+  agent_type: string
+  status: 'active' | 'inactive' | 'revoked'
+  allow_shared_context: boolean
+  commissioned_by: string | null
+  created_at: string
+  updated_at: string
+  last_used_at: string | null
+  last_used_by_route: string | null
+  revoked_at: string | null
+  revoked_by: string | null
+  permissions?: string[]
+}
+
+export interface AgentKey {
+  id: string
+  agent_id: string | null
+  organization_id: string
+  user_id: string | null
   agent_name: string
   key_prefix: string
   permissions: string[]
+  allow_shared_context: boolean
+  commissioned_by: string | null
   created_at: string
 }
 
@@ -93,12 +121,17 @@ export interface ResearchUpload {
   id: string
   organization_id: string
   uploaded_by: string | null
+  agent_id: string | null
   filename: string
+  title: string | null
+  summary: string | null
   storage_path: string
+  source_kind: string
   upload_type: string
   file_size_bytes: number | null
   metadata: Record<string, unknown>
   created_at: string
+  last_accessed_at: string | null
 }
 
 export interface ContentPillar {
@@ -113,6 +146,20 @@ export interface ContentPillar {
   example_hooks: string[]
   sort_order: number
   brief_ref: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StrategyDocument {
+  id: string
+  organization_id: string
+  user_id: string | null
+  title: string
+  body: string
+  summary: string | null
+  pillar_id: string | null
+  created_by_agent_id: string | null
+  updated_by_agent_id: string | null
   created_at: string
   updated_at: string
 }

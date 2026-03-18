@@ -33,7 +33,10 @@ export function CommentThread({ comments }: Props) {
             ) : (
               <User className="size-3.5 text-muted-foreground" />
             )}
-            <span className="text-xs font-medium capitalize">{comment.author_type}</span>
+            <span className="text-xs font-medium">
+              {comment.author_name ??
+                (comment.author_type === 'agent' ? 'Agent' : 'User')}
+            </span>
             <span className="ml-auto text-xs text-muted-foreground">{formatTime(comment.created_at)}</span>
           </div>
           {comment.selected_text && (

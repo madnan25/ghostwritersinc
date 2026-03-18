@@ -4,6 +4,7 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -16,9 +17,9 @@ export async function GET(request: NextRequest) {
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'read')) {
+  if (!hasAgentPermission(auth.permissions, 'pillars:read')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: read access required' },
+      { error: 'Insufficient permissions: pillars:read access required' },
       { status: 403 }
     )
   }
@@ -26,13 +27,19 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
 
   // Get last 10 posts ordered by suggested publish date
-  const { data: posts, error } = await supabase
+  let postsQuery = supabase
     .from('posts')
     .select('id, pillar_id, pillar, suggested_publish_at, content_pillars(name, slug, color)')
     .eq('organization_id', auth.organizationId)
     .not('suggested_publish_at', 'is', null)
     .order('suggested_publish_at', { ascending: false })
     .limit(10)
+
+  if (!isSharedOrgAgentContext(auth)) {
+    postsQuery = postsQuery.eq('user_id', auth.userId)
+  }
+
+  const { data: posts, error } = await postsQuery
 
   if (error) {
     console.error('[pillars] DB error fetching rotation health:', error)
@@ -48,9 +55,11 @@ export async function GET(request: NextRequest) {
     suggestion: string
   }> = []
 
-  if (posts.length >= 3) {
+  const recentPosts = posts ?? []
+
+  if (recentPosts.length >= 3) {
     // Reverse to chronological order for run detection
-    const ordered = [...posts].reverse()
+    const ordered = [...recentPosts].reverse()
     let currentPillar: string | null = null
     let runPosts: string[] = []
 
@@ -90,7 +99,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    recent_posts: posts,
+    recent_posts: recentPosts,
     warnings,
     healthy: warnings.length === 0,
   })

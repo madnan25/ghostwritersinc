@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  canAccessAgentOrgRecord,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  requireSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -32,11 +34,16 @@ export async function PATCH(
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'write')) {
+  if (!hasAgentPermission(auth.permissions, 'pillars:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: write access required' },
+      { error: 'Insufficient permissions: pillars:write access required' },
       { status: 403 }
     )
+  }
+
+  const sharedContextError = requireSharedOrgAgentContext(auth)
+  if (sharedContextError) {
+    return sharedContextError
   }
 
   const { id } = await params
@@ -65,7 +72,7 @@ export async function PATCH(
     .eq('id', id)
     .single()
 
-  if (!existing || existing.organization_id !== auth.organizationId) {
+  if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
     return NextResponse.json({ error: 'Pillar not found' }, { status: 404 })
   }
 
@@ -108,6 +115,7 @@ export async function PATCH(
     .from('content_pillars')
     .update(parsed.data)
     .eq('id', id)
+    .eq('organization_id', auth.organizationId)
     .select()
     .single()
 
@@ -133,11 +141,16 @@ export async function DELETE(
   const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!hasAgentPermission(auth.permissions, 'write')) {
+  if (!hasAgentPermission(auth.permissions, 'pillars:write')) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: write access required' },
+      { error: 'Insufficient permissions: pillars:write access required' },
       { status: 403 }
     )
+  }
+
+  const sharedContextError = requireSharedOrgAgentContext(auth)
+  if (sharedContextError) {
+    return sharedContextError
   }
 
   const { id } = await params
@@ -150,7 +163,7 @@ export async function DELETE(
     .eq('id', id)
     .single()
 
-  if (!existing || existing.organization_id !== auth.organizationId) {
+  if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
     return NextResponse.json({ error: 'Pillar not found' }, { status: 404 })
   }
 
@@ -164,6 +177,7 @@ export async function DELETE(
     .from('content_pillars')
     .delete()
     .eq('id', id)
+    .eq('organization_id', auth.organizationId)
 
   if (error) {
     console.error('[pillars] DB error deleting pillar:', error)
