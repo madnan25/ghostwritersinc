@@ -144,12 +144,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
+  const providerRunId = request.headers.get('x-paperclip-run-id')
   logAgentActivity({
     organizationId: auth.organizationId,
     agentId: auth.agentId,
     postId: id,
     actionType: 'draft_updated',
     metadata: { updated_fields: Object.keys(parsed.data) },
+    providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
   return NextResponse.json(post)

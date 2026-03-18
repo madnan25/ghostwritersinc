@@ -96,12 +96,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
+  const providerRunId = request.headers.get('x-paperclip-run-id')
   logAgentActivity({
     organizationId: auth.organizationId,
     agentId: auth.agentId,
     postId: post.id,
     actionType: 'draft_created',
     metadata: { content_type: parsed.data.content_type, pillar_id: parsed.data.pillar_id ?? null },
+    providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
   return NextResponse.json(post, { status: 201 })

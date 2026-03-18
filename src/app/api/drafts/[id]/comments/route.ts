@@ -132,12 +132,14 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
+  const providerRunId = request.headers.get('x-paperclip-run-id')
   logAgentActivity({
     organizationId: auth.organizationId,
     agentId: auth.agentId,
     postId: id,
     actionType: 'comment_added',
     metadata: { comment_id: comment.id, has_selection: !!parsed.data.selected_text },
+    providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
   return NextResponse.json(comment, { status: 201 })

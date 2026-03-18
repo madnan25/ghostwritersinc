@@ -124,12 +124,14 @@ export async function POST(
       notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,
     })
 
+    const providerRunId = request.headers.get('x-paperclip-run-id')
     logAgentActivity({
       organizationId: auth.organizationId,
       agentId: auth.agentId,
       postId: id,
       actionType: 'review_submitted',
       metadata: { action: parsed.data.action, from_status: currentStatus, to_status: targetStatus },
+      providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
     })
 
     // Fetch updated post
