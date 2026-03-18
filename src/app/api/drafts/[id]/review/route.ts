@@ -11,6 +11,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidUuid } from '@/lib/validation'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition, WorkflowError } from '@/lib/workflow'
 
@@ -39,6 +40,9 @@ export async function POST(
   }
 
   const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
 
   let body: unknown
   try {

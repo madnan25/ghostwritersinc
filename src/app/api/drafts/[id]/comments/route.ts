@@ -10,6 +10,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidUuid } from '@/lib/validation'
 
 const CreateCommentSchema = z.object({
   body: z.string().min(1),
@@ -37,6 +38,10 @@ export async function GET(
   }
 
   const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
+
   const supabase = createAdminClient()
 
   // Verify the post belongs to the agent's organization
@@ -87,6 +92,10 @@ export async function POST(
   }
 
   const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
+
   let body: unknown
   try {
     body = await request.json()

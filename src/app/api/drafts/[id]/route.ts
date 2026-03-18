@@ -11,6 +11,7 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidUuid } from '@/lib/validation'
 
 const UpdateDraftSchema = z.object({
   content: z.string().min(1).optional(),
@@ -41,6 +42,10 @@ export async function GET(
   }
 
   const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
+
   const supabase = createAdminClient()
   const { data: post, error } = await supabase
     .from('posts')
@@ -78,6 +83,9 @@ export async function PATCH(
   }
 
   const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
 
   let body: unknown
   try {
