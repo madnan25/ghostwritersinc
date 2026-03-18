@@ -13,10 +13,10 @@ interface LogActivityParams {
  * Fire-and-forget insert into agent_activity_log.
  * Never throws — failures are logged to stderr only.
  */
-export function logAgentActivity(params: LogActivityParams): void {
-  const supabase = createAdminClient()
+const adminClient = createAdminClient()
 
-  void supabase
+export function logAgentActivity(params: LogActivityParams): void {
+  void adminClient
     .from('agent_activity_log')
     .insert({
       organization_id: params.organizationId,

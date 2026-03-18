@@ -22,11 +22,7 @@ CREATE TRIGGER user_writing_profiles_updated_at
   BEFORE UPDATE ON user_writing_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- RLS: service-role access only (app-layer authorization)
+-- RLS: enabled with no permissive policies for anon/authenticated roles.
+-- Service-role bypasses RLS unconditionally; all writes go through
+-- the app-layer API which uses the service-role client.
 ALTER TABLE user_writing_profiles ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Service role full access on user_writing_profiles"
-  ON user_writing_profiles
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);

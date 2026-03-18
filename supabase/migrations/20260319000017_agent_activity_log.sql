@@ -26,14 +26,17 @@ CREATE INDEX idx_agent_activity_log_agent ON agent_activity_log(agent_id);
 CREATE INDEX idx_agent_activity_log_post ON agent_activity_log(post_id) WHERE post_id IS NOT NULL;
 CREATE INDEX idx_agent_activity_log_created ON agent_activity_log(created_at DESC);
 
--- RLS: service-role access only (app-layer authorization)
+-- RLS: enabled with no permissive policies for anon/authenticated roles.
+-- Service-role bypasses RLS unconditionally; authenticated users can only
+-- read their own org's activity via the scoped SELECT policy below.
 ALTER TABLE agent_activity_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on agent_activity_log"
+CREATE POLICY "Users see own org activity"
   ON agent_activity_log
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  FOR SELECT
+  TO authenticated
+  USING (organization_id = (SELECT organization_id FROM users WHERE id = auth.uid()));
 
 -- Enable realtime for dashboard subscriptions (LIN-159)
 ALTER PUBLICATION supabase_realtime ADD TABLE agent_activity_log;
+ALTER PUBLICATION supabase_realtime ADD TABLE posts;

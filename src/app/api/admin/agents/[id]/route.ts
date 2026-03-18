@@ -6,6 +6,8 @@ import { ALL_AGENT_PERMISSIONS } from "@/lib/agent-permissions";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const UpdateAgentSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   job_title: z.string().max(100).nullable().optional(),
@@ -31,6 +33,9 @@ export async function PATCH(
   if (rateLimited) return rateLimited;
 
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 });
+  }
 
   let body: unknown;
   try {
@@ -152,7 +157,7 @@ export async function PATCH(
       .from("agent_permissions")
       .delete()
       .eq("agent_id", id)
-      .not("permission", "in", `(${permissions.join(",")})`);
+      .not("permission", "in", `(${permissions.map((p) => `"${p}"`).join(",")})`);
 
     if (deleteError) {
       return NextResponse.json(
@@ -187,6 +192,9 @@ export async function DELETE(
   if (rateLimitedDel) return rateLimitedDel;
 
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 });
+  }
   const admin = createAdminClient();
 
   const { data: deleted, error } = await admin
