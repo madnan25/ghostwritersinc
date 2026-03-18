@@ -34,6 +34,12 @@ export async function GET() {
     return auth;
   }
 
+  const rateLimited = await rateLimit(`admin:list-agents:${auth.profile.id}`, {
+    maxRequests: 30,
+    windowMs: 60_000,
+  });
+  if (rateLimited) return rateLimited;
+
   const admin = createAdminClient();
   const { data: agents, error } = await admin
     .from("agents")

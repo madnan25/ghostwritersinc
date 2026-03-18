@@ -7,6 +7,8 @@ import {
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -23,6 +25,9 @@ export async function POST(
   if (rateLimited) return rateLimited;
 
   const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return NextResponse.json({ error: "Invalid agent ID" }, { status: 400 });
+  }
   const admin = createAdminClient();
   try {
     const result = await issueAgentKeyForAgent({
