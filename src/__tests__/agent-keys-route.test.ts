@@ -190,6 +190,7 @@ describe("agent key admin route", () => {
       provider: "ghostwriters",
       provider_agent_ref: null,
       agent_type: "scribe",
+      job_title: null,
       status: "active",
       allow_shared_context: true,
       commissioned_by: "platform-admin-1",

@@ -89,6 +89,25 @@ export async function PATCH(
     }
   }
 
+  // Validate permissions up-front (before any writes) to avoid partial updates
+  let validatedPermissions: string[] | undefined;
+  if (parsed.data.permissions) {
+    validatedPermissions = Array.from(
+      new Set(
+        parsed.data.permissions.filter((permission) =>
+          (ALL_AGENT_PERMISSIONS as readonly string[]).includes(permission)
+        )
+      )
+    );
+
+    if (validatedPermissions.length === 0) {
+      return NextResponse.json(
+        { error: "At least one valid permission is required." },
+        { status: 400 }
+      );
+    }
+  }
+
   if (parsed.data.name) update.name = parsed.data.name.trim();
   if ("job_title" in parsed.data) {
     update.job_title = parsed.data.job_title?.trim() ?? null;
@@ -118,21 +137,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update commissioned agent" }, { status: 500 });
   }
 
-  if (parsed.data.permissions) {
-    const permissions = Array.from(
-      new Set(
-        parsed.data.permissions.filter((permission) =>
-          (ALL_AGENT_PERMISSIONS as readonly string[]).includes(permission)
-        )
-      )
-    );
-
-    if (permissions.length === 0) {
-      return NextResponse.json(
-        { error: "At least one valid permission is required." },
-        { status: 400 }
-      );
-    }
+  if (validatedPermissions) {
+    const permissions = validatedPermissions;
 
     // Insert new permissions first (upsert), then remove stale ones.
     // This avoids the race where a concurrent auth check sees zero permissions
