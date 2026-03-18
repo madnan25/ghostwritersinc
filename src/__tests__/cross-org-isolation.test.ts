@@ -135,8 +135,8 @@ const MOCK_DB: Record<string, Record<string, unknown>[]> = {
     },
   ],
   content_pillars: [
-    { id: PILLAR_ID_ORG_A, organization_id: ORG_A, name: 'Thought Leadership', slug: 'thought-leadership', color: '#3B82F6', weight_pct: 40 },
-    { id: PILLAR_ID_ORG_B, organization_id: ORG_B, name: 'Industry', slug: 'industry', color: '#10B981', weight_pct: 50 },
+    { id: PILLAR_ID_ORG_A, organization_id: ORG_A, user_id: USER_ID_ORG_A, name: 'Thought Leadership', slug: 'thought-leadership', color: '#3B82F6', weight_pct: 40 },
+    { id: PILLAR_ID_ORG_B, organization_id: ORG_B, user_id: 'user-bbbb-0001', name: 'Industry', slug: 'industry', color: '#10B981', weight_pct: 50 },
   ],
   post_comments: [],
   review_events: [],

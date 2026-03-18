@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
-  canAccessAgentOrgRecord,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
-  requireSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -41,11 +39,6 @@ export async function PATCH(
     )
   }
 
-  const sharedContextError = requireSharedOrgAgentContext(auth)
-  if (sharedContextError) {
-    return sharedContextError
-  }
-
   const { id } = await params
 
   let body: unknown
@@ -65,30 +58,31 @@ export async function PATCH(
 
   const supabase = createAdminClient()
 
-  // Verify pillar belongs to agent's org
+  // Verify pillar belongs to the authenticated user
   const { data: existing } = await supabase
     .from('content_pillars')
-    .select('organization_id')
+    .select('id')
     .eq('id', id)
+    .eq('user_id', auth.userId)
     .single()
 
-  if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
+  if (!existing) {
     return NextResponse.json({ error: 'Pillar not found' }, { status: 404 })
   }
 
-  // If slug is changing, check uniqueness
+  // If slug is changing, check uniqueness within user's pillars
   if (parsed.data.slug) {
     const { data: slugConflict } = await supabase
       .from('content_pillars')
       .select('id')
-      .eq('organization_id', auth.organizationId)
+      .eq('user_id', auth.userId)
       .eq('slug', parsed.data.slug)
       .neq('id', id)
       .maybeSingle()
 
     if (slugConflict) {
       return NextResponse.json(
-        { error: 'A pillar with this slug already exists in this organization' },
+        { error: 'A pillar with this slug already exists for this user' },
         { status: 409 }
       )
     }
@@ -100,7 +94,7 @@ export async function PATCH(
     const { data: allPillars } = await supabase
       .from('content_pillars')
       .select('id, weight_pct')
-      .eq('organization_id', auth.organizationId)
+      .eq('user_id', auth.userId)
 
     const otherTotal = (allPillars ?? [])
       .filter((p) => p.id !== id)
@@ -115,7 +109,7 @@ export async function PATCH(
     .from('content_pillars')
     .update(parsed.data)
     .eq('id', id)
-    .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
     .select()
     .single()
 
@@ -148,22 +142,18 @@ export async function DELETE(
     )
   }
 
-  const sharedContextError = requireSharedOrgAgentContext(auth)
-  if (sharedContextError) {
-    return sharedContextError
-  }
-
   const { id } = await params
   const supabase = createAdminClient()
 
-  // Verify pillar belongs to agent's org
+  // Verify pillar belongs to the authenticated user
   const { data: existing } = await supabase
     .from('content_pillars')
-    .select('organization_id')
+    .select('id')
     .eq('id', id)
+    .eq('user_id', auth.userId)
     .single()
 
-  if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
+  if (!existing) {
     return NextResponse.json({ error: 'Pillar not found' }, { status: 404 })
   }
 
@@ -177,7 +167,7 @@ export async function DELETE(
     .from('content_pillars')
     .delete()
     .eq('id', id)
-    .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
 
   if (error) {
     console.error('[pillars] DB error deleting pillar:', error)

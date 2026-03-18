@@ -8,6 +8,7 @@ const pillars: ContentPillar[] = [
   {
     id: "pillar-a",
     organization_id: "org-1",
+    user_id: "user-1",
     name: "Thought Leadership",
     slug: "thought-leadership",
     description: null,
@@ -23,6 +24,7 @@ const pillars: ContentPillar[] = [
   {
     id: "pillar-b",
     organization_id: "org-1",
+    user_id: "user-1",
     name: "Industry Trends",
     slug: "industry-trends",
     description: null,

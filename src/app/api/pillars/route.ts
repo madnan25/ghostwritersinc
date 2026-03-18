@@ -6,7 +6,6 @@ import {
   hasAgentPermission,
   isAgentContext,
   isSharedOrgAgentContext,
-  requireSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -70,15 +69,12 @@ export async function GET(request: NextRequest) {
   let pillarsQuery = supabase
     .from('content_pillars')
     .select('*')
-    .eq('organization_id', auth.organizationId)
     .order('sort_order', { ascending: true })
 
-  if (!isSharedOrgAgentContext(auth)) {
-    const scopedPillarIds = [...referencedPillarIds]
-    if (scopedPillarIds.length === 0) {
-      return NextResponse.json([])
-    }
-    pillarsQuery = pillarsQuery.in('id', scopedPillarIds)
+  if (isSharedOrgAgentContext(auth)) {
+    pillarsQuery = pillarsQuery.eq('organization_id', auth.organizationId)
+  } else {
+    pillarsQuery = pillarsQuery.eq('user_id', auth.userId)
   }
 
   const { data: pillars, error } = await pillarsQuery
@@ -111,11 +107,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const sharedContextError = requireSharedOrgAgentContext(auth)
-  if (sharedContextError) {
-    return sharedContextError
-  }
-
   let body: unknown
   try {
     body = await request.json()
@@ -133,17 +124,17 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // Check slug uniqueness within org
+  // Check slug uniqueness within user's pillars
   const { data: existing } = await supabase
     .from('content_pillars')
     .select('id')
-    .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
     .eq('slug', parsed.data.slug)
     .maybeSingle()
 
   if (existing) {
     return NextResponse.json(
-      { error: 'A pillar with this slug already exists in this organization' },
+      { error: 'A pillar with this slug already exists for this user' },
       { status: 409 }
     )
   }
@@ -152,7 +143,7 @@ export async function POST(request: NextRequest) {
   const { data: allPillars } = await supabase
     .from('content_pillars')
     .select('weight_pct')
-    .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
 
   const currentTotal = (allPillars ?? []).reduce((sum, p) => sum + p.weight_pct, 0)
   const newTotal = currentTotal + parsed.data.weight_pct
@@ -164,6 +155,7 @@ export async function POST(request: NextRequest) {
     .from('content_pillars')
     .insert({
       organization_id: auth.organizationId,
+      user_id: auth.userId,
       ...parsed.data,
     })
     .select()
