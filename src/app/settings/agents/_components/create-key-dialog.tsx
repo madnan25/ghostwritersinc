@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ModalDialog } from "@/components/ui/modal-dialog";
 
 type AgentType = "scribe" | "strategist" | "inspector";
 
@@ -18,9 +19,9 @@ interface CreateKeyDialogProps {
 }
 
 const AGENT_DESCRIPTIONS: Record<AgentType, string> = {
-  scribe: "Read + Write — can create and edit posts",
-  strategist: "Read only — can view content and analytics",
-  inspector: "Read + Review — can view and leave feedback",
+  scribe: "Drafting + editing — can read/write posts and comments.",
+  strategist: "Planning + structure — can read posts, review comments, and update pillars.",
+  inspector: "QA + review — can read posts/comments and write review decisions.",
 };
 
 export function CreateKeyDialog({ onCreated }: CreateKeyDialogProps) {
@@ -66,10 +67,13 @@ export function CreateKeyDialog({ onCreated }: CreateKeyDialogProps) {
         Create Agent Key
       </Button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold">Create Agent Key</h2>
+      <ModalDialog open={open} onClose={handleClose} titleId="create-agent-key-title">
+        <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
+          <h2 id="create-agent-key-title" className="mb-4 text-lg font-semibold">Create Agent Key</h2>
+          <p className="mb-4 text-sm leading-6 text-muted-foreground">
+            This creates an internal bearer token for a Ghostwriters agent to call your
+            workspace APIs. It does not store or configure any external provider key.
+          </p>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -85,6 +89,9 @@ export function CreateKeyDialog({ onCreated }: CreateKeyDialogProps) {
                 </select>
                 <p className="text-xs text-muted-foreground">
                   {AGENT_DESCRIPTIONS[agentType]}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  One key is allowed per agent type in each workspace.
                 </p>
               </div>
 
@@ -103,9 +110,8 @@ export function CreateKeyDialog({ onCreated }: CreateKeyDialogProps) {
                 {isPending ? "Creating…" : "Create Key"}
               </Button>
             </div>
-          </div>
         </div>
-      )}
+      </ModalDialog>
     </>
   );
 }

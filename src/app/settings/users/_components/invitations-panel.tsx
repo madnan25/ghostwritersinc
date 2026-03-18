@@ -41,13 +41,15 @@ export function InvitationsPanel({
   return (
     <div className="space-y-6">
       {invitations.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No pending invitations.</p>
+        <p className="dashboard-rail py-10 text-center text-sm text-muted-foreground">
+          No pending invitations.
+        </p>
       ) : (
         <div className="space-y-2">
           {invitations.map((invitation) => (
             <div
               key={invitation.id}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4"
+              className="editorial-card flex items-center justify-between gap-4 p-5"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -76,11 +78,14 @@ export function InvitationsPanel({
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
-        <h2 className="text-sm font-semibold">Invite a new member</h2>
+      <div className="dashboard-rail space-y-4 p-5">
+        <div>
+          <p className="premium-kicker text-[0.68rem]">Invite Flow</p>
+          <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">Invite a new member</h2>
+        </div>
         <form onSubmit={onInvite} className="space-y-3">
           <div className="space-y-1.5">
-            <label htmlFor="invite-email" className="text-xs font-medium text-muted-foreground">
+            <label htmlFor="invite-email" className="premium-kicker text-[0.68rem]">
               Email address
             </label>
             <input
@@ -94,7 +99,7 @@ export function InvitationsPanel({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="invite-role" className="text-xs font-medium text-muted-foreground">
+            <label htmlFor="invite-role" className="premium-kicker text-[0.68rem]">
               Role
             </label>
             <select
@@ -125,7 +130,7 @@ export function InvitationsPanel({
         </form>
 
         {inviteLink && (
-          <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+          <div className="rounded-[20px] border border-border/60 bg-background/30 p-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Share this invite link:</p>
             <div className="flex items-center gap-2">
               <p className="flex-1 truncate rounded-lg bg-background px-3 py-2 text-xs font-mono border border-border">

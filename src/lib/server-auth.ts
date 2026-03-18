@@ -17,16 +17,21 @@ export type AuthenticatedOrgUser = {
   profile: OrgProfile;
 };
 
+export type CurrentOrgUserResult =
+  | { status: "unauthenticated" }
+  | { status: "profile_missing"; user: { id: string } }
+  | { status: "authenticated"; context: AuthenticatedOrgUser };
+
 export async function getCurrentOrgUser(
   profileSelect = DEFAULT_PROFILE_SELECT
-): Promise<AuthenticatedOrgUser | null> {
+): Promise<CurrentOrgUserResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return null;
+    return { status: "unauthenticated" };
   }
 
   const { data: profile } = await supabase
@@ -36,24 +41,39 @@ export async function getCurrentOrgUser(
     .single();
 
   if (!profile) {
-    return null;
+    return {
+      status: "profile_missing",
+      user: { id: user.id },
+    };
   }
 
   return {
-    supabase,
-    user: { id: user.id },
-    profile: profile as unknown as OrgProfile,
+    status: "authenticated",
+    context: {
+      supabase,
+      user: { id: user.id },
+      profile: profile as unknown as OrgProfile,
+    },
   };
 }
 
 export async function requireOrgUser(
   allowedRoles?: UserRole[]
 ): Promise<AuthenticatedOrgUser | NextResponse> {
-  const context = await getCurrentOrgUser();
+  const result = await getCurrentOrgUser();
 
-  if (!context) {
+  if (result.status === "unauthenticated") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (result.status === "profile_missing") {
+    return NextResponse.json(
+      { error: "Workspace profile not found" },
+      { status: 403 }
+    );
+  }
+
+  const { context } = result;
 
   if (context.profile.is_active === false) {
     return NextResponse.json({ error: "Account disabled" }, { status: 403 });

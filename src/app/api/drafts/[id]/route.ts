@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
+import {
+  authenticateAgent,
+  getAgentRateLimitKey,
+  hasAgentPermission,
+  isAgentContext,
+} from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -9,9 +14,9 @@ const UpdateDraftSchema = z.object({
   content_type: z.enum(['text', 'image', 'document']).optional(),
   pillar: z.string().nullable().optional(),
   pillar_id: z.string().uuid().nullable().optional(),
-  brief_ref: z.string().nullable().optional(),
-  suggested_publish_at: z.string().nullable().optional(),
-  media_urls: z.array(z.string()).nullable().optional(),
+  brief_ref: z.string().max(512).nullable().optional(),
+  suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
+  media_urls: z.array(z.string().url()).nullable().optional(),
 })
 
 /** PATCH /api/drafts/:id — update draft content/metadata */
@@ -22,10 +27,10 @@ export async function PATCH(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = rateLimit(`write:${auth.agentName}`, { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!auth.permissions.includes('write')) {
+  if (!hasAgentPermission(auth.permissions, 'write')) {
     return NextResponse.json(
       { error: 'Insufficient permissions: write access required' },
       { status: 403 }
@@ -90,7 +95,8 @@ export async function PATCH(
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[drafts] DB error updating draft:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json(post)

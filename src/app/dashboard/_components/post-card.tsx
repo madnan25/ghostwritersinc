@@ -10,16 +10,17 @@ import { PostCardActions } from './post-card-actions'
 interface PostCardProps {
   post: Post
   pillar?: ContentPillar
+  featured?: boolean
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25' },
-  agent_review: { label: 'Agent Review', className: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' },
-  pending_review: { label: 'Needs Review', className: 'bg-orange-500/15 text-orange-400 border-orange-500/25' },
-  approved: { label: 'Approved', className: 'bg-green-500/15 text-green-400 border-green-500/25' },
-  scheduled: { label: 'Scheduled', className: 'bg-blue-500/15 text-blue-400 border-blue-500/25' },
-  published: { label: 'Published', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
-  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-400 border-red-500/25' },
+  draft: { label: 'Draft', className: 'editorial-chip' },
+  agent_review: { label: 'Agent Review', className: 'editorial-chip border-violet-300/22 text-violet-200' },
+  pending_review: { label: 'Needs Review', className: 'editorial-chip border-amber-300/24 text-amber-200' },
+  approved: { label: 'Approved', className: 'editorial-chip border-emerald-300/20 text-emerald-200' },
+  scheduled: { label: 'Scheduled', className: 'editorial-chip border-sky-300/22 text-sky-200' },
+  published: { label: 'Published', className: 'editorial-chip status-chip-live border-transparent' },
+  rejected: { label: 'Rejected', className: 'editorial-chip border-red-300/20 text-red-200' },
 }
 
 function getHook(content: string): string {
@@ -37,27 +38,32 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function PostCard({ post, pillar }: PostCardProps) {
+export function PostCard({ post, pillar, featured = false }: PostCardProps) {
   const hook = getHook(post.content)
   const statusConfig = STATUS_CONFIG[post.status]
+  const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
 
   return (
     <m.div
-      whileHover={{ scale: 1.015, boxShadow: '0 8px 28px rgba(0,0,0,0.22), 0 0 0 1px rgba(120,80,255,0.15)' }}
-      whileTap={{ scale: 0.97, boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}
+      whileHover={{
+        y: -2,
+      }}
+      whileTap={{ scale: 0.995 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5"
-      style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: '3px' } : undefined}
+      className={cn(
+        'editorial-card group flex h-full flex-col gap-5 p-6',
+        featured && 'min-h-[360px] justify-between md:p-7',
+      )}
+      style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}14` } : undefined}
     >
-      {/* Status + Pillar tags */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="relative z-10 flex items-center gap-2 flex-wrap">
         {statusConfig && (
           <m.span
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+              'inline-flex items-center rounded-full border px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.16em]',
               statusConfig.className,
             )}
           >
@@ -69,9 +75,8 @@ export function PostCard({ post, pillar }: PostCardProps) {
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, delay: 0.05 }}
-            className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+            className="editorial-chip"
             style={{
-              backgroundColor: `${pillar.color}26`,
               color: pillar.color,
               borderColor: `${pillar.color}40`,
             }}
@@ -81,56 +86,64 @@ export function PostCard({ post, pillar }: PostCardProps) {
         )}
       </div>
 
-      {/* Hook */}
-      <Link href={`/post/${post.id}`} className="group block min-h-[44px]">
-        <p className="line-clamp-3 text-sm leading-relaxed text-foreground group-hover:text-primary">
+      <div className="editorial-rule" />
+
+      <Link href={`/post/${post.id}`} className={cn('relative z-10 block min-h-[96px]', featured && 'min-h-[140px]')}>
+        <p
+          className={cn(
+            'line-clamp-4 text-[1.05rem] leading-8 tracking-[-0.03em] text-foreground/96 transition-colors duration-200 group-hover:text-foreground',
+            featured && 'max-w-2xl text-[1.42rem] leading-10 tracking-[-0.045em] md:line-clamp-5',
+          )}
+        >
           {hook}
         </p>
       </Link>
 
-      {/* Meta */}
-      <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Calendar className="size-3.5 shrink-0" />
-          <span>{formatDate(post.suggested_publish_at)}</span>
-        </div>
-        {post.brief_ref && (
+      <div className="relative z-10 mt-auto space-y-4">
+        <div className={cn('flex flex-col gap-2', featured && 'gap-3 md:flex-row md:flex-wrap md:gap-x-5')}>
           <div className="flex items-center gap-1.5">
-            <FileText className="size-3.5 shrink-0" />
-            <span className="truncate">{post.brief_ref}</span>
+            <Calendar className="size-3.5 shrink-0" />
+            <span className="editorial-meta normal-case tracking-normal text-foreground/56">{formatDate(post.suggested_publish_at)}</span>
           </div>
-        )}
-      </div>
+          {post.brief_ref && (
+            <div className="flex items-center gap-1.5">
+              <FileText className="size-3.5 shrink-0" />
+              <span className="editorial-meta normal-case tracking-normal text-foreground/56 truncate">{post.brief_ref}</span>
+            </div>
+          )}
+        </div>
 
-      {/* Agent attribution */}
-      <div className="flex flex-col gap-1 rounded-lg bg-muted/40 px-3 py-2 text-xs">
-        {post.created_by_agent && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Bot className="size-3.5 shrink-0" />
-            <span>
-              Written by <span className="font-medium text-foreground">{post.created_by_agent}</span>
-            </span>
-          </div>
-        )}
-        {post.reviewed_by_agent && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <User className="size-3.5 shrink-0" />
-            <span>
-              Reviewed by{' '}
-              <span className="font-medium text-foreground">{post.reviewed_by_agent}</span>
-              {post.review_notes && (
-                <span className="ml-1 italic">· &ldquo;{post.review_notes}&rdquo;</span>
+        <div className="editorial-rule" />
+
+        <div className={cn('px-0 py-0', featured && '')}>
+          {hasAgentMeta ? (
+            <div className={cn('space-y-2 text-xs', featured && 'md:grid md:grid-cols-2 md:gap-3 md:space-y-0')}>
+              {post.created_by_agent && (
+                <div className="flex items-center gap-1.5 text-foreground/66">
+                  <Bot className="size-3.5 shrink-0" />
+                  <span>
+                    Written by <span className="font-medium text-foreground/88">{post.created_by_agent}</span>
+                  </span>
+                </div>
               )}
-            </span>
-          </div>
-        )}
-        {!post.created_by_agent && !post.reviewed_by_agent && (
-          <span className="text-muted-foreground">No agent attribution</span>
-        )}
-      </div>
+              {post.reviewed_by_agent && (
+                <div className="flex items-center gap-1.5 text-foreground/66">
+                  <User className="size-3.5 shrink-0" />
+                  <span>
+                    Reviewed by <span className="font-medium text-foreground/88">{post.reviewed_by_agent}</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-foreground/56">No agent attribution</span>
+          )}
+        </div>
 
-      {/* Actions */}
-      <PostCardActions postId={post.id} status={post.status} content={post.content} />
+        <div className="editorial-rule pt-4">
+          <PostCardActions postId={post.id} status={post.status} content={post.content} />
+        </div>
+      </div>
     </m.div>
   )
 }

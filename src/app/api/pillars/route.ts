@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
+import {
+  authenticateAgent,
+  getAgentRateLimitKey,
+  hasAgentPermission,
+  isAgentContext,
+} from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 
 const CreatePillarSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  slug: z.string().min(1, 'Slug is required'),
+  slug: z.string().min(1, 'Slug is required').max(128).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens'),
   description: z.string().nullable().optional(),
-  color: z.string().min(1, 'Color is required'),
+  color: z.string().min(1, 'Color is required').regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex color (e.g. #ff5733)'),
   weight_pct: z.number().int().min(0).max(100).default(0),
   audience_summary: z.string().nullable().optional(),
   example_hooks: z.array(z.string()).default([]),
   sort_order: z.number().int().default(0),
-  brief_ref: z.string().nullable().optional(),
+  brief_ref: z.string().max(512).nullable().optional(),
 })
 
 /** GET /api/pillars — list pillars for current org with post counts */
@@ -21,10 +26,10 @@ export async function GET(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = rateLimit(`read:${auth.agentName}`, { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
   if (limited) return limited
 
-  if (!auth.permissions.includes('read')) {
+  if (!hasAgentPermission(auth.permissions, 'read')) {
     return NextResponse.json(
       { error: 'Insufficient permissions: read access required' },
       { status: 403 }
@@ -40,7 +45,8 @@ export async function GET(request: NextRequest) {
     .order('sort_order', { ascending: true })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[pillars] DB error listing pillars:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   // Get post counts per pillar
@@ -70,10 +76,10 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = rateLimit(`write:${auth.agentName}`, { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!auth.permissions.includes('write')) {
+  if (!hasAgentPermission(auth.permissions, 'write')) {
     return NextResponse.json(
       { error: 'Insufficient permissions: write access required' },
       { status: 403 }
@@ -107,7 +113,7 @@ export async function POST(request: NextRequest) {
 
   if (existing) {
     return NextResponse.json(
-      { error: `Slug "${parsed.data.slug}" already exists in this organization` },
+      { error: 'A pillar with this slug already exists in this organization' },
       { status: 409 }
     )
   }
@@ -134,7 +140,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[pillars] DB error creating pillar:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json(

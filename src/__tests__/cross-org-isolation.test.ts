@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 /**
  * Cross-org isolation integration tests (LIN-97)
  *
@@ -29,6 +31,10 @@ vi.mock('@/lib/agent-auth', () => ({
     organizationId: ORG_A,
     permissions: ['posts:read', 'posts:write', 'comments:read', 'comments:write', 'read', 'write', 'review'],
   }),
+  getAgentRateLimitKey: vi.fn((auth: { organizationId: string; agentName: string }, capability: string) =>
+    `${capability}:${auth.organizationId}:${auth.agentName}`
+  ),
+  hasAgentPermission: vi.fn(() => true),
   isAgentContext: vi.fn((r: unknown) => !(r instanceof Response)),
   DEFAULT_AGENT_PERMISSIONS: {
     scribe: ['posts:read', 'posts:write'],
@@ -50,7 +56,7 @@ vi.mock('@/lib/rate-limit', () => ({
 // Mock: workflow — pass through
 // ---------------------------------------------------------------------------
 vi.mock('@/lib/workflow', () => ({
-  validateTransition: vi.fn(({ from, to, agentName, notes, rejectionReason }) => ({
+  validateTransition: vi.fn(({ to, notes, rejectionReason }) => ({
     reviewAction: to === 'rejected' ? 'rejected' : 'approved',
     updateFields: {
       status: to,
@@ -67,39 +73,6 @@ vi.mock('@/lib/workflow', () => ({
     }
   },
 }))
-
-// ---------------------------------------------------------------------------
-// Mock: Supabase admin client
-// ---------------------------------------------------------------------------
-// We build a chainable query builder that records calls and returns
-// data based on the org filter.
-// ---------------------------------------------------------------------------
-function createMockQueryBuilder(table: string) {
-  const state: Record<string, unknown> = { table, filters: {} as Record<string, string> }
-
-  const builder: Record<string, unknown> = {}
-
-  const chainMethods = [
-    'select', 'insert', 'update', 'delete', 'eq', 'in', 'not',
-    'order', 'limit', 'single', 'maybeSingle',
-  ]
-
-  for (const method of chainMethods) {
-    builder[method] = vi.fn((...args: unknown[]) => {
-      if (method === 'eq') {
-        ;(state.filters as Record<string, string>)[args[0] as string] = args[1] as string
-      }
-
-      if (method === 'single' || method === 'maybeSingle') {
-        return resolveQuery(table, state)
-      }
-
-      return builder
-    })
-  }
-
-  return builder
-}
 
 // Simulated data store
 const MOCK_DB: Record<string, Record<string, unknown>[]> = {
@@ -130,18 +103,6 @@ const MOCK_DB: Record<string, Record<string, unknown>[]> = {
   users: [
     { id: USER_ID_ORG_A, organization_id: ORG_A },
   ],
-}
-
-function resolveQuery(table: string, state: Record<string, unknown>) {
-  const filters = state.filters as Record<string, string>
-  const rows = MOCK_DB[table] ?? []
-  const matches = rows.filter((row) =>
-    Object.entries(filters).every(([k, v]) => row[k] === v)
-  )
-  if (state.single) {
-    return { data: matches[0] ?? null, error: null }
-  }
-  return { data: matches[0] ?? null, error: null }
 }
 
 vi.mock('@/lib/supabase/admin', () => ({
@@ -220,10 +181,13 @@ describe('Cross-org isolation — Drafts', () => {
     const { GET } = await import('@/app/api/drafts/route')
     const req = makeRequest('http://localhost:3000/api/drafts')
     const res = await GET(req)
-    // Route filters by auth.organizationId — mock returns org A context
-    // The response goes through the mock supabase which chains eq('organization_id', ORG_A)
-    expect(res.status).not.toBe(401)
-    expect(res.status).not.toBe(403)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(json).toHaveLength(1)
+    expect(json[0]).toMatchObject({
+      id: POST_ID_ORG_A,
+      organization_id: ORG_A,
+    })
   })
 
   it('PATCH /api/drafts/:id — rejects update to org B post', async () => {
@@ -306,8 +270,13 @@ describe('Cross-org isolation — Pillars', () => {
     const { GET } = await import('@/app/api/pillars/route')
     const req = makeRequest('http://localhost:3000/api/pillars')
     const res = await GET(req)
-    expect(res.status).not.toBe(401)
-    expect(res.status).not.toBe(403)
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(json).toHaveLength(1)
+    expect(json[0]).toMatchObject({
+      id: PILLAR_ID_ORG_A,
+      organization_id: ORG_A,
+    })
   })
 })
 

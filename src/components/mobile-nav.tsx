@@ -35,13 +35,12 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Bottom Tab Bar */}
       <nav
         aria-label="Mobile navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 dark:border-primary/12 dark:shadow-[0_-1px_0_0_oklch(0.63_0.27_278/0.10),0_-4px_24px_-6px_oklch(0.09_0.025_280/0.85)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 mx-3 mb-3 rounded-[28px] border border-border/70 bg-card/86 backdrop-blur-xl shadow-[0_20px_52px_-30px_rgba(0,0,0,0.5)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-stretch justify-around h-16">
+        <div className="flex items-stretch justify-around h-18 px-2">
           {PRIMARY_TABS.map((tab) => {
             const isActive =
               pathname === tab.href || pathname.startsWith(tab.href + '/')
@@ -50,7 +49,7 @@ export function MobileNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="relative flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[48px]"
+                className="relative flex flex-col items-center justify-center gap-1 flex-1 min-h-[56px]"
                 aria-current={isActive ? 'page' : undefined}
               >
                 <AnimatePresence>
@@ -61,18 +60,18 @@ export function MobileNav() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.85 }}
                       transition={{ duration: 0.15, ease: 'easeOut' }}
-                      className="absolute inset-1 rounded-xl bg-primary/12 dark:bg-primary/18 dark:shadow-[0_0_12px_2px_oklch(0.63_0.27_278/0.20)]"
+                      className="absolute inset-1 rounded-[20px] bg-[linear-gradient(135deg,rgba(100,210,60,0.20),rgba(252,238,33,0.06))] shadow-[0_0_0_1px_rgba(100,210,60,0.22)]"
                     />
                   )}
                 </AnimatePresence>
                 <Icon
                   className={`relative z-10 size-5 transition-colors duration-150 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                    isActive ? 'text-primary' : 'text-foreground/70'
                   }`}
                 />
                 <span
                   className={`relative z-10 text-[10px] font-medium leading-none transition-colors duration-150 ${
-                    isActive ? 'text-primary' : 'text-muted-foreground'
+                    isActive ? 'text-primary' : 'text-foreground/70'
                   }`}
                 >
                   {tab.label}
@@ -84,7 +83,7 @@ export function MobileNav() {
           {/* More button */}
           <button
             onClick={() => setMoreOpen(true)}
-            className="relative flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[48px] text-muted-foreground"
+            className="relative flex flex-1 flex-col items-center justify-center gap-1 min-h-[56px] text-foreground/70"
             aria-label="More navigation options"
             aria-expanded={moreOpen}
           >
@@ -105,7 +104,7 @@ export function MobileNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden fixed inset-0 z-50 bg-black/50"
+              className="md:hidden fixed inset-0 z-50 bg-black/60"
               onClick={() => setMoreOpen(false)}
               aria-hidden="true"
             />
@@ -120,7 +119,7 @@ export function MobileNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl bg-popover border-t border-border dark:border-primary/12 dark:shadow-[0_-8px_40px_-4px_oklch(0.09_0.025_280/0.80)]"
+              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] border-t border-border/70 bg-popover/96 shadow-[0_-14px_40px_-16px_rgba(0,0,0,0.56)] backdrop-blur-xl"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
             >
               {/* Drag handle */}
@@ -132,7 +131,7 @@ export function MobileNav() {
                 <span className="text-sm font-semibold">More</span>
                 <button
                   onClick={() => setMoreOpen(false)}
-                  className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95 transition-transform"
+                  className="flex size-8 items-center justify-center rounded-full bg-background/65 text-foreground/72 active:scale-95 transition-transform"
                   aria-label="Close"
                 >
                   <X className="size-4" />
@@ -153,8 +152,8 @@ export function MobileNav() {
                       aria-current={isActive ? 'page' : undefined}
                       className={`flex items-center gap-3 rounded-xl px-4 min-h-[56px] transition-colors active:scale-[0.98] ${
                         isActive
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          ? 'bg-card/92 text-foreground font-medium'
+                          : 'text-foreground/70 hover:bg-muted/70 hover:text-foreground'
                       }`}
                     >
                       <Icon className="size-5 shrink-0" />

@@ -1,33 +1,19 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import {
   generateAgentKey,
+  getAgentKeyPrefix,
   hashAgentKey,
   DEFAULT_AGENT_PERMISSIONS,
 } from "@/lib/agent-auth";
+import { isAuthenticatedOrgUser, requireOrgUser } from "@/lib/server-auth";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-
-  // Verify authenticated user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireOrgUser(["owner", "admin"]);
+  if (!isAuthenticatedOrgUser(auth)) {
+    return auth;
   }
 
-  // Verify user is owner/admin
-  const { data: dbUser } = await supabase
-    .from("users")
-    .select("organization_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!dbUser || !["owner", "admin"].includes(dbUser.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const { supabase, profile } = auth;
 
   const body = await request.json();
   const agentName: string = body.agent_name;
@@ -51,7 +37,7 @@ export async function POST(request: Request) {
   const { data: existing } = await supabase
     .from("agent_keys")
     .select("id")
-    .eq("organization_id", dbUser.organization_id)
+    .eq("organization_id", profile.organization_id)
     .eq("agent_name", agentName)
     .single();
 
@@ -65,13 +51,13 @@ export async function POST(request: Request) {
   // Generate and hash the key
   const plainKey = generateAgentKey();
   const keyHash = await hashAgentKey(plainKey);
-  const keyPrefix = plainKey.slice(0, 8);
+  const keyPrefix = getAgentKeyPrefix(plainKey);
   const permissions = DEFAULT_AGENT_PERMISSIONS[agentName];
 
   const { data: agentKey, error } = await supabase
     .from("agent_keys")
     .insert({
-      organization_id: dbUser.organization_id,
+      organization_id: profile.organization_id,
       agent_name: agentName,
       api_key_hash: keyHash,
       key_prefix: keyPrefix,
@@ -93,4 +79,40 @@ export async function POST(request: Request) {
     api_key: plainKey,
     warning: "Store this key securely. It cannot be retrieved again.",
   });
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireOrgUser(["owner", "admin"]);
+  if (!isAuthenticatedOrgUser(auth)) {
+    return auth;
+  }
+
+  const { supabase, profile } = auth;
+  const { searchParams } = new URL(request.url);
+  const keyId = searchParams.get("id");
+
+  if (!keyId) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  const { data: deletedKey, error } = await supabase
+    .from("agent_keys")
+    .delete()
+    .eq("id", keyId)
+    .eq("organization_id", profile.organization_id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json(
+      { error: "Failed to delete agent key" },
+      { status: 500 }
+    );
+  }
+
+  if (!deletedKey) {
+    return NextResponse.json({ error: "Agent key not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true, id: deletedKey.id });
 }

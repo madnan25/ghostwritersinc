@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
+import {
+  authenticateAgent,
+  getAgentRateLimitKey,
+  hasAgentPermission,
+  isAgentContext,
+} from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -8,10 +13,10 @@ export async function GET(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = rateLimit(`read:${auth.agentName}`, { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
   if (limited) return limited
 
-  if (!auth.permissions.includes('read')) {
+  if (!hasAgentPermission(auth.permissions, 'read')) {
     return NextResponse.json(
       { error: 'Insufficient permissions: read access required' },
       { status: 403 }
@@ -30,7 +35,8 @@ export async function GET(request: NextRequest) {
     .limit(10)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[pillars] DB error fetching rotation health:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   // Detect runs of >2 consecutive same-pillar posts

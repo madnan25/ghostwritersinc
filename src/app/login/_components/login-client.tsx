@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
+import { EditorialRoleTicker } from "@/components/editorial-role-ticker";
 import { Button } from "@/components/ui/button";
 import { startLinkedInOAuth } from "@/lib/linkedin-oauth";
 
@@ -25,28 +26,33 @@ export function LoginClient() {
   return (
     <AuthShell
       eyebrow="Private Access"
-      title="Welcome back"
-      description="Sign in to review drafts, shape approvals, and keep your publishing system moving with editorial clarity."
+      title={
+        <span className="text-foreground">
+          Enter the <span className="workspace-live-gradient">editorial workspace</span>
+        </span>
+      }
+      description="Not software. An AI team — one that already knows your voice and never misses a brief."
+      visual={<EditorialRoleTicker />}
       footer={
         <p className="text-xs leading-6 text-muted-foreground">
           Access is invitation-only and tailored for internal teams managing executive content.
         </p>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {errorMessage && (
           <div className="rounded-[22px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {errorMessage}
           </div>
         )}
-        <div className="premium-subtle-panel p-5">
-          <p className="text-sm leading-7 text-muted-foreground">
-            Continue with LinkedIn OAuth to access your organization workspace and publishing controls.
+        <div className="editorial-card p-3.5 sm:p-4">
+          <p className="premium-copy text-sm leading-6">
+            Continue with LinkedIn OAuth to access your organization workspace and direct your AI editorial staff.
           </p>
         </div>
         <Button
           size="lg"
-          className="w-full justify-center text-sm"
+          className="w-full justify-center text-sm shadow-none hover:translate-y-0 hover:shadow-none"
           onClick={handleLinkedInLogin}
         >
           <svg
@@ -60,14 +66,18 @@ export function LoginClient() {
           </svg>
           Sign in with LinkedIn
         </Button>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="premium-subtle-panel p-4">
-            <p className="text-[0.68rem] uppercase tracking-[0.3em] text-primary/70">Editorial Reviews</p>
-            <p className="mt-2 text-sm text-muted-foreground">Move through draft, agent review, and client approval with less clutter.</p>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <div className="editorial-card p-3.5 sm:p-4">
+            <p className="premium-kicker text-[0.64rem]">Editorial Reviews</p>
+            <p className="premium-copy mt-1.5 text-sm leading-6">
+              Move through draft, agent review, and client approval with less clutter.
+            </p>
           </div>
-          <div className="premium-subtle-panel p-4">
-            <p className="text-[0.68rem] uppercase tracking-[0.3em] text-primary/70">Premium Workspace</p>
-            <p className="mt-2 text-sm text-muted-foreground">A darker, calmer environment built for focused content decisions.</p>
+          <div className="editorial-card p-3.5 sm:p-4">
+            <p className="premium-kicker text-[0.64rem]">Premium Workspace</p>
+            <p className="premium-copy mt-1.5 text-sm leading-6">
+              A darker, calmer environment built for focused content decisions.
+            </p>
           </div>
         </div>
       </div>

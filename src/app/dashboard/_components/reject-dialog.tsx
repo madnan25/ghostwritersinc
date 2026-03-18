@@ -1,10 +1,11 @@
 'use client'
 
-import { useTransition, useRef, useState, useEffect } from 'react'
+import { useTransition, useRef, useState } from 'react'
 import { m, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { rejectPost } from '@/app/actions/posts'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
 
 interface RejectDialogProps {
@@ -15,16 +16,8 @@ export function RejectDialog({ postId }: RejectDialogProps) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [isPending, startTransition] = useTransition()
-  const [mobile, setMobile] = useState(false)
+  const mobile = useMediaQuery('(max-width: 767px)')
   const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)')
-    setMobile(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
 
   function handleOpen() {
     setReason('')

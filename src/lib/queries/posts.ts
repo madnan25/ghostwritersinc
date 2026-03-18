@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logQueryError } from '@/lib/queries/errors'
 import type { ContentPillar, Post, PostComment, PostStatus, ReviewEvent } from '@/lib/types'
 
 export async function getPendingReviewPosts(): Promise<Post[]> {
@@ -10,7 +11,7 @@ export async function getPendingReviewPosts(): Promise<Post[]> {
     .order('suggested_publish_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching pending review posts:', error)
+    logQueryError('pending review posts', error)
     return []
   }
   return data ?? []
@@ -25,7 +26,7 @@ export async function getPostById(id: string): Promise<Post | null> {
     .single()
 
   if (error) {
-    console.error('Error fetching post:', error)
+    logQueryError(`post ${id}`, error)
     return null
   }
   return data
@@ -40,7 +41,7 @@ export async function getPostReviewEvents(postId: string): Promise<ReviewEvent[]
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching review events:', error)
+    logQueryError(`review events for post ${postId}`, error)
     return []
   }
   return data ?? []
@@ -55,7 +56,7 @@ export async function getPostComments(postId: string): Promise<PostComment[]> {
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching post comments:', error)
+    logQueryError(`post comments for post ${postId}`, error)
     return []
   }
   return data ?? []
@@ -72,7 +73,7 @@ export async function getPostsByStatus(status: PostStatus | PostStatus[]): Promi
     .order('suggested_publish_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching posts by status:', error)
+    logQueryError(`posts by status ${statuses.join(',')}`, error)
     return []
   }
   return data ?? []
@@ -86,7 +87,7 @@ export async function getAllPosts(): Promise<Post[]> {
     .order('suggested_publish_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching all posts:', error)
+    logQueryError('all posts', error)
     return []
   }
 
@@ -117,7 +118,7 @@ export async function getScheduledPosts(): Promise<Post[]> {
     .order('scheduled_publish_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching scheduled posts:', error)
+    logQueryError('scheduled posts', error)
     return []
   }
   return data ?? []
@@ -131,7 +132,7 @@ export async function getPillars(): Promise<ContentPillar[]> {
     .order('sort_order', { ascending: true })
 
   if (error) {
-    console.error('Error fetching pillars:', error)
+    logQueryError('content pillars', error)
     return []
   }
   return data ?? []

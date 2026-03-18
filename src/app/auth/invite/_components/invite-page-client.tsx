@@ -85,8 +85,8 @@ export function InvitePageClient() {
         description="This invitation link is invalid or has expired. Contact your organization administrator for a new one."
       >
         <div className="space-y-5">
-          <div className="premium-subtle-panel p-5">
-            <p className="text-sm leading-7 text-muted-foreground">
+          <div className="editorial-card p-5">
+            <p className="premium-copy text-sm leading-7">
               Invitations are time-bound and tied to your workspace. If this was sent recently, ask the owner to issue a fresh link.
             </p>
           </div>
@@ -113,11 +113,15 @@ export function InvitePageClient() {
       }
     >
       <div className="space-y-6">
-        <div className="premium-subtle-panel p-5">
-          <p className="text-[0.72rem] uppercase tracking-[0.3em] text-primary/70">Organization</p>
+        <div className="editorial-card p-5">
+          <p className="premium-kicker text-[0.64rem]">Organization</p>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-foreground">{orgName}</p>
         </div>
-        <Button size="lg" className="w-full" onClick={handleSignIn}>
+        <Button
+          size="lg"
+          className="w-full shadow-none hover:translate-y-0 hover:shadow-none"
+          onClick={handleSignIn}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="18"
@@ -130,13 +134,17 @@ export function InvitePageClient() {
           Sign in with LinkedIn
         </Button>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="premium-subtle-panel p-4">
-            <p className="text-[0.68rem] uppercase tracking-[0.28em] text-primary/70">Review Flow</p>
-            <p className="mt-2 text-sm text-muted-foreground">Collaborate on approvals and refinements in one clean queue.</p>
+          <div className="editorial-card p-4">
+            <p className="premium-kicker text-[0.64rem]">Review Flow</p>
+            <p className="premium-copy mt-2 text-sm">
+              Collaborate on approvals and refinements in one clean queue.
+            </p>
           </div>
-          <div className="premium-subtle-panel p-4">
-            <p className="text-[0.68rem] uppercase tracking-[0.28em] text-primary/70">Team Access</p>
-            <p className="mt-2 text-sm text-muted-foreground">Join a private publishing workspace designed for executive teams.</p>
+          <div className="editorial-card p-4">
+            <p className="premium-kicker text-[0.64rem]">Team Access</p>
+            <p className="premium-copy mt-2 text-sm">
+              Join a private publishing workspace designed for executive teams.
+            </p>
           </div>
         </div>
       </div>

@@ -3,23 +3,11 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { m, AnimatePresence, type Variants } from 'framer-motion'
+import type { RotationWarning } from '@/lib/post-display'
+import { DASHBOARD_FILTER_TABS, type DashboardFilterTab } from '@/lib/dashboard-ui'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post, PostStatus } from '@/lib/types'
-import type { RotationWarning } from '../page'
 import { PostCard } from './post-card'
-
-interface FilterTab {
-  label: string
-  statuses: PostStatus[] | null // null = All
-}
-
-const TABS: FilterTab[] = [
-  { label: 'All', statuses: null },
-  { label: 'Needs Review', statuses: ['pending_review', 'agent_review'] },
-  { label: 'Drafts', statuses: ['draft'] },
-  { label: 'Approved', statuses: ['approved', 'scheduled'] },
-  { label: 'Published', statuses: ['published', 'rejected'] },
-]
 
 const cardContainerVariants: Variants = {
   hidden: {},
@@ -45,7 +33,7 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
 
-  const pillarMap = new Map(pillars.map((p) => [p.id, p]))
+  const pillarMap = new Map(pillars.map((pillar) => [pillar.id, pillar]))
 
   function togglePillar(id: string) {
     setSelectedPillarIds((prev) => {
@@ -60,160 +48,211 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
   }
 
   const afterStatus =
-    TABS[activeTab].statuses === null
+    DASHBOARD_FILTER_TABS[activeTab].statuses === null
       ? posts
-      : posts.filter((p) => (TABS[activeTab].statuses as PostStatus[]).includes(p.status))
+      : posts.filter((post) =>
+          (DASHBOARD_FILTER_TABS[activeTab].statuses as PostStatus[]).includes(post.status),
+        )
 
   const filtered =
     selectedPillarIds.size === 0
       ? afterStatus
-      : afterStatus.filter((p) => p.pillar_id && selectedPillarIds.has(p.pillar_id))
+      : afterStatus.filter((post) => post.pillar_id && selectedPillarIds.has(post.pillar_id))
 
-  function getTabCount(tab: FilterTab): number {
+  function getTabCount(tab: DashboardFilterTab): number {
     const statusFiltered =
       tab.statuses === null
         ? posts
-        : posts.filter((p) => (tab.statuses as PostStatus[]).includes(p.status))
-    if (selectedPillarIds.size === 0) return statusFiltered.length
-    return statusFiltered.filter((p) => p.pillar_id && selectedPillarIds.has(p.pillar_id)).length
+        : posts.filter((post) => (tab.statuses as PostStatus[]).includes(post.status))
+
+    if (selectedPillarIds.size === 0) {
+      return statusFiltered.length
+    }
+
+    return statusFiltered.filter((post) => post.pillar_id && selectedPillarIds.has(post.pillar_id)).length
   }
 
-  // Distribution: actual post counts per pillar
-  const totalPosts = posts.filter((p) => p.pillar_id).length
+  const totalPosts = posts.filter((post) => post.pillar_id).length
+
+  function getPillarCount(pillarId: string): number {
+    return posts.filter((post) => post.pillar_id === pillarId).length
+  }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6">
-      {/* Rotation warning banner */}
-      {rotationWarnings.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
-          {rotationWarnings.map((w) => (
-            <div key={w.pillar_id} className="flex items-start gap-2.5 text-sm text-amber-400">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span>{w.suggestion}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pillar distribution — interactive bar + compact filter pills combined */}
-      {pillars.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {/* Label hidden on mobile — bar is self-explanatory */}
-          <p className="hidden text-xs font-medium text-muted-foreground sm:block">Pillar Distribution</p>
-
-          {/* Tappable stacked bar — taller on mobile for easier tap targets */}
-          <div className="flex h-8 w-full overflow-hidden rounded-full bg-muted sm:h-5">
-            {pillars.map((pillar) => {
-              const count = posts.filter((p) => p.pillar_id === pillar.id).length
-              const pct = totalPosts > 0 ? (count / totalPosts) * 100 : 0
-              if (pct === 0) return null
-              const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
-              const isActive = selectedPillarIds.has(pillar.id)
-              return (
-                <m.button
-                  key={pillar.id}
-                  title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
-                  onClick={() => togglePillar(pillar.id)}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className={cn(
-                    'h-full cursor-pointer transition-opacity duration-150 active:scale-95',
-                    selectedPillarIds.size > 0 && !isActive ? 'opacity-30' : 'opacity-100 hover:opacity-80',
-                  )}
-                  style={{ backgroundColor: pillar.color }}
-                />
-              )
-            })}
+    <div className="space-y-6">
+      <section className="dashboard-frame relative overflow-hidden p-5 sm:p-6">
+        <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(145,255,88,0.14)_0%,transparent_70%)] blur-3xl" />
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="premium-kicker text-[0.64rem]">Live Queue</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-3xl">
+              Editorial pipeline
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-foreground/66">
+              Filter by status or pillar to focus the queue without losing sight of the overall mix.
+            </p>
           </div>
+          <div className="dashboard-rail flex items-center gap-3 rounded-full px-4 py-2 text-sm text-foreground/70">
+            <span className="inline-flex size-2 rounded-full bg-primary/80" />
+            <span>
+              {filtered.length} visible of {posts.length}
+            </span>
+          </div>
+        </div>
 
-          {/* Snap-scroll pill row with gradient fade hint at edges */}
-          <div className="relative">
-            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scroll-snap-type:x_mandatory] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button
-                onClick={() => setSelectedPillarIds(new Set())}
-                className={cn(
-                  'inline-flex min-h-[44px] shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 [scroll-snap-align:start] active:scale-95 sm:min-h-0',
-                  selectedPillarIds.size === 0
-                    ? 'border-border bg-background text-foreground shadow-sm'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                )}
-              >
-                All
-              </button>
-              {pillars.map((pillar) => {
-                const count = posts.filter((p) => p.pillar_id === pillar.id).length
-                const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
-                const active = selectedPillarIds.has(pillar.id)
+        {rotationWarnings.length > 0 && (
+          <div className="mb-5 flex flex-col gap-2 rounded-[22px] border border-primary/18 bg-primary/8 px-4 py-3">
+            {rotationWarnings.map((warning) => (
+              <div key={warning.pillar_id} className="flex items-start gap-2.5 text-sm text-foreground/82">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span>{warning.suggestion}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="dashboard-rail p-3">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-foreground/56">
+                  Stage Focus
+                </p>
+                <p className="mt-1 text-sm text-foreground/60">
+                  Jump between editorial stages without losing context.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+              {DASHBOARD_FILTER_TABS.map((tab, index) => {
+                const count = getTabCount(tab)
+
                 return (
                   <button
-                    key={pillar.id}
-                    onClick={() => togglePillar(pillar.id)}
-                    title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
+                    key={tab.label}
+                    onClick={() => setActiveTab(index)}
                     className={cn(
-                      'inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 [scroll-snap-align:start] active:scale-95 sm:min-h-0',
-                      selectedPillarIds.size > 0 && !active ? 'opacity-40' : 'opacity-100',
+                      'dashboard-stage-tab min-w-0 active:scale-[0.99]',
+                      index === activeTab && 'dashboard-stage-tab-active',
                     )}
-                    style={
-                      active
-                        ? { backgroundColor: `${pillar.color}26`, color: pillar.color, borderColor: `${pillar.color}40` }
-                        : { borderColor: 'transparent', color: 'var(--muted-foreground)' }
-                    }
                   >
+                    {index === activeTab && (
+                      <m.span
+                        layoutId="tab-indicator"
+                        className="absolute inset-0 rounded-[18px] border border-border/75 bg-card shadow-[0_10px_24px_-16px_rgba(0,0,0,0.38)]"
+                        transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                      />
+                    )}
+                    <span className="relative z-10 leading-tight">{tab.label}</span>
                     <span
-                      className="inline-block size-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: pillar.color }}
-                    />
-                    {pillar.name}
+                      className={cn(
+                        'dashboard-stage-count relative z-10',
+                        index === activeTab ? 'bg-primary/14 text-primary' : 'bg-background/58 text-foreground/56',
+                      )}
+                    >
+                      {count}
+                    </span>
                   </button>
                 )
               })}
             </div>
-            {/* Gradient fade at right edge hints at horizontal scrollability */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" />
           </div>
+
+          {pillars.length > 0 ? (
+            <div className="dashboard-rail p-4 sm:p-5">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-foreground/56">
+                    Pillar Mix
+                  </p>
+                  <p className="mt-1 text-sm text-foreground/60">
+                    A calmer view of topic balance across the queue.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedPillarIds(new Set())}
+                  className={cn(
+                    'text-xs font-medium transition-colors',
+                    selectedPillarIds.size === 0 ? 'text-foreground/40' : 'text-primary hover:text-primary/82',
+                  )}
+                >
+                  Clear
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <button
+                  onClick={() => setSelectedPillarIds(new Set())}
+                  className={cn(
+                    'pillar-mix-card text-left',
+                    selectedPillarIds.size === 0 && 'border-border/85 bg-card/72',
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">All pillars</p>
+                      <p className="mt-1 text-xs text-foreground/56">Full editorial mix</p>
+                    </div>
+                    <span className="dashboard-stage-count bg-background/58 text-foreground/64">
+                      {posts.length}
+                    </span>
+                  </div>
+                </button>
+
+                {pillars.map((pillar) => {
+                  const count = getPillarCount(pillar.id)
+                  const actual = totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
+                  const active = selectedPillarIds.has(pillar.id)
+
+                  return (
+                    <button
+                      key={pillar.id}
+                      onClick={() => togglePillar(pillar.id)}
+                      title={`${pillar.name}: ${actual}% actual / ${pillar.weight_pct}% target`}
+                      className={cn(
+                        'pillar-mix-card text-left',
+                        active && 'border-border/85 bg-card/72',
+                        selectedPillarIds.size > 0 && !active && 'opacity-60',
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block size-2 rounded-full"
+                              style={{ backgroundColor: pillar.color }}
+                            />
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {pillar.name}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-xs text-foreground/56">
+                            {actual}% of queued posts
+                          </p>
+                        </div>
+                        <span className="dashboard-stage-count bg-background/58 text-foreground/64">
+                          {count}
+                        </span>
+                      </div>
+                      <div className="pillar-mix-track mt-3">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.max(actual, count > 0 ? 8 : 0)}%`,
+                            backgroundColor: pillar.color,
+                          }}
+                        />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
-      )}
+      </section>
 
-      {/* Status filter tabs — iOS-style segmented control with animated indicator */}
-      <div className="relative flex overflow-x-auto rounded-xl bg-muted/50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.map((tab, i) => {
-          const count = getTabCount(tab)
-          return (
-            <button
-              key={tab.label}
-              onClick={() => setActiveTab(i)}
-              className={cn(
-                'relative flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-95',
-                i === activeTab
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {i === activeTab && (
-                <m.span
-                  layoutId="tab-indicator"
-                  className="absolute inset-0 rounded-md bg-background shadow-sm"
-                  transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                />
-              )}
-              <span className="relative z-10">{tab.label}</span>
-              <span
-                className={cn(
-                  'relative z-10 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs tabular-nums',
-                  i === activeTab
-                    ? 'bg-primary/15 text-primary'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Grid or empty state */}
       <AnimatePresence mode="wait">
         {filtered.length === 0 ? (
           <m.div
@@ -222,15 +261,15 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.25 }}
-            className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center"
+            className="dashboard-frame flex flex-col items-center justify-center py-24 text-center"
           >
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
+            <div className="flex size-12 items-center justify-center rounded-full bg-background/65 text-2xl">
               ✓
             </div>
             <h3 className="mt-4 text-base font-semibold">
               {activeTab === 0 && selectedPillarIds.size === 0 ? 'No posts yet' : 'No posts match this filter'}
             </h3>
-            <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            <p className="mt-1.5 max-w-sm text-sm text-foreground/68">
               {activeTab === 0 && selectedPillarIds.size === 0
                 ? 'Your agents are working on the next batch.'
                 : 'Try adjusting the status tab or pillar filter.'}
@@ -243,13 +282,18 @@ export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
           >
-            {filtered.map((post) => (
-              <m.div key={post.id} variants={cardItemVariants}>
+            {filtered.map((post, index) => (
+              <m.div
+                key={post.id}
+                variants={cardItemVariants}
+                className={cn(index === 0 && filtered.length > 2 && 'md:col-span-2 xl:col-span-2')}
+              >
                 <PostCard
                   post={post}
                   pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                  featured={index === 0 && filtered.length > 2}
                 />
               </m.div>
             ))}

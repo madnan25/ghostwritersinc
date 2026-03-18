@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useTransition, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { updateUserSettings, signOut } from "@/app/actions/auth";
-import { createClient } from "@/lib/supabase/client";
+import { startLinkedInOAuth } from "@/lib/linkedin-oauth";
 
 const TIMEZONES = [
   "UTC",
@@ -44,15 +44,8 @@ export function SettingsForm({
   const [isPending, startTransition] = useTransition();
   const [notifications, setNotifications] = useState(notificationsEnabled);
 
-  function handleLinkedInReconnect() {
-    const supabase = createClient();
-    supabase.auth.signInWithOAuth({
-      provider: "linkedin_oidc",
-      options: {
-        scopes: "openid profile email w_member_social",
-        redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
-      },
-    });
+  async function handleLinkedInReconnect() {
+    await startLinkedInOAuth("/settings");
   }
 
   function getExpiryLabel(expiresAt: string | null): { text: string; warn: boolean } {
@@ -79,8 +72,7 @@ export function SettingsForm({
 
   return (
     <div className="space-y-6">
-      {/* Profile display */}
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5">
+      <div className="dashboard-rail flex items-center gap-4 p-5">
         {avatarUrl ? (
           <Image
             src={avatarUrl}
@@ -91,74 +83,70 @@ export function SettingsForm({
             unoptimized
           />
         ) : (
-          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary/15 text-lg font-semibold text-primary">
+          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-primary/25 bg-primary/12 text-lg font-semibold text-primary">
             {name.charAt(0).toUpperCase()}
           </div>
         )}
         <div>
-          <p className="font-semibold">{name}</p>
-          <p className="text-sm text-muted-foreground">{email}</p>
+          <p className="text-lg font-semibold tracking-[-0.03em]">{name}</p>
+          <p className="text-sm text-foreground/72">{email}</p>
         </div>
       </div>
 
-      {/* Settings form */}
       <form action={handleSubmit} className="space-y-5">
-        {/* Timezone */}
-        <div className="space-y-2">
-          <label htmlFor="timezone" className="text-sm font-medium">
-            Timezone
-          </label>
-          <select
-            id="timezone"
-            name="timezone"
-            defaultValue={timezone}
-            className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-ring/50"
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz.replace(/_/g, " ")}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Notifications toggle */}
-        <div
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 cursor-pointer min-h-[56px]"
-          onClick={() => setNotifications((v) => !v)}
-        >
-          <div>
-            <p className="text-sm font-medium">In-app notifications</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Get notified when posts need review
-            </p>
+        <div className="dashboard-rail space-y-5 p-5">
+          <div className="space-y-2">
+            <label htmlFor="timezone" className="premium-kicker text-[0.72rem] tracking-[0.22em]">
+              Timezone
+            </label>
+            <select
+              id="timezone"
+              name="timezone"
+              defaultValue={timezone}
+              className="w-full rounded-[22px] border border-input bg-background/72 px-4 py-3 text-sm min-h-[52px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
           </div>
-          {/* Custom toggle switch */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={notifications}
-            onClick={(e) => { e.stopPropagation(); setNotifications((v) => !v) }}
-            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              notifications
-                ? 'bg-primary'
-                : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                notifications ? 'translate-x-5' : 'translate-x-0.5'
+
+          <div className="editorial-rule" />
+
+          <div className="flex items-center justify-between gap-4 min-h-[64px]">
+            <div>
+              <p className="text-sm font-medium">In-app notifications</p>
+              <p className="mt-1 text-xs text-foreground/68">
+                Get notified when posts need review
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notifications}
+              onClick={(e) => { e.stopPropagation(); setNotifications((v) => !v) }}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                notifications
+                  ? 'bg-primary'
+                  : 'bg-muted'
               }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                  notifications ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <input
+              type="checkbox"
+              name="notifications"
+              checked={notifications}
+              onChange={() => {}}
+              className="sr-only"
             />
-          </button>
-          {/* Hidden checkbox for form submission */}
-          <input
-            type="checkbox"
-            name="notifications"
-            checked={notifications}
-            onChange={() => {}}
-            className="sr-only"
-          />
+          </div>
         </div>
 
         <Button type="submit" disabled={isPending} className="w-full h-[52px] rounded-xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
@@ -166,16 +154,15 @@ export function SettingsForm({
         </Button>
       </form>
 
-      {/* LinkedIn connection */}
-      <div className="border-t border-border pt-6 space-y-3">
-        <h2 className="text-sm font-semibold">LinkedIn Connection</h2>
+      <div className="space-y-3">
+        <h2 className="premium-kicker text-[0.72rem] tracking-[0.24em]">LinkedIn Connection</h2>
         {linkedInConnected ? (() => {
           const { text, warn } = getExpiryLabel(linkedInExpiresAt);
           return (
-            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-5 min-h-[64px]">
+            <div className="dashboard-rail flex items-center justify-between p-5 min-h-[72px]">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-emerald-500">Connected</p>
-                <p className={`text-xs ${warn ? "text-yellow-500" : "text-muted-foreground"}`}>{text}</p>
+                <p className="text-sm font-medium text-emerald-400">Connected</p>
+                <p className={`text-xs ${warn ? "text-yellow-300" : "text-foreground/68"}`}>{text}</p>
               </div>
               <Button variant="outline" size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">
                 Reconnect
@@ -183,8 +170,8 @@ export function SettingsForm({
             </div>
           );
         })() : (
-          <div className="flex items-center justify-between rounded-xl border border-border bg-card p-5 min-h-[64px]">
-            <p className="text-sm text-muted-foreground">Not connected</p>
+          <div className="dashboard-rail flex items-center justify-between p-5 min-h-[72px]">
+            <p className="text-sm text-foreground/68">Not connected</p>
             <Button size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">
               Connect LinkedIn
             </Button>
@@ -192,8 +179,7 @@ export function SettingsForm({
         )}
       </div>
 
-      {/* Logout */}
-      <div className="border-t border-border pt-6">
+      <div className="editorial-rule pt-6">
         <form action={signOut}>
           <Button variant="outline" type="submit" className="w-full h-[52px] rounded-xl text-base sm:w-auto sm:h-auto sm:rounded-lg sm:text-sm">
             Sign Out

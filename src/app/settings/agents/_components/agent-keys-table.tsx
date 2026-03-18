@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { CreateKeyDialog } from "./create-key-dialog";
 
@@ -24,29 +25,23 @@ interface AgentKeysTableProps {
 export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
   const [keys, setKeys] = useState<AgentKey[]>(initialKeys);
   const [newKey, setNewKey] = useState<NewKeyReveal | null>(null);
-  const [copied, setCopied] = useState(false);
   const [, startDeleteTransition] = useTransition();
   const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function handleCreated(data: AgentKey & { api_key: string }) {
     const { api_key, ...key } = data;
     setKeys((prev) => [...prev, key]);
     setNewKey({ id: key.id, api_key });
-    setCopied(false);
-  }
-
-  function handleCopy() {
-    if (!newKey) return;
-    navigator.clipboard.writeText(newKey.api_key);
-    setCopied(true);
+    setError(null);
   }
 
   function handleDismissKey() {
     setNewKey(null);
-    setCopied(false);
   }
 
   function handleDelete(keyId: string) {
+    setError(null);
     setDeletingKeyId(keyId);
     startDeleteTransition(async () => {
       const res = await fetch(`/api/admin/agent-keys?id=${keyId}`, {
@@ -55,6 +50,9 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
       if (res.ok) {
         setKeys((prev) => prev.filter((k) => k.id !== keyId));
         if (newKey?.id === keyId) setNewKey(null);
+      } else {
+        const data = await res.json();
+        setError(data.error ?? "Failed to delete key.");
       }
       setDeletingKeyId(null);
     });
@@ -62,21 +60,29 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-[20px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Revealed new key banner */}
       {newKey && (
-        <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4 space-y-3">
+        <div className="dashboard-rail space-y-3 border-yellow-500/30 bg-yellow-500/8 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <p className="text-sm font-semibold text-yellow-500">
-                Copy your API key now — it will not be shown again.
+                Copy this bearer token now — it will not be shown again.
+              </p>
+              <p className="text-sm text-foreground/68">
+                Use it in the <span className="font-mono">Authorization: Bearer</span>{" "}
+                header when a Ghostwriters agent calls your workspace APIs.
               </p>
               <p className="font-mono text-sm break-all">{newKey.api_key}</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleCopy}>
-              {copied ? "Copied!" : "Copy Key"}
-            </Button>
+            <CopyButton text={newKey.api_key} idleLabel="Copy Key" copiedLabel="Copied!" />
             <Button size="sm" variant="outline" onClick={handleDismissKey}>
               Dismiss
             </Button>
@@ -85,22 +91,30 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
       )}
 
       {/* Header row */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {keys.length} {keys.length === 1 ? "key" : "keys"}
-        </h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <h2 className="premium-kicker text-[0.68rem]">
+            {keys.length} {keys.length === 1 ? "key" : "keys"}
+          </h2>
+          <p className="max-w-2xl text-sm leading-6 text-foreground/62">
+            These keys authenticate internal Ghostwriters agents against your org. The
+            token value is shown only once, while the stored prefix helps you identify
+            which key is in use.
+          </p>
+        </div>
         <CreateKeyDialog onCreated={handleCreated} />
       </div>
 
       {/* Table */}
       {keys.length === 0 ? (
-        <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-          No agent keys yet. Create one to get started.
+        <p className="dashboard-rail border-dashed py-10 text-center text-sm text-muted-foreground">
+          No agent keys yet. Create one to let a Ghostwriters agent authenticate to
+          this workspace.
         </p>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="dashboard-rail overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/40">
+            <thead className="border-b border-border/50 bg-background/30">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Agent</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Key Prefix</th>
@@ -109,9 +123,9 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-border/40">
               {keys.map((key) => (
-                <tr key={key.id} className="hover:bg-muted/20">
+                <tr key={key.id} className="transition-colors hover:bg-background/28">
                   <td className="px-4 py-3 font-medium capitalize">{key.agent_name}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground">
                     {key.key_prefix}••••••••
@@ -121,7 +135,7 @@ export function AgentKeysTable({ initialKeys }: AgentKeysTableProps) {
                       {key.permissions.map((p) => (
                         <span
                           key={p}
-                          className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono text-muted-foreground"
+                          className="rounded-full border border-border/55 bg-background/36 px-2 py-0.5 text-xs font-mono text-muted-foreground"
                         >
                           {p}
                         </span>

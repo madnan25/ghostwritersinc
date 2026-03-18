@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logQueryError } from '@/lib/queries/errors'
 import type { AgentKey, ReviewEvent } from '@/lib/types'
 
 export async function getAgentKeys(): Promise<AgentKey[]> {
@@ -9,7 +10,7 @@ export async function getAgentKeys(): Promise<AgentKey[]> {
     .order('created_at', { ascending: true })
 
   if (error) {
-    console.error('Error fetching agent keys:', error)
+    logQueryError('agent keys', error)
     return []
   }
   return data ?? []
@@ -28,7 +29,7 @@ export async function getRecentReviewEventsByAgent(
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching review events for agent:', error)
+    logQueryError(`review events for agent ${agentName}`, error)
     return []
   }
   return data ?? []
@@ -43,7 +44,7 @@ export async function getAllRecentReviewEvents(limit = 20): Promise<ReviewEvent[
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching recent review events:', error)
+    logQueryError('recent review events', error)
     return []
   }
   return data ?? []

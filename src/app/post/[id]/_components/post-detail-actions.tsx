@@ -3,7 +3,19 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { approvePost, publishToLinkedIn, submitForAgentReview } from '@/app/actions/posts'
+import {
+  approvePost,
+  publishToLinkedIn,
+  submitForAgentReview,
+  submitForClientReview,
+} from '@/app/actions/posts'
+import { useCopyFeedback } from '@/hooks/use-copy-feedback'
+import {
+  canEditPost,
+  canRejectPost,
+  getApproveActionLabel,
+  isReviewQueueStatus,
+} from '@/lib/post-actions'
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
 import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
 
@@ -17,12 +29,16 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
   const [isPending, startTransition] = useTransition()
   const [publishError, setPublishError] = useState<string | null>(null)
   const [isPublishing, setIsPublishing] = useState(false)
-  const [copyToast, setCopyToast] = useState(false)
+  const { copied: copyToast, copy } = useCopyFeedback(3000)
   const router = useRouter()
 
   function handleApprove() {
     startTransition(async () => {
-      await approvePost(postId)
+      if (status === 'agent_review') {
+        await submitForClientReview(postId, 'client')
+      } else {
+        await approvePost(postId)
+      }
       router.push('/dashboard')
     })
   }
@@ -44,10 +60,8 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
     }
   }
 
-  function handleCopyAndOpen() {
-    navigator.clipboard.writeText(content)
-    setCopyToast(true)
-    setTimeout(() => setCopyToast(false), 3000)
+  async function handleCopyAndOpen() {
+    await copy(content)
     window.open('https://www.linkedin.com/feed/', '_blank')
   }
 
@@ -70,13 +84,16 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
       )
     }
 
-    if (status === 'pending_review') {
+    if (isReviewQueueStatus(status)) {
       return (
         <div className={wrapClass}>
           <Button size="sm" className={sticky ? 'flex-1' : ''} onClick={handleApprove} disabled={isPending}>
-            {isPending ? 'Approving…' : 'Approve'}
+            {isPending ? 'Approving…' : getApproveActionLabel(status)}
           </Button>
-          <RejectDialog postId={postId} />
+          {canEditPost(status) && (
+            <EditPostDialog postId={postId} initialContent={content} />
+          )}
+          {canRejectPost(status) && <RejectDialog postId={postId} />}
         </div>
       )
     }

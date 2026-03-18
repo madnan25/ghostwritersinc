@@ -5,8 +5,25 @@ import { createAdminClient } from './supabase/admin'
 
 const { compare } = bcrypt
 const AGENT_KEY_PREFIX = 'gw_agent_'
-const KEY_PREFIX_LENGTH = 8
+const LEGACY_KEY_PREFIX_LENGTH = 8
+const KEY_LOOKUP_HEX_LENGTH = 16
 const BCRYPT_ROUNDS = 12
+
+const CAPABILITY_TO_PERMISSIONS: Record<string, string[]> = {
+  read: ['posts:read', 'pillars:read', 'comments:read', 'reviews:read'],
+  write: ['posts:write', 'pillars:write', 'comments:write'],
+  review: ['reviews:write'],
+}
+
+function getKeyLookupPrefix(apiKey: string): string {
+  const randomHexStart = AGENT_KEY_PREFIX.length
+  const randomHexEnd = randomHexStart + KEY_LOOKUP_HEX_LENGTH
+  return `${AGENT_KEY_PREFIX}${apiKey.slice(randomHexStart, randomHexEnd)}`
+}
+
+function getLegacyKeyPrefix(apiKey: string): string {
+  return apiKey.slice(0, LEGACY_KEY_PREFIX_LENGTH)
+}
 
 /** Default permissions per agent type */
 export const DEFAULT_AGENT_PERMISSIONS: Record<string, string[]> = {
@@ -20,12 +37,18 @@ export function generateAgentKey(): string {
   return `${AGENT_KEY_PREFIX}${randomBytes(32).toString('hex')}`
 }
 
+export function getAgentKeyPrefix(plainKey: string): string {
+  return getKeyLookupPrefix(plainKey)
+}
+
 /** Hash an agent API key for storage. */
 export async function hashAgentKey(plainKey: string): Promise<string> {
   return bcrypt.hash(plainKey, BCRYPT_ROUNDS)
 }
 
 export interface AgentContext {
+  keyId?: string
+  keyPrefix?: string
   agentName: string
   organizationId: string
   permissions: string[]
@@ -47,13 +70,22 @@ export async function authenticateAgent(
   }
 
   const apiKey = authHeader.slice(7)
-  const prefix = apiKey.slice(0, KEY_PREFIX_LENGTH)
+  if (!apiKey.startsWith(AGENT_KEY_PREFIX)) {
+    return NextResponse.json(
+      { error: 'Invalid API key' },
+      { status: 401 }
+    )
+  }
+
+  const prefixes = Array.from(
+    new Set([getKeyLookupPrefix(apiKey), getLegacyKeyPrefix(apiKey)])
+  )
   const supabase = createAdminClient()
 
   const { data: candidates, error } = await supabase
     .from('agent_keys')
-    .select('agent_name, organization_id, permissions, api_key_hash')
-    .eq('key_prefix', prefix)
+    .select('id, agent_name, organization_id, permissions, api_key_hash, key_prefix')
+    .in('key_prefix', prefixes)
 
   if (error || !candidates || candidates.length === 0) {
     return NextResponse.json(
@@ -66,6 +98,8 @@ export async function authenticateAgent(
     const match = await compare(apiKey, candidate.api_key_hash)
     if (match) {
       return {
+        keyId: candidate.id,
+        keyPrefix: candidate.key_prefix,
         agentName: candidate.agent_name,
         organizationId: candidate.organization_id,
         permissions: candidate.permissions,
@@ -81,4 +115,32 @@ export async function authenticateAgent(
 
 export function isAgentContext(result: AgentContext | NextResponse): result is AgentContext {
   return !(result instanceof NextResponse)
+}
+
+export function hasAgentPermission(
+  permissions: string[],
+  requiredPermission: string
+): boolean {
+  if (permissions.includes(requiredPermission)) {
+    return true
+  }
+
+  const mappedPermissions = CAPABILITY_TO_PERMISSIONS[requiredPermission]
+  if (mappedPermissions) {
+    return mappedPermissions.some((permission) => permissions.includes(permission))
+  }
+
+  return Object.entries(CAPABILITY_TO_PERMISSIONS).some(
+    ([capability, granularPermissions]) =>
+      permissions.includes(capability) &&
+      granularPermissions.includes(requiredPermission)
+  )
+}
+
+export function getAgentRateLimitKey(
+  auth: AgentContext,
+  capability: 'read' | 'write' | 'review'
+): string {
+  const identity = auth.keyId ?? auth.keyPrefix ?? auth.agentName
+  return `${capability}:${auth.organizationId}:${identity}`
 }

@@ -11,3 +11,7 @@ export async function NotificationBellWrapper() {
 
   return <NotificationBell initialNotifications={notifications} />
 }
+
+export function NotificationBellFallback() {
+  return <NotificationBell initialNotifications={[]} />
+}

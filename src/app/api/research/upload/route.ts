@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (dbError) {
+    await admin.storage.from('research').remove([storagePath])
     return NextResponse.json({ error: dbError.message }, { status: 500 })
   }
 

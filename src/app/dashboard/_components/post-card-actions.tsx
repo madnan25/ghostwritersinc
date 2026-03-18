@@ -3,6 +3,12 @@
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { approvePost, submitForAgentReview, submitForClientReview } from '@/app/actions/posts'
+import {
+  canEditPost,
+  canRejectPost,
+  getApproveActionLabel,
+  isReviewQueueStatus,
+} from '@/lib/post-actions'
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
 
@@ -13,7 +19,8 @@ interface PostCardActionsProps {
 }
 
 // Shared button class for consistent 44px touch targets on mobile
-const btnClass = 'min-h-[44px] flex-1 sm:flex-none sm:min-h-0'
+const btnClass = 'min-h-[40px] flex-1 sm:flex-none sm:min-h-0'
+const primaryBtnClass = `${btnClass} border-border/60 bg-transparent text-foreground/72 hover:border-primary/22 hover:bg-background/34 hover:text-foreground`
 
 export function PostCardActions({ postId, status, content }: PostCardActionsProps) {
   const [isPending, startTransition] = useTransition()
@@ -28,20 +35,13 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
     })
   }
 
-  if (status === 'approved') {
-    return (
-      <div className="flex items-center gap-2">
-        <EditPostDialog postId={postId} initialContent={content} />
-      </div>
-    )
-  }
-
   if (status === 'draft') {
     return (
-      <div className="flex items-center gap-2 w-full">
+      <div className="flex w-full items-center gap-2">
         <Button
           size="sm"
-          className={btnClass}
+          variant="outline"
+          className={primaryBtnClass}
           onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
           disabled={isPending}
         >
@@ -52,17 +52,27 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
     )
   }
 
-  if (status !== 'pending_review' && status !== 'agent_review') {
+  if (status === 'approved') {
+    return canEditPost(status) ? (
+      <div className="flex items-center gap-2">
+        <EditPostDialog postId={postId} initialContent={content} />
+      </div>
+    ) : null
+  }
+
+  if (!isReviewQueueStatus(status)) {
     return null
   }
 
   return (
-    <div className="flex items-center gap-2 w-full">
-      <Button size="sm" className={btnClass} onClick={handleApprove} disabled={isPending}>
-        {isPending ? 'Approving…' : status === 'agent_review' ? 'Approve for Review' : 'Approve'}
+    <div className="flex w-full items-center gap-2">
+      <Button size="sm" variant="outline" className={primaryBtnClass} onClick={handleApprove} disabled={isPending}>
+        {isPending ? 'Approving…' : getApproveActionLabel(status)}
       </Button>
-      <EditPostDialog postId={postId} initialContent={content} />
-      <RejectDialog postId={postId} />
+      {canEditPost(status) && (
+        <EditPostDialog postId={postId} initialContent={content} />
+      )}
+      {canRejectPost(status) && <RejectDialog postId={postId} />}
     </div>
   )
 }

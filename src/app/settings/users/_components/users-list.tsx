@@ -31,8 +31,8 @@ function StatusBadge({ active }: { active: boolean }) {
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
         active
-          ? "bg-emerald-500/10 text-emerald-500"
-          : "bg-destructive/10 text-destructive"
+          ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+          : "border border-destructive/20 bg-destructive/10 text-destructive"
       }`}
     >
       {active ? "Active" : "Inactive"}
@@ -70,7 +70,7 @@ export function UsersList({
         return (
           <div
             key={user.id}
-            className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:gap-4"
+            className="editorial-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-4"
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <UserAvatar user={user} />
@@ -87,16 +87,18 @@ export function UsersList({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={user.role}
-                disabled={isSelf || rolePending}
-                onChange={(e) => onRoleChange(user.id, e.target.value)}
-                className="rounded-lg border border-input bg-background px-2 py-1.5 text-xs min-h-[36px] focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="owner">Owner</option>
-                <option value="admin">Admin</option>
-                <option value="member">Member</option>
-              </select>
+              <div className="dashboard-rail p-1">
+                <select
+                  value={user.role}
+                  disabled={isSelf || rolePending}
+                  onChange={(e) => onRoleChange(user.id, e.target.value)}
+                  className="rounded-[14px] border border-input bg-background px-3 py-2 text-xs min-h-[40px] focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="owner">Owner</option>
+                  <option value="admin">Admin</option>
+                  <option value="member">Member</option>
+                </select>
+              </div>
 
               {!isSelf && (
                 <>

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
+import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
 import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
@@ -11,27 +12,6 @@ import { OverallCommentForm } from './_components/overall-comment-form'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'No date set'
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(dateStr))
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  pending_review: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  approved: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
-  rejected: 'bg-destructive/15 text-destructive border-destructive/25',
-  draft: 'bg-muted text-muted-foreground border-border',
-  agent_review: 'bg-blue-500/15 text-blue-400 border-blue-500/25',
-  scheduled: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
-  published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
 }
 
 export default async function PostPage({ params }: PostPageProps) {
@@ -49,11 +29,11 @@ export default async function PostPage({ params }: PostPageProps) {
     STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
 
   return (
-    <div className="container px-4 py-8 pb-28 md:pb-8">
+    <div className="premium-page pb-28 md:pb-8">
       {/* Back link */}
       <Link
         href="/dashboard"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-1 rounded-full border border-border/60 bg-card/35 px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronLeft className="size-4" />
         Back to queue
@@ -63,15 +43,15 @@ export default async function PostPage({ params }: PostPageProps) {
         {/* Left column: full content + actions */}
         <div className="flex flex-col gap-6">
           {/* Header */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="premium-panel flex flex-wrap items-start justify-between gap-4 p-6 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
               {post.pillar && (
-                <span className="rounded-full border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="rounded-full border border-border/60 bg-muted/45 px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                   {post.pillar}
                 </span>
               )}
               <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle}`}
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
               >
                 {post.status.replace('_', ' ')}
               </span>
@@ -81,10 +61,10 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Post content with inline commenting */}
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+          <div className="premium-panel p-6 sm:p-7">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">
               Full Content
-              <span className="ml-2 font-normal text-xs text-muted-foreground/60">
+              <span className="ml-2 font-normal text-[0.72rem] tracking-normal text-muted-foreground/70">
                 — select text to leave an inline comment
               </span>
             </h2>
@@ -92,12 +72,12 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Comment thread + overall comment form */}
-          <div className="rounded-xl border border-border bg-card p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <div className="premium-panel p-6 sm:p-7">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">
               <MessageSquare className="size-4" />
               Comments
               {comments.length > 0 && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[0.72rem] tracking-normal text-foreground">
                   {comments.length}
                 </span>
               )}
@@ -109,19 +89,19 @@ export default async function PostPage({ params }: PostPageProps) {
           </div>
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-5 text-sm sm:grid-cols-2">
+          <div className="premium-subtle-panel grid grid-cols-1 gap-4 p-6 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2">
               <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>
-                <div className="text-xs text-muted-foreground">Suggested publish</div>
-                <div className="mt-0.5 font-medium">{formatDate(post.suggested_publish_at)}</div>
+                <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Suggested publish</div>
+                <div className="mt-0.5 font-medium">{formatPostDate(post.suggested_publish_at)}</div>
               </div>
             </div>
             {post.brief_ref && (
               <div className="flex items-start gap-2">
                 <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <div className="text-xs text-muted-foreground">Brief reference</div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Brief reference</div>
                   <div className="mt-0.5 font-medium">{post.brief_ref}</div>
                 </div>
               </div>
@@ -130,7 +110,7 @@ export default async function PostPage({ params }: PostPageProps) {
               <div className="flex items-start gap-2">
                 <Bot className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <div className="text-xs text-muted-foreground">Written by</div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Written by</div>
                   <div className="mt-0.5 font-medium">{post.created_by_agent}</div>
                 </div>
               </div>
@@ -139,7 +119,7 @@ export default async function PostPage({ params }: PostPageProps) {
               <div className="flex items-start gap-2">
                 <User className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <div className="text-xs text-muted-foreground">Agent pre-review</div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Agent pre-review</div>
                   <div className="mt-0.5 font-medium">{post.reviewed_by_agent}</div>
                   {post.review_notes && (
                     <div className="mt-0.5 text-xs text-muted-foreground italic">
@@ -153,7 +133,7 @@ export default async function PostPage({ params }: PostPageProps) {
 
           {/* Rejection reason (if rejected) */}
           {post.status === 'rejected' && post.rejection_reason && (
-            <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-5">
+            <div className="rounded-[24px] border border-destructive/25 bg-destructive/10 p-6">
               <h3 className="text-sm font-medium text-destructive">Rejection reason</h3>
               <p className="mt-1 text-sm text-muted-foreground">{post.rejection_reason}</p>
             </div>
@@ -162,13 +142,13 @@ export default async function PostPage({ params }: PostPageProps) {
 
         {/* Right column: LinkedIn preview + review chain */}
         <div className="flex flex-col gap-6">
-          <div>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">LinkedIn Preview</h2>
+          <div className="premium-panel p-5 sm:p-6">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">LinkedIn Preview</h2>
             <LinkedInPreview content={post.content} />
           </div>
 
-          <div>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Review Chain</h2>
+          <div className="premium-panel p-5 sm:p-6">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>
             <ReviewChain events={reviewEvents} />
           </div>
         </div>

@@ -82,46 +82,42 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/* ── Luscious Lime dark theme ─────────────────────────────────────────── */
 .dark {
-  /* Deep midnight violet-black base */
-  --background: oklch(0.09 0.025 280);
-  /* Near-white with a breath of purple — reads cleanly, harmonises with surface */
-  --foreground: oklch(0.96 0.008 280);
-  /* Cards float clearly above the base: more chroma than bg, not less */
-  --card: oklch(0.14 0.052 278);
-  --card-foreground: oklch(0.96 0.008 280);
-  /* Popovers: highest elevation layer */
-  --popover: oklch(0.17 0.058 278);
-  --popover-foreground: oklch(0.96 0.008 280);
-  /* Vibrant violet — more punch, better contrast against dark surfaces */
-  --primary: oklch(0.63 0.27 278);
-  --primary-foreground: oklch(0.98 0 0);
-  /* Subtle surface tones */
-  --secondary: oklch(0.19 0.052 278);
-  --secondary-foreground: oklch(0.90 0.014 280);
-  --muted: oklch(0.19 0.048 278);
-  /* Purple-tinted secondary text — no more pure-gray dissonance on coloured surfaces */
-  --muted-foreground: oklch(0.64 0.048 278);
-  --accent: oklch(0.21 0.065 276);
-  --accent-foreground: oklch(0.94 0.014 280);
-  --destructive: oklch(0.65 0.22 22);
-  /* Colour-harmonised borders — subtle purple tint instead of plain white */
-  --border: oklch(0.56 0.12 278 / 18%);
-  --input: oklch(0.56 0.12 278 / 18%);
-  --ring: oklch(0.63 0.27 278);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.11 0.035 280);
-  --sidebar-foreground: oklch(0.96 0.008 280);
-  --sidebar-primary: oklch(0.63 0.27 278);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.21 0.065 276);
-  --sidebar-accent-foreground: oklch(0.94 0.014 280);
-  --sidebar-border: oklch(0.56 0.12 278 / 18%);
-  --sidebar-ring: oklch(0.63 0.27 278);
+  --background: oklch(0.125 0.01 150);
+  --foreground: oklch(0.975 0.006 145);
+
+  --card: oklch(0.185 0.012 150);
+  --card-foreground: oklch(0.975 0.006 145);
+  --popover: oklch(0.215 0.014 150);
+  --popover-foreground: oklch(0.975 0.006 145);
+
+  /* Lime remains the brand accent, not the full background treatment */
+  --primary: oklch(0.77 0.18 128);
+  --primary-foreground: oklch(0.105 0.01 150);
+
+  --secondary: oklch(0.23 0.01 150);
+  --secondary-foreground: oklch(0.95 0.008 145);
+  --muted: oklch(0.21 0.008 150);
+  --muted-foreground: oklch(0.76 0.01 150);
+  --accent: oklch(0.27 0.012 150);
+  --accent-foreground: oklch(0.97 0.006 145);
+
+  --destructive: oklch(0.68 0.19 28);
+
+  --border: oklch(0.82 0.03 128 / 14%);
+  --input: oklch(0.82 0.03 128 / 14%);
+  --ring: oklch(0.77 0.18 128);
+
+  /* Sidebar */
+  --sidebar: oklch(0.15 0.01 150);
+  --sidebar-foreground: oklch(0.97 0.006 145);
+  --sidebar-primary: oklch(0.77 0.18 128);
+  --sidebar-primary-foreground: oklch(0.105 0.01 150);
+  --sidebar-accent: oklch(0.24 0.012 150);
+  --sidebar-accent-foreground: oklch(0.95 0.008 145);
+  --sidebar-border: oklch(0.82 0.03 128 / 14%);
+  --sidebar-ring: oklch(0.77 0.18 128);
 }
 
 @layer base {
@@ -130,16 +126,287 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  .dark body {
-    /* Aurora bloom from top-centre + secondary blush at bottom-right for depth */
-    background-color: oklch(0.09 0.025 280);
-    background-image:
-      radial-gradient(ellipse 130% 55% at 50% -8%, oklch(0.22 0.14 278 / 55%) 0%, transparent 65%),
-      radial-gradient(ellipse 70% 45% at 88% 108%, oklch(0.17 0.10 300 / 28%) 0%, transparent 55%);
-    background-attachment: fixed;
+    font-family: 'Switzer', var(--font-geist-sans), sans-serif;
   }
   html {
     @apply font-sans;
+    font-family: 'Switzer', var(--font-geist-sans), sans-serif;
+  }
+  .dark body {
+    background-color: oklch(0.125 0.01 150);
+    background-image:
+      radial-gradient(ellipse 118% 62% at 50% -8%, oklch(0.36 0.05 140 / 26%) 0%, transparent 56%),
+      radial-gradient(ellipse 44% 32% at 100% 0%, oklch(0.96 0.03 110 / 10%) 0%, transparent 42%),
+      radial-gradient(ellipse 38% 26% at 0% 18%, oklch(0.32 0.03 150 / 11%) 0%, transparent 55%),
+      linear-gradient(180deg, oklch(0.18 0.012 150) 0%, oklch(0.105 0.008 150) 100%);
+    background-attachment: scroll;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 36%, transparent);
+    color: var(--background);
+  }
+}
+
+@layer components {
+  /* ── Shell ──────────────────────────────────────────────────────────── */
+  .premium-shell {
+    @apply relative min-h-screen;
+  }
+
+  /* Subtle grid overlay */
+  .premium-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px);
+    background-size: 84px 84px;
+    mask-image: radial-gradient(ellipse 75% 65% at 50% 50%, black 20%, transparent 80%);
+    opacity: 0.08;
+  }
+
+  /* Ambient light bloom */
+  .premium-shell::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 14% 12%, oklch(0.52 0.06 143 / 0.12) 0%, transparent 28%),
+      radial-gradient(circle at 86% 10%, oklch(0.94 0.03 110 / 0.08) 0%, transparent 30%),
+      radial-gradient(circle at 50% 96%, oklch(0.34 0.04 143 / 0.12) 0%, transparent 34%);
+    filter: blur(20px);
+    opacity: 0.68;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  .premium-page {
+    @apply container relative px-4 py-8 md:px-6 md:py-10;
+  }
+
+  /* ── Panels ─────────────────────────────────────────────────────────── */
+  .premium-panel {
+    @apply relative isolate overflow-hidden rounded-[28px] border border-border/80 bg-card/88 shadow-[0_20px_64px_-36px_rgba(0,0,0,0.58)] backdrop-blur-lg;
+    background-image:
+      linear-gradient(175deg, color-mix(in oklab, var(--card) 82%, white 8%) 0%, color-mix(in oklab, var(--card) 94%, black 4%) 100%);
+  }
+
+  /* Top glass sheen */
+  .premium-panel::before {
+    content: "";
+    position: absolute;
+    inset: 1px 1px auto;
+    height: 44%;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.02) 68%, transparent 100%);
+    opacity: 0.9;
+  }
+
+  /* Accent bloom on upper-right corner */
+  .premium-panel::after {
+    content: "";
+    position: absolute;
+    top: -18%;
+    right: -6%;
+    width: 44%;
+    height: 54%;
+    border-radius: 9999px;
+    pointer-events: none;
+    background: radial-gradient(circle, oklch(0.77 0.18 128 / 0.12) 0%, transparent 68%);
+    filter: blur(20px);
+    opacity: 0.7;
+  }
+
+  .premium-subtle-panel {
+    @apply relative isolate overflow-hidden rounded-[24px] border border-border/70 bg-card/70 backdrop-blur-lg;
+    background-image:
+      linear-gradient(175deg, color-mix(in oklab, var(--card) 74%, white 8%) 0%, color-mix(in oklab, var(--card) 94%, black 4%) 100%);
+  }
+
+  /* Top glass sheen */
+  .premium-subtle-panel::before {
+    content: "";
+    position: absolute;
+    inset: 1px 1px auto;
+    height: 38%;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 76%, transparent 100%);
+  }
+
+  /* Accent bloom on lower-left */
+  .premium-subtle-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto auto -30% -14%;
+    width: 42%;
+    height: 52%;
+    border-radius: 9999px;
+    pointer-events: none;
+    background: radial-gradient(circle, oklch(0.46 0.08 140 / 0.12) 0%, transparent 72%);
+    filter: blur(16px);
+  }
+
+  /* ── Typography utilities ───────────────────────────────────────────── */
+  .premium-kicker {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.36em] text-primary/78;
+  }
+
+  /* Headings stay mostly editorial white with a restrained accent sweep */
+  .premium-heading {
+    background-image: linear-gradient(
+      125deg,
+      oklch(0.985 0.004 145) 0%,
+      oklch(0.985 0.004 145) 52%,
+      oklch(0.83 0.12 128) 78%,
+      oklch(0.965 0.012 110) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .premium-copy {
+    color: color-mix(in oklab, var(--foreground) 74%, var(--muted-foreground) 26%);
+  }
+
+  .workspace-live-gradient {
+    background-image: linear-gradient(
+      110deg,
+      oklch(0.985 0.004 145) 0%,
+      oklch(0.84 0.12 128) 28%,
+      oklch(0.965 0.012 110) 52%,
+      oklch(0.84 0.12 128) 78%,
+      oklch(0.985 0.004 145) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: premiumGradientDrift 9s ease-in-out infinite;
+  }
+
+  .dashboard-frame {
+    @apply rounded-[32px] border border-border/70 bg-card/68 backdrop-blur-xl;
+    box-shadow: 0 20px 64px -42px rgba(0, 0, 0, 0.52);
+  }
+
+  .dashboard-rail {
+    @apply rounded-[26px] border border-border/60 bg-background/42 backdrop-blur-lg;
+  }
+
+  .dashboard-pill {
+    @apply inline-flex items-center rounded-full border border-border/70 bg-background/54 px-3 py-1 text-xs font-medium text-foreground/72 transition-colors;
+  }
+
+  .dashboard-pill-active {
+    @apply border-border/80 bg-card text-foreground;
+    box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.4);
+  }
+
+  .dashboard-stage-tab {
+    @apply relative flex min-w-[118px] shrink-0 items-center justify-between gap-3 rounded-[18px] border border-transparent px-4 py-3 text-left text-sm font-medium text-foreground/62 transition-[transform,border-color,background-color,color,box-shadow] duration-200;
+  }
+
+  .dashboard-stage-tab:hover {
+    @apply border-border/60 bg-background/36 text-foreground;
+    transform: translateY(-1px);
+  }
+
+  .dashboard-stage-tab-active {
+    @apply border-border/75 bg-card text-foreground;
+    box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.38);
+  }
+
+  .dashboard-stage-count {
+    @apply inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[0.7rem] tabular-nums;
+  }
+
+  .editorial-card {
+    @apply relative overflow-hidden rounded-[28px] border border-border/65 bg-card/84;
+    box-shadow: 0 12px 36px -28px rgba(0, 0, 0, 0.34);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, rgba(255, 255, 255, 0.008) 100%);
+  }
+
+  .editorial-card:hover {
+    @apply border-border/80;
+  }
+
+  .editorial-rule {
+    @apply border-t border-border/45;
+  }
+
+  .editorial-chip {
+    @apply inline-flex items-center rounded-full border border-border/65 bg-background/36 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-foreground/66;
+  }
+
+  .editorial-meta {
+    @apply text-[0.72rem] uppercase tracking-[0.16em] text-foreground/52;
+  }
+
+  .status-chip-live {
+    background-image: linear-gradient(120deg, rgba(0, 146, 69, 0.16), rgba(124, 198, 36, 0.22), rgba(252, 238, 33, 0.22), rgba(0, 146, 69, 0.16));
+    background-size: 200% 100%;
+    border-color: rgba(145, 255, 88, 0.24);
+    color: rgba(240, 255, 218, 0.96);
+    animation: liveGradientShift 4.8s linear infinite;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  }
+
+  .pillar-mix-card {
+    @apply rounded-[20px] border border-border/60 bg-background/28 p-4 transition-colors;
+  }
+
+  .pillar-mix-card:hover {
+    @apply border-border/80 bg-background/36;
+  }
+
+  .pillar-mix-track {
+    @apply h-1.5 overflow-hidden rounded-full bg-background/72;
+  }
+
+  @keyframes liveGradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  @keyframes premiumGradientDrift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Gradient text utility for general use */
+  .lime-gradient-text {
+    background-image: linear-gradient(90deg, #009245 0%, #7bc624 50%, #FCEE21 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Lime gradient surface */
+  .lime-gradient-bg {
+    background-image: linear-gradient(125deg, #009245 0%, #5eb630 40%, #b8d800 72%, #FCEE21 100%);
+  }
+
+  @media (max-width: 768px) {
+    .premium-shell::before,
+    .premium-shell::after {
+      display: none;
+    }
   }
 }

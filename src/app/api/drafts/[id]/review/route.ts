@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { authenticateAgent, isAgentContext } from '@/lib/agent-auth'
+import {
+  authenticateAgent,
+  getAgentRateLimitKey,
+  hasAgentPermission,
+  isAgentContext,
+} from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import type { PostStatus } from '@/lib/types'
@@ -20,10 +25,10 @@ export async function POST(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = rateLimit(`write:${auth.agentName}`, { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'review'), { maxRequests: 10 })
   if (limited) return limited
 
-  if (!auth.permissions.includes('review')) {
+  if (!hasAgentPermission(auth.permissions, 'review')) {
     return NextResponse.json(
       { error: 'Insufficient permissions: review access required' },
       { status: 403 }
@@ -96,7 +101,8 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      console.error('[drafts] DB error updating review:', updateError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 
     // Create review event

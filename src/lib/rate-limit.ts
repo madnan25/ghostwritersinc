@@ -1,12 +1,35 @@
 import { NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
+// Use Upstash Redis when configured (serverless-safe), otherwise fall back to in-memory
+const useUpstash = !!(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
+// Upstash rate limiters keyed by config string
+const upstashLimiters = new Map<string, Ratelimit>();
+
+function getUpstashLimiter(maxRequests: number, windowMs: number): Ratelimit {
+  const key = `${maxRequests}:${windowMs}`;
+  let limiter = upstashLimiters.get(key);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs} ms`),
+      prefix: "rl",
+    });
+    upstashLimiters.set(key, limiter);
+  }
+  return limiter;
+}
+
+// --- In-memory fallback (single-process only) ---
 interface RateLimitEntry {
   timestamps: number[];
 }
 
 const store = new Map<string, RateLimitEntry>();
-
-// Clean up old entries every 5 minutes
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 let lastCleanup = Date.now();
 
@@ -22,13 +45,10 @@ function cleanup(windowMs: number) {
   }
 }
 
-/**
- * Simple in-memory sliding window rate limiter.
- * Returns null if allowed, or a 429 NextResponse if rate limited.
- */
-export function rateLimit(
+function inMemoryRateLimit(
   identifier: string,
-  { maxRequests = 60, windowMs = 60_000 }: { maxRequests?: number; windowMs?: number } = {}
+  maxRequests: number,
+  windowMs: number
 ): NextResponse | null {
   cleanup(windowMs);
 
@@ -41,7 +61,6 @@ export function rateLimit(
     store.set(identifier, entry);
   }
 
-  // Remove timestamps outside the window
   entry.timestamps = entry.timestamps.filter((t) => t > cutoff);
 
   if (entry.timestamps.length >= maxRequests) {
@@ -59,4 +78,34 @@ export function rateLimit(
 
   entry.timestamps.push(now);
   return null;
+}
+
+/**
+ * Sliding window rate limiter.
+ * Uses Upstash Redis when UPSTASH_REDIS_REST_URL/TOKEN are set (serverless-safe).
+ * Falls back to in-memory for local development.
+ */
+export async function rateLimit(
+  identifier: string,
+  { maxRequests = 60, windowMs = 60_000 }: { maxRequests?: number; windowMs?: number } = {}
+): Promise<NextResponse | null> {
+  if (useUpstash) {
+    const limiter = getUpstashLimiter(maxRequests, windowMs);
+    const result = await limiter.limit(identifier);
+    if (!result.success) {
+      const retryAfter = Math.ceil(
+        (result.reset - Date.now()) / 1000
+      );
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.max(retryAfter, 1)) },
+        }
+      );
+    }
+    return null;
+  }
+
+  return inMemoryRateLimit(identifier, maxRequests, windowMs);
 }

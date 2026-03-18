@@ -1,11 +1,10 @@
-import { BrandWordmark } from "@/components/brand-wordmark";
-
 interface AuthShellProps {
   eyebrow: string;
-  title: string;
-  description: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  visual?: React.ReactNode;
 }
 
 export function AuthShell({
@@ -14,62 +13,37 @@ export function AuthShell({
   description,
   children,
   footer,
+  visual,
 }: AuthShellProps) {
   return (
-    <div className="premium-page flex min-h-[calc(100vh-5rem)] items-center justify-center">
-      <div className="grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="hidden min-h-[620px] flex-col justify-between rounded-[36px] border border-border/60 bg-card/58 p-10 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.54)] backdrop-blur-2xl lg:flex">
-          <div className="space-y-8">
-            <BrandWordmark href="/" />
-            <div className="space-y-4">
-              <p className="premium-kicker">
-                Editorial Command Center
-              </p>
-              <h2 className="premium-heading max-w-md text-4xl font-semibold tracking-[-0.05em]">
-                Premium infrastructure for disciplined LinkedIn publishing.
-              </h2>
-              <p className="premium-copy max-w-lg text-base leading-7">
-                Review, refine, approve, and ship executive content through a calmer,
-                more deliberate workspace designed for teams that care about voice.
-              </p>
-            </div>
-          </div>
+    <div className="container px-4 md:px-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-6xl items-center justify-center py-6 md:py-8">
+        <section className="dashboard-frame relative w-full overflow-hidden p-5 sm:p-6 lg:p-7">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(155,255,82,0.12)_0%,rgba(255,255,255,0.03)_45%,transparent_72%)] blur-3xl"
+          />
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="premium-subtle-panel p-4">
-              <p className="premium-kicker text-[0.68rem]">Review</p>
-              <p className="premium-copy mt-2 text-sm">Sharper feedback loops with cleaner editorial states.</p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.32fr)_minmax(300px,0.76fr)] lg:items-start">
+            <div className="flex flex-col">
+              <div className="max-w-[48rem] space-y-2.5">
+                <p className="premium-kicker text-foreground/84">{eyebrow}</p>
+                <h1 className="text-[clamp(2.2rem,3.8vw,3.7rem)] font-semibold tracking-[-0.055em] leading-[0.98]">
+                  {title}
+                </h1>
+                <p className="premium-copy max-w-none text-sm leading-6 sm:text-[0.95rem] sm:leading-7">
+                  {description}
+                </p>
+              </div>
+              {visual ? <div className="mt-6 lg:mt-7">{visual}</div> : null}
             </div>
-            <div className="premium-subtle-panel p-4">
-              <p className="premium-kicker text-[0.68rem]">Control</p>
-              <p className="premium-copy mt-2 text-sm">Manage agents, permissions, and publishing with confidence.</p>
-            </div>
-            <div className="premium-subtle-panel p-4">
-              <p className="premium-kicker text-[0.68rem]">Presence</p>
-              <p className="premium-copy mt-2 text-sm">A more elevated environment for brand-sensitive content work.</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="premium-panel mx-auto w-full max-w-xl p-8 sm:p-10">
-          <div className="mb-8 flex lg:hidden">
-            <BrandWordmark href="/" compact />
+            <div className="dashboard-rail rounded-[28px] p-4 sm:p-5 lg:self-center">
+              <div>{children}</div>
+              {footer ? <div className="mt-4">{footer}</div> : null}
+            </div>
           </div>
-          <div className="space-y-3">
-            <p className="premium-kicker">
-              {eyebrow}
-            </p>
-            <h1 className="premium-heading text-4xl font-semibold tracking-[-0.05em]">
-              {title}
-            </h1>
-            <p className="premium-copy max-w-lg text-sm leading-7">
-              {description}
-            </p>
-          </div>
-
-          <div className="mt-8">{children}</div>
-          {footer ? <div className="mt-8">{footer}</div> : null}
-        </div>
+        </section>
       </div>
     </div>
   );
