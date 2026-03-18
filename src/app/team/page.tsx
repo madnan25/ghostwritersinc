@@ -1,5 +1,7 @@
 import { getAllRecentReviewEvents, getCommissionedAgents } from '@/lib/queries/agents'
 import type { ReviewEvent } from '@/lib/types'
+import { getCurrentOrgUser } from '@/lib/server-auth'
+import { HiringRequestSection } from './_components/hiring-request-section'
 
 // Hardcoded metadata for known agents
 const AGENT_META: Record<
@@ -184,10 +186,22 @@ function AgentCard({
 
 export default async function TeamPage() {
   // Auth handled by middleware
-  const [agents, recentEvents] = await Promise.all([
+  const [agents, recentEvents, authResult] = await Promise.all([
     getCommissionedAgents(),
     getAllRecentReviewEvents(50),
+    getCurrentOrgUser(),
   ])
+
+  let organizationContextSharingEnabled = false
+  if (authResult.status === 'authenticated') {
+    const { supabase, profile } = authResult.context
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('context_sharing_enabled')
+      .eq('id', profile.organization_id)
+      .maybeSingle()
+    organizationContextSharingEnabled = org?.context_sharing_enabled === true
+  }
 
   // Group recent events by agent
   const eventsByAgent: Record<string, ReviewEvent[]> = {}
@@ -233,6 +247,8 @@ export default async function TeamPage() {
           ))}
         </div>
       )}
+
+      <HiringRequestSection organizationContextSharingEnabled={organizationContextSharingEnabled} />
     </div>
   )
 }
