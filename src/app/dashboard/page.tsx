@@ -3,6 +3,7 @@ import { computeRotationWarnings } from '@/lib/post-display'
 import { getDashboardMetrics, getDashboardNarrative } from '@/lib/dashboard-ui'
 import { DashboardHero } from './_components/dashboard-hero'
 import { PostGrid } from './_components/post-grid'
+import { AgentActivityFeed } from './_components/agent-activity-feed'
 
 export default async function DashboardPage() {
   // Auth + onboarding handled by middleware
@@ -16,6 +17,8 @@ export default async function DashboardPage() {
       <DashboardHero metrics={metrics} narrative={narrative} />
 
       <PostGrid posts={posts} pillars={pillars} rotationWarnings={rotationWarnings} />
+
+      <AgentActivityFeed />
     </div>
   )
 }
