@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { AgentActionType } from '@/lib/types'
 
+const MAX_PROVIDER_STRING_LENGTH = 128
+
 interface ProviderMetadata {
   provider_run_id?: string
   provider_session_key?: string
@@ -16,6 +18,21 @@ interface LogActivityParams {
   providerMetadata?: ProviderMetadata
 }
 
+function sanitizeProviderMetadata(meta?: ProviderMetadata): Record<string, unknown> {
+  if (!meta) return {}
+  const sanitized: Record<string, unknown> = {}
+  if (meta.provider_run_id) {
+    sanitized.provider_run_id = meta.provider_run_id.slice(0, MAX_PROVIDER_STRING_LENGTH)
+  }
+  if (meta.provider_session_key) {
+    sanitized.provider_session_key = meta.provider_session_key.slice(0, MAX_PROVIDER_STRING_LENGTH)
+  }
+  if (meta.duration_ms != null) {
+    sanitized.duration_ms = meta.duration_ms
+  }
+  return sanitized
+}
+
 /**
  * Fire-and-forget insert into agent_activity_log.
  * Never throws — failures are logged to stderr only.
@@ -29,7 +46,7 @@ export function logAgentActivity(params: LogActivityParams): void {
       agent_id: params.agentId,
       post_id: params.postId ?? null,
       action_type: params.actionType,
-      metadata: { ...(params.metadata ?? {}), ...(params.providerMetadata ?? {}) },
+      metadata: { ...(params.metadata ?? {}), ...sanitizeProviderMetadata(params.providerMetadata) },
     })
     .then(({ error }) => {
       if (error) {

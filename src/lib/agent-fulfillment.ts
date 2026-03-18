@@ -175,6 +175,13 @@ export async function commissionAgentWithInitialKey({
     .single();
 
   if (agentError || !agent) {
+    // Unique constraint on (organization_id, provider, provider_agent_ref) — concurrent race
+    if (agentError?.code === "23505" && agentError.message?.includes("idx_agents_org_provider_ref")) {
+      throw new AgentFulfillmentError(
+        "An agent with this provider reference already exists (concurrent request).",
+        409
+      );
+    }
     throw new AgentFulfillmentError("Failed to create commissioned agent", 500);
   }
 
