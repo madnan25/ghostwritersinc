@@ -2,11 +2,60 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { encrypt } from "@/lib/crypto";
+import {
+  clearInviteCookie,
+  decodeInviteCookie,
+  getPendingInvitationByToken,
+  INVITE_COOKIE_NAME,
+  normalizeInviteEmail,
+} from "@/lib/invitations";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+function getLinkedInProfile(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const email =
+    typeof user.email === "string"
+      ? user.email
+      : typeof metadata.email === "string"
+        ? metadata.email
+        : null;
+  const name =
+    typeof metadata.full_name === "string"
+      ? metadata.full_name
+      : typeof metadata.name === "string"
+        ? metadata.name
+        : email?.split("@")[0] ?? "User";
+  const avatarUrl =
+    typeof metadata.avatar_url === "string"
+      ? metadata.avatar_url
+      : typeof metadata.picture === "string"
+        ? metadata.picture
+        : null;
+  const linkedinId = typeof metadata.sub === "string" ? metadata.sub : null;
+
+  return {
+    linkedinId,
+    email,
+    name,
+    avatarUrl,
+  };
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const rawNext = searchParams.get("next") ?? "/dashboard";
+  // Prevent open redirect: only allow relative paths, block protocol-relative URLs
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+
+  function redirectWithInviteClear(path: string) {
+    const response = NextResponse.redirect(`${origin}${path}`);
+    clearInviteCookie(response.cookies);
+    return response;
+  }
 
   if (code) {
     const cookieStore = await cookies();
@@ -31,6 +80,9 @@ export async function GET(request: Request) {
 
     if (!error && data.session) {
       const user = data.session.user;
+      const linkedInProfile = getLinkedInProfile(user);
+      const inviteCookie = cookieStore.get(INVITE_COOKIE_NAME)?.value;
+      const inviteToken = inviteCookie ? decodeInviteCookie(inviteCookie) : null;
 
       // Check if user exists in our users table
       const { data: existingUser } = await supabase
@@ -40,36 +92,75 @@ export async function GET(request: Request) {
         .single();
 
       if (!existingUser) {
-        // Auto-create organization and user for new signups
-        const name =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.email?.split("@")[0] ||
-          "User";
-        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        if (!inviteToken) {
+          await supabase.auth.signOut();
+          return redirectWithInviteClear("/login?error=no_invitation");
+        }
 
-        const { data: org } = await supabase
-          .from("organizations")
-          .insert({ name: `${name}'s Workspace`, slug: `${slug}-${Date.now()}` })
-          .select("id")
-          .single();
+        const adminClient = createAdminClient();
+        const invitation = await getPendingInvitationByToken(adminClient, inviteToken);
 
-        if (org) {
-          await supabase.from("users").insert({
+        if (!invitation) {
+          await supabase.auth.signOut();
+          return redirectWithInviteClear("/login?error=invalid_invitation");
+        }
+
+        const normalizedUserEmail = normalizeInviteEmail(user.email ?? "");
+        if (!normalizedUserEmail || normalizedUserEmail !== invitation.email) {
+          await supabase.auth.signOut();
+          return redirectWithInviteClear("/login?error=invite_email_mismatch");
+        }
+
+        // Atomically claim the invitation first to prevent double-spend.
+        // The `.is("accepted_at", null)` condition ensures only one concurrent
+        // request can claim it — the loser gets zero rows updated.
+        const acceptedAt = new Date().toISOString();
+        const { data: claimed } = await adminClient
+          .from("user_invitations")
+          .update({ accepted_at: acceptedAt })
+          .eq("id", invitation.id)
+          .is("accepted_at", null)
+          .select("id");
+
+        if (!claimed || claimed.length === 0) {
+          // Another request already claimed this token
+          await supabase.auth.signOut();
+          return redirectWithInviteClear("/login?error=invalid_invitation");
+        }
+
+        // Create user in the invitation's org with the invited role
+        const { error: insertError } = await adminClient
+          .from("users")
+          .insert({
             id: user.id,
-            organization_id: org.id,
-            linkedin_id: user.user_metadata?.sub || null,
-            name,
-            email: user.email!,
-            avatar_url: user.user_metadata?.avatar_url || null,
-            role: "owner",
+            organization_id: invitation.organization_id,
+            linkedin_id: linkedInProfile.linkedinId,
+            name: linkedInProfile.name,
+            email: linkedInProfile.email!,
+            avatar_url: linkedInProfile.avatarUrl,
+            role: invitation.role,
+            is_active: true,
           });
+
+        if (insertError) {
+          // Rollback invitation claim so it can be retried
+          await adminClient
+            .from("user_invitations")
+            .update({ accepted_at: null })
+            .eq("id", invitation.id);
+          await supabase.auth.signOut();
+          return redirectWithInviteClear("/login?error=auth_callback_failed");
         }
       } else {
-        // Update linkedin_id for existing users on every OAuth login
+        // Keep the stored profile aligned with the connected LinkedIn account.
         await supabase
           .from("users")
-          .update({ linkedin_id: user.user_metadata?.sub || null })
+          .update({
+            linkedin_id: linkedInProfile.linkedinId,
+            name: linkedInProfile.name,
+            email: linkedInProfile.email,
+            avatar_url: linkedInProfile.avatarUrl,
+          })
           .eq("id", user.id);
       }
 
@@ -98,15 +189,18 @@ export async function GET(request: Request) {
               linkedin_access_token_encrypted: encryptedToken,
               linkedin_token_updated_at: new Date().toISOString(),
               linkedin_token_expires_at: expiresAt,
+              linkedin_profile_email: linkedInProfile.email,
+              linkedin_profile_name: linkedInProfile.name,
+              linkedin_profile_avatar_url: linkedInProfile.avatarUrl,
             },
           })
           .eq("id", user.id);
       }
 
-      return NextResponse.redirect(`${origin}${next}`);
+      return redirectWithInviteClear(next);
     }
   }
 
   // Auth code error — redirect to login with error
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  return redirectWithInviteClear("/login?error=auth_callback_failed");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { InvitationsPanel } from "./invitations-panel";
 import type { Invitation, OrgUser } from "./types";
 import { UsersList } from "./users-list";
@@ -35,6 +35,13 @@ export function UsersManagementClient({
   const [inviteLink, setInviteLink] = useState("");
   const [invitePending, startInviteTransition] = useTransition();
   const [actionError, setActionError] = useState("");
+
+  // Auto-clear invite link from DOM after 60s to reduce token exposure
+  useEffect(() => {
+    if (!inviteLink) return;
+    const timer = setTimeout(() => setInviteLink(""), 60_000);
+    return () => clearTimeout(timer);
+  }, [inviteLink]);
 
   function handleToggleActive(userId: string, currentlyActive: boolean) {
     if (confirmToggle === userId) {
@@ -144,24 +151,28 @@ export function UsersManagementClient({
   return (
     <div className="space-y-6">
       {actionError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-[20px] border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {actionError}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
+      <div className="dashboard-rail grid grid-cols-2 gap-2 p-2">
         {(["users", "invitations"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`dashboard-stage-tab px-4 py-3 text-left ${
               tab === t
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "dashboard-stage-tab-active"
+                : ""
             }`}
           >
-            {t === "users" ? `Members (${users.length})` : `Invitations (${invitations.length})`}
+            <span className="block text-sm font-medium">
+              {t === "users" ? "Members" : "Invitations"}
+            </span>
+            <span className="dashboard-stage-count mt-2 inline-flex">
+              {t === "users" ? users.length : invitations.length}
+            </span>
           </button>
         ))}
       </div>
