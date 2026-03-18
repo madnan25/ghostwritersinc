@@ -20,9 +20,8 @@ interface LogActivityParams {
  * Fire-and-forget insert into agent_activity_log.
  * Never throws — failures are logged to stderr only.
  */
-const adminClient = createAdminClient()
-
 export function logAgentActivity(params: LogActivityParams): void {
+  const adminClient = createAdminClient()
   void adminClient
     .from('agent_activity_log')
     .insert({

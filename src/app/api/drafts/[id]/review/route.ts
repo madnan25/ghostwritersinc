@@ -84,6 +84,7 @@ export async function POST(
   }
 
   // Validate the transition
+  let response: NextResponse
   try {
     const { reviewAction, updateFields } = validateTransition({
       postId: id,
@@ -124,16 +125,6 @@ export async function POST(
       notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,
     })
 
-    const providerRunId = request.headers.get('x-paperclip-run-id')
-    logAgentActivity({
-      organizationId: auth.organizationId,
-      agentId: auth.agentId,
-      postId: id,
-      actionType: 'review_submitted',
-      metadata: { action: parsed.data.action, from_status: currentStatus, to_status: targetStatus },
-      providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
-    })
-
     // Fetch updated post
     const { data: updatedPost } = await supabase
       .from('posts')
@@ -141,14 +132,28 @@ export async function POST(
       .eq('id', id)
       .single()
 
-    return NextResponse.json(updatedPost)
+    response = NextResponse.json(updatedPost)
   } catch (err) {
     if (err instanceof WorkflowError) {
-      return NextResponse.json(
+      response = NextResponse.json(
         { error: err.message, code: err.code },
         { status: 409 }
       )
+    } else {
+      throw err
     }
-    throw err
   }
+
+  // Log activity after try/catch so both successful and WorkflowError-rejected reviews are recorded
+  const providerRunId = request.headers.get('x-paperclip-run-id')
+  logAgentActivity({
+    organizationId: auth.organizationId,
+    agentId: auth.agentId,
+    postId: id,
+    actionType: 'review_submitted',
+    metadata: { action: parsed.data.action, from_status: currentStatus, to_status: targetStatus },
+    providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
+  })
+
+  return response
 }
