@@ -8,6 +8,7 @@ import {
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidUuid } from '@/lib/validation'
 
 const UpdatePillarSchema = z.object({
   name: z.string().min(1).optional(),
@@ -40,6 +41,10 @@ export async function PATCH(
   }
 
   const { id } = await params
+
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid pillar ID' }, { status: 400 })
+  }
 
   let body: unknown
   try {
@@ -143,6 +148,11 @@ export async function DELETE(
   }
 
   const { id } = await params
+
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid pillar ID' }, { status: 400 })
+  }
+
   const supabase = createAdminClient()
 
   // Verify pillar belongs to the authenticated user

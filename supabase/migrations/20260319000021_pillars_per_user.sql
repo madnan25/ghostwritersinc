@@ -95,7 +95,7 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- Trigger already exists, function replacement is sufficient.
 
@@ -126,7 +126,7 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists user_joined_provision_pillars on users;
 create trigger user_joined_provision_pillars

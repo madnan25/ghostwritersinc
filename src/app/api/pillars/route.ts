@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
     .select('*')
     .order('sort_order', { ascending: true })
 
+  // Shared-org agents (e.g. Strategist) need read access to all users' pillars
+  // for content coordination. Write operations remain user-scoped. (LIN-190)
   if (isSharedOrgAgentContext(auth)) {
     pillarsQuery = pillarsQuery.eq('organization_id', auth.organizationId)
   } else {
