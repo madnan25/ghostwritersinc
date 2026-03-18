@@ -199,6 +199,36 @@ export interface StrategyDocument {
   updated_at: string
 }
 
+export type AgentActionType =
+  | 'draft_created'
+  | 'draft_updated'
+  | 'review_submitted'
+  | 'status_changed'
+  | 'comment_added'
+
+export interface AgentActivityLog {
+  id: string
+  organization_id: string
+  agent_id: string
+  post_id: string | null
+  action_type: AgentActionType
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface UserWritingProfile {
+  id: string
+  user_id: string
+  organization_id: string
+  tone: string | null
+  voice_notes: string | null
+  sample_post_ids: string[]
+  avoid_topics: string[]
+  preferred_formats: string[]
+  created_at: string
+  updated_at: string
+}
+
 export interface Notification {
   id: string
   organization_id: string

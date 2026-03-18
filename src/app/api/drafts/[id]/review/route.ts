@@ -9,6 +9,7 @@ import {
   isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition, WorkflowError } from '@/lib/workflow'
@@ -121,6 +122,14 @@ export async function POST(
       agent_name: auth.agentName,
       action: reviewAction,
       notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,
+    })
+
+    logAgentActivity({
+      organizationId: auth.organizationId,
+      agentId: auth.agentId,
+      postId: id,
+      actionType: 'review_submitted',
+      metadata: { action: parsed.data.action, from_status: currentStatus, to_status: targetStatus },
     })
 
     // Fetch updated post

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePostsRealtimeSync } from '@/hooks/use-posts-realtime'
 import { AlertTriangle } from 'lucide-react'
 import { m, AnimatePresence, type Variants } from 'framer-motion'
 import type { RotationWarning } from '@/lib/post-display'
@@ -29,9 +30,13 @@ interface PostGridProps {
   rotationWarnings: RotationWarning[]
 }
 
-export function PostGrid({ posts, pillars, rotationWarnings }: PostGridProps) {
+export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: PostGridProps) {
+  const [posts, setPosts] = useState(initialPosts)
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
+
+  // Keep posts in sync with realtime changes
+  usePostsRealtimeSync(setPosts)
 
   const pillarMap = new Map(pillars.map((pillar) => [pillar.id, pillar]))
 

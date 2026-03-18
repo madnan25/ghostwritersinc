@@ -8,6 +8,7 @@ import {
   isAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
 const CreateCommentSchema = z.object({
@@ -130,6 +131,14 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+
+  logAgentActivity({
+    organizationId: auth.organizationId,
+    agentId: auth.agentId,
+    postId: id,
+    actionType: 'comment_added',
+    metadata: { comment_id: comment.id, has_selection: !!parsed.data.selected_text },
+  })
 
   return NextResponse.json(comment, { status: 201 })
 }

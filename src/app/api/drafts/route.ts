@@ -8,6 +8,7 @@ import {
   isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
 const VALID_POST_STATUSES = [
@@ -94,6 +95,14 @@ export async function POST(request: NextRequest) {
     console.error('[drafts] DB error creating draft:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+
+  logAgentActivity({
+    organizationId: auth.organizationId,
+    agentId: auth.agentId,
+    postId: post.id,
+    actionType: 'draft_created',
+    metadata: { content_type: parsed.data.content_type, pillar_id: parsed.data.pillar_id ?? null },
+  })
 
   return NextResponse.json(post, { status: 201 })
 }

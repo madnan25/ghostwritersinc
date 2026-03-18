@@ -9,6 +9,7 @@ import {
   isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
 const UpdateDraftSchema = z.object({
@@ -142,6 +143,14 @@ export async function PATCH(
     console.error('[drafts] DB error updating draft:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+
+  logAgentActivity({
+    organizationId: auth.organizationId,
+    agentId: auth.agentId,
+    postId: id,
+    actionType: 'draft_updated',
+    metadata: { updated_fields: Object.keys(parsed.data) },
+  })
 
   return NextResponse.json(post)
 }
