@@ -5,21 +5,22 @@
 alter table public.posts
   add column if not exists agent_id uuid references public.agents(id) on delete set null;
 
--- Backfill: match posts.created_by_agent against agents.name within the same org.
+-- Backfill: match posts.created_by_agent against agents.slug within the same org.
+-- created_by_agent stores lowercase slugs; agents.name is title-cased, so match on slug.
 -- Only populate where a unique match exists to avoid ambiguity.
 update public.posts p
 set agent_id = a.id
 from (
-  select a.id, a.name, a.organization_id
+  select a.id, a.slug, a.organization_id
   from public.agents a
   inner join (
-    select name, organization_id
+    select slug, organization_id
     from public.agents
-    group by name, organization_id
+    group by slug, organization_id
     having count(*) = 1
-  ) uniq on uniq.name = a.name and uniq.organization_id = a.organization_id
+  ) uniq on uniq.slug = a.slug and uniq.organization_id = a.organization_id
 ) a
-where p.created_by_agent = a.name
+where p.created_by_agent = a.slug
   and p.organization_id = a.organization_id
   and p.agent_id is null;
 
