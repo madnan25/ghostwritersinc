@@ -44,6 +44,7 @@ export interface Post {
   linkedin_post_urn: string | null
   status: PostStatus
   rejection_reason: string | null
+  agent_id: string | null
   created_by_agent: string | null
   reviewed_by_agent: string | null
   review_notes: string | null
@@ -94,6 +95,7 @@ export interface Agent {
   provider: string
   provider_agent_ref: string | null
   agent_type: string
+  job_title: string | null
   status: 'active' | 'inactive' | 'revoked'
   allow_shared_context: boolean
   commissioned_by: string | null

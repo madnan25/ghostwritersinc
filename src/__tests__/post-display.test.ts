@@ -54,6 +54,7 @@ function makePost(id: string, pillarId: string | null, suggestedAt: string): Pos
     linkedin_post_urn: null,
     status: "draft",
     rejection_reason: null,
+    agent_id: null,
     created_by_agent: null,
     reviewed_by_agent: null,
     review_notes: null,

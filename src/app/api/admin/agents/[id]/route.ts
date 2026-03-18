@@ -8,6 +8,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 const UpdateAgentSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  job_title: z.string().max(100).nullable().optional(),
   provider_agent_ref: z.string().max(150).nullable().optional(),
   status: z.enum(["active", "inactive", "revoked"]).optional(),
   allow_shared_context: z.boolean().optional(),
@@ -84,6 +85,9 @@ export async function PATCH(
   }
 
   if (parsed.data.name) update.name = parsed.data.name.trim();
+  if ("job_title" in parsed.data) {
+    update.job_title = parsed.data.job_title?.trim() ?? null;
+  }
   if ("provider_agent_ref" in parsed.data) {
     update.provider_agent_ref = parsed.data.provider_agent_ref ?? null;
   }

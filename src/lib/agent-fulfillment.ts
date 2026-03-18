@@ -81,6 +81,7 @@ export async function commissionAgentWithInitialKey({
   agentType,
   provider,
   providerAgentRef = null,
+  jobTitle = null,
   allowSharedContext = false,
   permissions,
 }: {
@@ -92,6 +93,7 @@ export async function commissionAgentWithInitialKey({
   agentType: AgentType;
   provider: AgentProvider;
   providerAgentRef?: string | null;
+  jobTitle?: string | null;
   allowSharedContext?: boolean;
   permissions?: string[];
 }) {
@@ -143,6 +145,7 @@ export async function commissionAgentWithInitialKey({
       provider,
       provider_agent_ref: providerAgentRef ?? null,
       agent_type: agentType,
+      job_title: jobTitle ?? null,
       status: "active",
       allow_shared_context: allowSharedContext,
       commissioned_by: commissionedByUserId,
@@ -157,6 +160,7 @@ export async function commissionAgentWithInitialKey({
         provider,
         provider_agent_ref,
         agent_type,
+        job_title,
         status,
         allow_shared_context,
         commissioned_by,

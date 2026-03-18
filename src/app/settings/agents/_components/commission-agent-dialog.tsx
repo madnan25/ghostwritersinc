@@ -32,6 +32,7 @@ interface CommissionedAgent {
   provider: string;
   provider_agent_ref: string | null;
   agent_type: string;
+  job_title: string | null;
   status: "active" | "inactive" | "revoked";
   allow_shared_context: boolean;
   created_at: string;
@@ -61,6 +62,7 @@ export function CommissionAgentDialog({
   const [agentType, setAgentType] = useState("scribe");
   const [provider, setProvider] = useState("paperclip");
   const [providerAgentRef, setProviderAgentRef] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [allowSharedContext, setAllowSharedContext] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState("writer");
   const [permissions, setPermissions] = useState<string[]>(
@@ -129,6 +131,7 @@ export function CommissionAgentDialog({
           agent_type: agentType,
           provider,
           provider_agent_ref: providerAgentRef || null,
+          job_title: jobTitle.trim() || null,
           allow_shared_context: allowSharedContext,
           permissions,
         }),
@@ -150,6 +153,7 @@ export function CommissionAgentDialog({
           provider: data.provider,
           provider_agent_ref: data.provider_agent_ref,
           agent_type: data.agent_type,
+          job_title: data.job_title ?? null,
           status: data.status,
           allow_shared_context: data.allow_shared_context,
           created_at: data.created_at,
@@ -194,6 +198,18 @@ export function CommissionAgentDialog({
                 />
               </label>
 
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium">Job Title</span>
+                <input
+                  value={jobTitle}
+                  onChange={(event) => setJobTitle(event.target.value)}
+                  placeholder="Content Writer"
+                  className="w-full rounded-[18px] border border-border/70 bg-card/70 px-4 py-3 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Agent Type</span>
                 <select

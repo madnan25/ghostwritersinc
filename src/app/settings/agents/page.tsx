@@ -154,7 +154,7 @@ export default async function AgentSettingsPage() {
     admin
       .from("agents")
       .select(
-        "id, organization_id, user_id, name, slug, provider, provider_agent_ref, agent_type, status, allow_shared_context, created_at, last_used_at, last_used_by_route"
+        "id, organization_id, user_id, name, slug, provider, provider_agent_ref, agent_type, job_title, status, allow_shared_context, created_at, last_used_at, last_used_by_route"
       )
       .order("created_at", { ascending: false }),
     admin.from("agent_permissions").select("agent_id, permission"),

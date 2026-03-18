@@ -27,6 +27,7 @@ interface CommissionedAgent {
   provider: string;
   provider_agent_ref: string | null;
   agent_type: string;
+  job_title: string | null;
   status: "active" | "inactive" | "revoked";
   allow_shared_context: boolean;
   created_at: string;
@@ -267,6 +268,9 @@ export function CommissionedAgentsConsole({
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold tracking-[-0.03em] text-foreground">
                         {agent.name}
+                        {agent.job_title ? (
+                          <span className="font-normal text-foreground/58"> · {agent.job_title}</span>
+                        ) : null}
                       </p>
                       <span className="rounded-full border border-border/55 bg-background/36 px-2.5 py-1 text-[0.7rem] uppercase tracking-[0.18em] text-foreground/58">
                         {agent.provider}

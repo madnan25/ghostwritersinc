@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       suggested_publish_at: parsed.data.suggested_publish_at ?? null,
       media_urls: parsed.data.media_urls ?? [],
       status: 'draft',
+      agent_id: auth.agentId,
       created_by_agent: auth.agentName,
     })
     .select()

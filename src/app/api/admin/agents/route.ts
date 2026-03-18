@@ -23,6 +23,7 @@ const CreateAgentSchema = z.object({
   agent_type: z.enum(VALID_AGENT_TYPES),
   provider: z.enum(VALID_PROVIDERS),
   provider_agent_ref: z.string().max(150).nullable().optional(),
+  job_title: z.string().max(100).nullable().optional(),
   allow_shared_context: z.boolean().optional(),
   permissions: z.array(z.string()).optional(),
 });
@@ -46,6 +47,7 @@ export async function GET() {
         provider,
         provider_agent_ref,
         agent_type,
+        job_title,
         status,
         allow_shared_context,
         commissioned_by,
@@ -105,6 +107,7 @@ export async function POST(request: Request) {
     agent_type,
     provider,
     provider_agent_ref,
+    job_title,
     allow_shared_context = false,
   } = parsed.data;
 
@@ -118,6 +121,7 @@ export async function POST(request: Request) {
       agentType: agent_type,
       provider,
       providerAgentRef: provider_agent_ref ?? null,
+      jobTitle: job_title ?? null,
       allowSharedContext: allow_shared_context,
       permissions: parsed.data.permissions,
     });
