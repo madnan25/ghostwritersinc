@@ -5,8 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ALL_AGENT_PERMISSIONS } from "@/lib/agent-permissions";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 import { rateLimit } from "@/lib/rate-limit";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_RE } from "@/lib/validation";
 
 const UpdateAgentSchema = z.object({
   name: z.string().min(1).max(100).optional(),

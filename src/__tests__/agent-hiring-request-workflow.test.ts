@@ -75,13 +75,15 @@ vi.mock("@/lib/supabase/admin", () => ({
               single: mockHiringRequestInsertSingle,
             })),
           })),
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              select: vi.fn(() => ({
-                single: mockHiringRequestUpdateSingle,
-              })),
-            })),
-          })),
+          update: vi.fn(() => {
+            const eqChain: Record<string, unknown> = {};
+            eqChain.eq = vi.fn(() => eqChain);
+            eqChain.select = vi.fn(() => ({
+              maybeSingle: mockHiringRequestMaybeSingle,
+              single: mockHiringRequestUpdateSingle,
+            }));
+            return eqChain;
+          }),
         };
       }
 

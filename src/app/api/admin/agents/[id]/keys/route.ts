@@ -6,8 +6,7 @@ import {
 } from "@/lib/agent-fulfillment";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
 import { rateLimit } from "@/lib/rate-limit";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_RE } from "@/lib/validation";
 
 export async function POST(
   _request: Request,
