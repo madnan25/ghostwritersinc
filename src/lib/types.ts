@@ -15,6 +15,8 @@ export type ReviewAction = 'approved' | 'rejected' | 'escalated'
 
 export type UserRole = 'admin' | 'member'
 
+export type RequestStatus = 'pending' | 'approved' | 'denied'
+
 export interface Organization {
   id: string
   name: string
@@ -115,6 +117,37 @@ export interface AgentKey {
   allow_shared_context: boolean
   commissioned_by: string | null
   created_at: string
+}
+
+export interface InviteRequest {
+  id: string
+  organization_id: string
+  requested_by: string
+  requested_email: string
+  requested_role: UserRole
+  status: RequestStatus
+  decision_notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  fulfilled_invitation_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentHiringRequest {
+  id: string
+  organization_id: string
+  requested_by: string
+  requested_for_user_id: string
+  preset_key: string
+  requested_shared_context: boolean
+  status: RequestStatus
+  decision_notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  fulfilled_agent_ids: string[]
+  created_at: string
+  updated_at: string
 }
 
 export interface ResearchUpload {

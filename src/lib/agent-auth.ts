@@ -2,6 +2,8 @@ import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createAdminClient } from './supabase/admin'
+import { rateLimit } from './rate-limit'
+import { resolveAgentScopeMode } from './agent-context-sharing'
 import { DEFAULT_AGENT_PERMISSIONS } from './agent-permissions'
 export { DEFAULT_AGENT_PERMISSIONS } from './agent-permissions'
 
@@ -114,6 +116,14 @@ export async function authenticateAgent(
     )
   }
 
+  // Rate-limit agent auth attempts before expensive bcrypt comparisons
+  const authRateLimitKey = `agent-auth:${prefixes[0]}`
+  const rateLimited = await rateLimit(authRateLimitKey, {
+    maxRequests: 20,
+    windowMs: 60_000,
+  })
+  if (rateLimited) return rateLimited
+
   for (const candidate of candidates) {
     const match = await compare(apiKey, candidate.api_key_hash)
     if (match) {
@@ -202,10 +212,10 @@ export async function authenticateAgent(
         candidate.permissions ??
         []
       const allowSharedContext = agent.allow_shared_context === true
-      const scopeMode =
-        allowSharedContext && organization?.context_sharing_enabled
-          ? 'shared_org'
-          : 'user'
+      const scopeMode = resolveAgentScopeMode({
+        allowSharedContext,
+        organizationContextSharingEnabled: organization?.context_sharing_enabled === true,
+      })
 
       if (candidate.agent_id) {
         void supabase
@@ -310,7 +320,7 @@ export function requireSharedOrgAgentContext(
   }
 
   return NextResponse.json(
-    { error: 'Shared org context is disabled for this agent key' },
+    { error: 'Shared org context requires both agent sharing and the organization Agent context sharing toggle.' },
     { status: 403 }
   )
 }

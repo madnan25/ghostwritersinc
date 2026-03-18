@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getSharedContextGuardMessage } from "@/lib/agent-context-sharing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ALL_AGENT_PERMISSIONS } from "@/lib/agent-permissions";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 const UpdateAgentSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -20,6 +22,12 @@ export async function PATCH(
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
+
+  const rateLimited = await rateLimit(`admin:update-agent:${auth.profile.id}`, {
+    maxRequests: 20,
+    windowMs: 60_000,
+  });
+  if (rateLimited) return rateLimited;
 
   const { id } = await params;
 
@@ -40,6 +48,40 @@ export async function PATCH(
 
   const admin = createAdminClient();
   const update: Record<string, unknown> = {};
+
+  if (parsed.data.allow_shared_context === true) {
+    const { data: agentScope, error: agentScopeError } = await admin
+      .from("agents")
+      .select("organization_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (agentScopeError || !agentScope) {
+      return NextResponse.json({ error: "Failed to resolve commissioned agent" }, { status: 500 });
+    }
+
+    const { data: organization, error: organizationError } = await admin
+      .from("organizations")
+      .select("context_sharing_enabled")
+      .eq("id", agentScope.organization_id)
+      .maybeSingle();
+
+    if (organizationError) {
+      return NextResponse.json(
+        { error: "Failed to resolve organization sharing settings." },
+        { status: 500 }
+      );
+    }
+
+    const guardMessage = getSharedContextGuardMessage({
+      allowSharedContext: true,
+      organizationContextSharingEnabled: organization?.context_sharing_enabled === true,
+    });
+
+    if (guardMessage) {
+      return NextResponse.json({ error: guardMessage }, { status: 400 });
+    }
+  }
 
   if (parsed.data.name) update.name = parsed.data.name.trim();
   if ("provider_agent_ref" in parsed.data) {
@@ -83,21 +125,39 @@ export async function PATCH(
       );
     }
 
-    await admin.from("agent_permissions").delete().eq("agent_id", id);
-    const { error: permissionError } = await admin.from("agent_permissions").insert(
+    // Insert new permissions first (upsert), then remove stale ones.
+    // This avoids the race where a concurrent auth check sees zero permissions
+    // between a delete and insert.
+    const { error: upsertError } = await admin.from("agent_permissions").upsert(
       permissions.map((permission) => ({
         agent_id: id,
         permission,
-      }))
+      })),
+      { onConflict: "agent_id,permission" }
     );
 
-    if (permissionError) {
+    if (upsertError) {
       return NextResponse.json(
         { error: "Failed to update agent permissions" },
         { status: 500 }
       );
     }
 
+    // Remove permissions that are no longer in the desired set
+    const { error: deleteError } = await admin
+      .from("agent_permissions")
+      .delete()
+      .eq("agent_id", id)
+      .not("permission", "in", `(${permissions.join(",")})`);
+
+    if (deleteError) {
+      return NextResponse.json(
+        { error: "Failed to clean up stale permissions" },
+        { status: 500 }
+      );
+    }
+
+    // Sync denormalized permissions on agent_keys
     await admin
       .from("agent_keys")
       .update({ permissions })
@@ -115,6 +175,12 @@ export async function DELETE(
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
+
+  const rateLimitedDel = await rateLimit(`admin:delete-agent:${auth.profile.id}`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimitedDel) return rateLimitedDel;
 
   const { id } = await params;
   const admin = createAdminClient();

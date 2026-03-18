@@ -18,7 +18,6 @@ export async function DELETE(
     .from("user_invitations")
     .delete()
     .eq("id", invitationId)
-    .eq("organization_id", auth.profile.organization_id)
     .is("accepted_at", null);
 
   if (error) {

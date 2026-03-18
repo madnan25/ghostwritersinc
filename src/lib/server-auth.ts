@@ -134,6 +134,21 @@ export async function requirePlatformAdmin(): Promise<AuthenticatedOrgUser | Nex
   return auth;
 }
 
+export async function requireOrgAdminOrPlatformAdmin(): Promise<
+  AuthenticatedOrgUser | NextResponse
+> {
+  const auth = await requireOrgUser();
+  if (!isAuthenticatedOrgUser(auth)) {
+    return auth;
+  }
+
+  if (auth.profile.role !== "admin" && !auth.profile.is_platform_admin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return auth;
+}
+
 export function isAuthenticatedOrgUser(
   result: AuthenticatedOrgUser | NextResponse
 ): result is AuthenticatedOrgUser {

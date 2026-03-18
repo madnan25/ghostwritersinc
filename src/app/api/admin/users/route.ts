@@ -11,8 +11,7 @@ export async function GET() {
   const adminClient = createAdminClient();
   const { data: users, error } = await adminClient
     .from("users")
-    .select("id, name, email, avatar_url, role, is_active, is_platform_admin, created_at")
-    .eq("organization_id", auth.profile.organization_id)
+    .select("id, organization_id, name, email, avatar_url, role, is_active, is_platform_admin, created_at")
     .order("created_at", { ascending: true });
 
   if (error) {

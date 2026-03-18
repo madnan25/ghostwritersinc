@@ -69,6 +69,19 @@ vi.mock("@/lib/supabase/admin", () => ({
         };
       }
 
+      if (table === "organizations") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn(async () => ({
+                data: { context_sharing_enabled: true },
+                error: null,
+              })),
+            })),
+          })),
+        };
+      }
+
       if (table === "agents") {
         return {
           select: vi.fn(() => ({
@@ -101,7 +114,7 @@ describe("agent key admin route", () => {
     mockAgentInsert.mockReturnValue({
       select: vi.fn(() => ({
         single: vi.fn(async () => ({
-          data: { id: "agent-1" },
+          data: { id: "agent-1", agent_type: "scribe" },
           error: null,
         })),
       })),
@@ -175,6 +188,7 @@ describe("agent key admin route", () => {
       name: "Scribe",
       slug: "scribe",
       provider: "ghostwriters",
+      provider_agent_ref: null,
       agent_type: "scribe",
       status: "active",
       allow_shared_context: true,
@@ -187,7 +201,7 @@ describe("agent key admin route", () => {
       agent_name: "scribe",
       api_key_hash: "hashed-key",
       key_prefix: "gw_agent_testpref",
-      permissions: ["posts:read", "posts:write"],
+      permissions: ["drafts:read", "drafts:write", "comments:read", "comments:write"],
       allow_shared_context: true,
       commissioned_by: "platform-admin-1",
     });

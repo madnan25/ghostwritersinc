@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOrgUser } from "@/lib/server-auth";
 import { CommissionedAgentsConsole } from "./_components/commissioned-agents-console";
+import { OrgAdminAgentHiringRequestsClient } from "./_components/org-admin-agent-hiring-requests-client";
+import { PlatformAgentHiringRequestsPanel } from "./_components/platform-agent-hiring-requests-panel";
 
 export default async function AgentSettingsPage() {
   const result = await getCurrentOrgUser();
@@ -44,6 +46,37 @@ export default async function AgentSettingsPage() {
   }
 
   if (!isPlatformAdmin) {
+    const admin = createAdminClient();
+    const [{ data: organization }, { data: users }, { data: requests }] = await Promise.all([
+      admin
+        .from("organizations")
+        .select("context_sharing_enabled")
+        .eq("id", context.profile.organization_id)
+        .maybeSingle(),
+      admin
+        .from("users")
+        .select("id, name, email")
+        .eq("organization_id", context.profile.organization_id)
+        .order("created_at", { ascending: true }),
+      admin
+        .from("agent_hiring_requests")
+        .select(
+          `
+            id,
+            requested_for_user_id,
+            preset_key,
+            requested_shared_context,
+            status,
+            decision_notes,
+            reviewed_at,
+            created_at
+          `
+        )
+        .eq("organization_id", context.profile.organization_id)
+        .order("created_at", { ascending: false }),
+    ]);
+    const userNameMap = new Map((users ?? []).map((user) => [user.id, user.name]));
+
     return (
       <div className="premium-page max-w-5xl space-y-6">
         <div className="dashboard-frame relative overflow-hidden p-7 sm:p-8">
@@ -84,25 +117,36 @@ export default async function AgentSettingsPage() {
           </div>
         </div>
         <div className="dashboard-frame p-6 sm:p-8">
-          <div className="space-y-4">
-            <p className="premium-kicker text-[0.68rem]">Coming Soon</p>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
-              Agent-team requests will live here
-            </h2>
-            <p className="max-w-3xl text-sm leading-7 text-foreground/66">
-              This page is reserved for the org-admin request flow. For now, platform
-              admins still manage the underlying commissioned-agent infrastructure.
-            </p>
-          </div>
+          <OrgAdminAgentHiringRequestsClient
+            users={users ?? []}
+            organizationContextSharingEnabled={organization?.context_sharing_enabled === true}
+            initialRequests={
+              requests?.map((request) => ({
+                ...request,
+                requested_for_user_name:
+                  userNameMap.get(request.requested_for_user_id) ?? null,
+              })) ?? []
+            }
+          />
         </div>
       </div>
     );
   }
 
   const admin = createAdminClient();
-  const [{ data: organizations }, { data: users }, { data: agents }, { data: permissions }, { data: keys }] =
+  const [
+    { data: organizations },
+    { data: users },
+    { data: agents },
+    { data: permissions },
+    { data: keys },
+    { data: requests },
+  ] =
     await Promise.all([
-    admin.from("organizations").select("id, name").order("name", { ascending: true }),
+    admin
+      .from("organizations")
+      .select("id, name, context_sharing_enabled")
+      .order("name", { ascending: true }),
     admin
       .from("users")
       .select("id, organization_id, name, email")
@@ -118,6 +162,23 @@ export default async function AgentSettingsPage() {
       .from("agent_keys")
       .select("id, agent_id, key_prefix, created_at")
       .not("agent_id", "is", null)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("agent_hiring_requests")
+      .select(
+        `
+          id,
+          organization_id,
+          requested_by,
+          requested_for_user_id,
+          preset_key,
+          requested_shared_context,
+          status,
+          decision_notes,
+          reviewed_at,
+          created_at
+        `
+      )
       .order("created_at", { ascending: false }),
   ]);
 
@@ -148,6 +209,23 @@ export default async function AgentSettingsPage() {
       ...agent,
       permissions: permissionsByAgent.get(agent.id) ?? [],
       keys: keysByAgent.get(agent.id) ?? [],
+    })) ?? [];
+  const organizationSharingById = Object.fromEntries(
+    (organizations ?? []).map((organization) => [
+      organization.id,
+      organization.context_sharing_enabled === true,
+    ])
+  );
+  const organizationMap = new Map((organizations ?? []).map((organization) => [organization.id, organization.name]));
+  const userNameMap = new Map((users ?? []).map((user) => [user.id, user.name]));
+  const initialRequests =
+    requests?.map((request) => ({
+      ...request,
+      organization_name: organizationMap.get(request.organization_id) ?? null,
+      requested_by_name: userNameMap.get(request.requested_by) ?? null,
+      requested_for_user_name: userNameMap.get(request.requested_for_user_id) ?? null,
+      organization_context_sharing_enabled:
+        organizationSharingById[request.organization_id] === true,
     })) ?? [];
 
   return (
@@ -192,10 +270,17 @@ export default async function AgentSettingsPage() {
         </div>
       </div>
       <div className="dashboard-frame p-6 sm:p-8">
+        <div className="mb-8">
+          <PlatformAgentHiringRequestsPanel initialRequests={initialRequests} />
+        </div>
         <CommissionedAgentsConsole
           initialAgents={initialAgents}
-          organizations={organizations ?? []}
+          organizations={(organizations ?? []).map((organization) => ({
+            id: organization.id,
+            name: organization.name,
+          }))}
           users={users ?? []}
+          organizationSharingById={organizationSharingById}
         />
       </div>
     </div>

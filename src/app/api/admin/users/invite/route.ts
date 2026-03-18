@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  generateInviteToken,
-  hashInviteToken,
-  normalizeInviteEmail,
-} from "@/lib/invitations";
+  issueUserInvitation,
+  InvitationFulfillmentError,
+  normalizeRequestedRole,
+} from "@/lib/invitation-fulfillment";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const auth = await requirePlatformAdmin();
@@ -13,8 +14,14 @@ export async function POST(request: Request) {
     return auth;
   }
 
+  const rateLimited = await rateLimit(`admin:invite:${auth.profile.id}`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimited) return rateLimited;
+
   const body = await request.json();
-  const { email, role } = body;
+  const { email, role, organization_id } = body;
 
   if (!email || typeof email !== "string") {
     return NextResponse.json(
@@ -23,68 +30,34 @@ export async function POST(request: Request) {
     );
   }
 
-  const validRoles = ["admin", "member"];
-  const inviteRole = role && validRoles.includes(role) ? role : "member";
-  const normalizedEmail = normalizeInviteEmail(email);
+  const inviteRole = normalizeRequestedRole(role);
 
   const adminClient = createAdminClient();
-
-  // Check if user already exists in this org
-  const { data: existingUser } = await adminClient
-    .from("users")
-    .select("id")
-    .eq("organization_id", auth.profile.organization_id)
-    .eq("email", normalizedEmail)
-    .single();
-
-  if (existingUser) {
-    return NextResponse.json(
-      { error: "User with this email already exists in the organization" },
-      { status: 409 }
-    );
-  }
-
-  // Generate secure token
-  const token = generateInviteToken();
-  const expiresAt = new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000
-  ).toISOString(); // 7 days
-
-  const { data: invitation, error } = await adminClient
-    .from("user_invitations")
-    .insert({
-      organization_id: auth.profile.organization_id,
-      email: normalizedEmail,
-      role: inviteRole,
-      invited_by: auth.profile.id,
-      token_hash: hashInviteToken(token),
-      expires_at: expiresAt,
-    })
-    .select("id, email, role, expires_at, created_at")
-    .single();
-
-  if (error) {
-    if (error.code === "23505") {
-      return NextResponse.json(
-        { error: "A pending invitation already exists for this email" },
-        { status: 409 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Failed to create invitation" },
-      { status: 500 }
-    );
-  }
-
-  // Build invite URL
   const requestUrl = new URL(request.url);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    requestUrl.origin;
-  const inviteUrl = `${baseUrl}/auth/invite?token=${token}`;
+  const organizationId =
+    typeof organization_id === "string" && organization_id.trim()
+      ? organization_id
+      : auth.profile.organization_id;
 
-  return NextResponse.json({
-    ...invitation,
-    invite_url: inviteUrl,
-  });
+  try {
+    const { invitation, inviteUrl } = await issueUserInvitation({
+      adminClient,
+      organizationId,
+      invitedByUserId: auth.profile.id,
+      email,
+      role: inviteRole,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin,
+    });
+
+    return NextResponse.json({
+      ...invitation,
+      invite_url: inviteUrl,
+    });
+  } catch (error) {
+    if (error instanceof InvitationFulfillmentError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
+    return NextResponse.json({ error: "Failed to create invitation" }, { status: 500 });
+  }
 }

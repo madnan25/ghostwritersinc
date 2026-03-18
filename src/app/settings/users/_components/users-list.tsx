@@ -98,6 +98,9 @@ export function UsersList({
                   <StatusBadge active={user.is_active} />
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                {user.organization_name ? (
+                  <p className="truncate text-xs text-foreground/48">{user.organization_name}</p>
+                ) : null}
               </div>
             </div>
 

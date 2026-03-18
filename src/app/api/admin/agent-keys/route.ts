@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
 import {
-  generateAgentKey,
-  getAgentKeyPrefix,
-  hashAgentKey,
   DEFAULT_AGENT_PERMISSIONS,
 } from "@/lib/agent-auth";
+import { getSharedContextGuardMessage } from "@/lib/agent-context-sharing";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeAgentName, titleizeAgentName } from "@/lib/agent-permissions";
+import {
+  AgentFulfillmentError,
+  commissionAgentWithInitialKey,
+  issueAgentKeyForAgent,
+} from "@/lib/agent-fulfillment";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const auth = await requirePlatformAdmin();
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
+
+  const rateLimited = await rateLimit(`admin:agent-keys:${auth.profile.id}`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimited) return rateLimited;
 
   const adminClient = createAdminClient();
 
@@ -52,7 +61,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const normalizedName = normalizeAgentName(agentName);
   const { data: commissionedUser } = await adminClient
     .from("users")
     .select("id")
@@ -69,85 +77,101 @@ export async function POST(request: Request) {
 
   const { data: existingAgent } = await adminClient
     .from("agents")
-    .select("id")
+    .select("id, allow_shared_context")
     .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .eq("agent_type", agentName)
     .maybeSingle();
-  const permissions =
-    DEFAULT_AGENT_PERMISSIONS[agentName as keyof typeof DEFAULT_AGENT_PERMISSIONS];
 
-  let agentId = existingAgent?.id ?? null;
+  try {
+    if (!existingAgent) {
+      const result = await commissionAgentWithInitialKey({
+        admin: adminClient,
+        commissionedByUserId: auth.profile.id,
+        organizationId,
+        userId,
+        name: agentName,
+        agentType: agentName as keyof typeof DEFAULT_AGENT_PERMISSIONS,
+        provider: "ghostwriters",
+        allowSharedContext,
+      });
 
-  if (!agentId) {
-    const { data: createdAgent, error: agentError } = await adminClient
-      .from("agents")
-      .insert({
+      const key = result.agent_keys[0];
+      return NextResponse.json({
+        id: key.id,
+        agent_id: key.agent_id,
         organization_id: organizationId,
         user_id: userId,
-        name: titleizeAgentName(agentName),
-        slug: normalizedName,
-        provider: "ghostwriters",
-        agent_type: agentName,
-        status: "active",
+        agent_name: agentName,
+        key_prefix: key.key_prefix,
+        permissions: result.permissions,
         allow_shared_context: allowSharedContext,
         commissioned_by: auth.profile.id,
-      })
-      .select("id")
-      .single();
-
-    if (agentError || !createdAgent) {
-      return NextResponse.json(
-        { error: "Failed to create commissioned agent" },
-        { status: 500 }
-      );
+        created_at: key.created_at,
+        api_key: result.revealed_key,
+        warning: "Store this key securely. It cannot be retrieved again.",
+      });
     }
 
-    agentId = createdAgent.id;
-    await adminClient.from("agent_permissions").insert(
-      permissions.map((permission: string) => ({
-        agent_id: agentId,
-        permission,
-      }))
-    );
-  }
+    if (existingAgent.allow_shared_context !== allowSharedContext) {
+      // Enforce org-level guard before enabling shared context
+      if (allowSharedContext) {
+        const { data: organization } = await adminClient
+          .from("organizations")
+          .select("context_sharing_enabled")
+          .eq("id", organizationId)
+          .maybeSingle();
 
-  // Generate and hash the key
-  const plainKey = generateAgentKey();
-  const keyHash = await hashAgentKey(plainKey);
-  const keyPrefix = getAgentKeyPrefix(plainKey);
+        const guardMessage = getSharedContextGuardMessage({
+          allowSharedContext: true,
+          organizationContextSharingEnabled: organization?.context_sharing_enabled === true,
+        });
 
-  const { data: agentKey, error } = await adminClient
-    .from("agent_keys")
-    .insert({
-      agent_id: agentId,
+        if (guardMessage) {
+          return NextResponse.json({ error: guardMessage }, { status: 400 });
+        }
+      }
+
+      const { error } = await adminClient
+        .from("agents")
+        .update({ allow_shared_context: allowSharedContext })
+        .eq("id", existingAgent.id);
+
+      if (error) {
+        return NextResponse.json(
+          { error: "Failed to update commissioned agent scope." },
+          { status: 500 }
+        );
+      }
+    }
+
+    const result = await issueAgentKeyForAgent({
+      admin: adminClient,
+      agentId: existingAgent.id,
+      commissionedByUserId: auth.profile.id,
+    });
+
+    return NextResponse.json({
+      id: result.id,
+      agent_id: result.agent_id,
       organization_id: organizationId,
       user_id: userId,
       agent_name: agentName,
-      api_key_hash: keyHash,
-      key_prefix: keyPrefix,
-      permissions,
+      key_prefix: result.key_prefix,
+      permissions: DEFAULT_AGENT_PERMISSIONS[agentName as keyof typeof DEFAULT_AGENT_PERMISSIONS],
       allow_shared_context: allowSharedContext,
       commissioned_by: auth.profile.id,
-    })
-    .select(
-      "id, agent_id, organization_id, user_id, agent_name, key_prefix, permissions, allow_shared_context, commissioned_by, created_at"
-    )
-    .single();
+      created_at: result.created_at,
+      api_key: result.api_key,
+      warning: result.warning,
+    });
+  } catch (error) {
+    if (error instanceof AgentFulfillmentError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
 
-  if (error) {
-    return NextResponse.json(
-      { error: "Failed to create agent key" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create agent key" }, { status: 500 });
   }
-
-  // Return plaintext key once — it cannot be retrieved again
-  return NextResponse.json({
-    ...agentKey,
-    api_key: plainKey,
-    warning: "Store this key securely. It cannot be retrieved again.",
-  });
 }
 
 export async function DELETE(request: Request) {
@@ -155,6 +179,12 @@ export async function DELETE(request: Request) {
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
+
+  const rateLimitedDel = await rateLimit(`admin:delete-key:${auth.profile.id}`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimitedDel) return rateLimitedDel;
 
   const adminClient = createAdminClient();
   const { searchParams } = new URL(request.url);

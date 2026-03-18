@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   AGENT_PERMISSION_GROUPS,
   AGENT_PERMISSION_PRESETS,
   AGENT_PROVIDER_OPTIONS,
   AGENT_TYPE_OPTIONS,
 } from "@/lib/agent-permissions";
+import { getSharedContextGuardMessage } from "@/lib/agent-context-sharing";
 import { Button } from "@/components/ui/button";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 
@@ -43,12 +44,14 @@ interface CommissionedAgent {
 interface CommissionAgentDialogProps {
   organizations: OrganizationOption[];
   users: UserOption[];
+  organizationSharingById: Record<string, boolean>;
   onCreated: (agent: CommissionedAgent, apiKey: string) => void;
 }
 
 export function CommissionAgentDialog({
   organizations,
   users,
+  organizationSharingById,
   onCreated,
 }: CommissionAgentDialogProps) {
   const [open, setOpen] = useState(false);
@@ -70,12 +73,14 @@ export function CommissionAgentDialog({
     () => users.filter((user) => user.organization_id === organizationId),
     [organizationId, users]
   );
-
-  useEffect(() => {
-    if (!scopedUsers.some((user) => user.id === userId)) {
-      setUserId(scopedUsers[0]?.id ?? "");
-    }
-  }, [scopedUsers, userId]);
+  const selectedUserId = scopedUsers.some((user) => user.id === userId)
+    ? userId
+    : (scopedUsers[0]?.id ?? "");
+  const organizationSharingEnabled = organizationSharingById[organizationId] === true;
+  const sharedContextGuardMessage = getSharedContextGuardMessage({
+    allowSharedContext,
+    organizationContextSharingEnabled: organizationSharingEnabled,
+  });
 
   function handleOpen() {
     setOpen(true);
@@ -102,7 +107,7 @@ export function CommissionAgentDialog({
   }
 
   function handleSubmit() {
-    if (!organizationId || !userId || !name.trim()) {
+    if (!organizationId || !selectedUserId || !name.trim()) {
       setError("Select an organization, an assigned user, and a display name.");
       return;
     }
@@ -119,7 +124,7 @@ export function CommissionAgentDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organization_id: organizationId,
-          user_id: userId,
+          user_id: selectedUserId,
           name,
           agent_type: agentType,
           provider,
@@ -251,7 +256,7 @@ export function CommissionAgentDialog({
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Assigned User</span>
                 <select
-                  value={userId}
+                  value={selectedUserId}
                   onChange={(event) => setUserId(event.target.value)}
                   disabled={scopedUsers.length === 0}
                   className="w-full rounded-[18px] border border-border/70 bg-card/70 px-4 py-3 text-sm disabled:opacity-50"
@@ -282,6 +287,12 @@ export function CommissionAgentDialog({
                   When enabled, this agent can read broader org context if the
                   organization also enables context sharing in Settings.
                 </span>
+                {!organizationSharingEnabled ? (
+                  <span className="mt-2 block text-xs leading-5 text-yellow-300">
+                    Agent context sharing is currently off for this organization. Turn it
+                    on in Settings before commissioning shared-org access.
+                  </span>
+                ) : null}
               </span>
             </label>
 
@@ -344,13 +355,22 @@ export function CommissionAgentDialog({
                 {error}
               </div>
             ) : null}
+            {!error && sharedContextGuardMessage ? (
+              <div className="rounded-[18px] border border-yellow-500/30 bg-yellow-500/8 px-4 py-3 text-sm text-yellow-200">
+                {sharedContextGuardMessage}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleClose} disabled={isPending}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={isPending}>
+            <Button
+              size="sm"
+              onClick={handleSubmit}
+              disabled={isPending || sharedContextGuardMessage !== null}
+            >
               {isPending ? "Commissioning…" : "Commission Agent"}
             </Button>
           </div>

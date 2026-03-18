@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAuthenticatedOrgUser, requirePlatformAdmin } from "@/lib/server-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function PATCH(
   request: Request,
@@ -11,6 +12,12 @@ export async function PATCH(
   if (!isAuthenticatedOrgUser(auth)) {
     return auth;
   }
+
+  const rateLimited = await rateLimit(`admin:update-user:${auth.profile.id}`, {
+    maxRequests: 20,
+    windowMs: 60_000,
+  });
+  if (rateLimited) return rateLimited;
 
   // Cannot modify yourself
   if (targetUserId === auth.user.id) {
@@ -25,12 +32,10 @@ export async function PATCH(
 
   const adminClient = createAdminClient();
 
-  // Verify target user is in the same org
   const { data: targetUser } = await adminClient
     .from("users")
     .select("id, organization_id, role, is_platform_admin, is_active")
     .eq("id", targetUserId)
-    .eq("organization_id", auth.profile.organization_id)
     .single();
 
   if (!targetUser) {
@@ -46,7 +51,7 @@ export async function PATCH(
     const { count } = await adminClient
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", auth.profile.organization_id)
+      .eq("organization_id", targetUser.organization_id)
       .eq("role", "admin")
       .eq("is_active", true);
 
@@ -62,7 +67,7 @@ export async function PATCH(
     const { count } = await adminClient
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", auth.profile.organization_id)
+      .eq("organization_id", targetUser.organization_id)
       .eq("is_platform_admin", true)
       .eq("is_active", true);
 
@@ -113,6 +118,12 @@ export async function DELETE(
     return auth;
   }
 
+  const rateLimitedDel = await rateLimit(`admin:delete-user:${auth.profile.id}`, {
+    maxRequests: 5,
+    windowMs: 60_000,
+  });
+  if (rateLimitedDel) return rateLimitedDel;
+
   if (targetUserId === auth.user.id) {
     return NextResponse.json(
       { error: "Cannot delete your own account" },
@@ -125,7 +136,6 @@ export async function DELETE(
     .from("users")
     .select("id, organization_id, role, is_platform_admin, is_active")
     .eq("id", targetUserId)
-    .eq("organization_id", auth.profile.organization_id)
     .single();
 
   if (targetUserError || !targetUser) {
@@ -136,7 +146,7 @@ export async function DELETE(
     const { count } = await adminClient
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", auth.profile.organization_id)
+      .eq("organization_id", targetUser.organization_id)
       .eq("role", "admin")
       .eq("is_active", true);
 
@@ -152,7 +162,7 @@ export async function DELETE(
     const { count } = await adminClient
       .from("users")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", auth.profile.organization_id)
+      .eq("organization_id", targetUser.organization_id)
       .eq("is_platform_admin", true)
       .eq("is_active", true);
 

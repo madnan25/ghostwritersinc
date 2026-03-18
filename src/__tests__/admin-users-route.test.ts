@@ -6,8 +6,7 @@ import { NextResponse } from "next/server";
 const mockRequirePlatformAdmin = vi.fn();
 const mockIsAuthenticatedOrgUser = vi.fn();
 const mockOrder = vi.fn();
-const mockEq = vi.fn(() => ({ order: mockOrder }));
-const mockSelect = vi.fn(() => ({ eq: mockEq }));
+const mockSelect = vi.fn(() => ({ order: mockOrder }));
 const mockFrom = vi.fn(() => ({ select: mockSelect }));
 
 vi.mock("@/lib/server-auth", () => ({
@@ -37,7 +36,7 @@ describe("GET /api/admin/users", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns organization users for platform admins", async () => {
+  it("returns platform users for platform admins", async () => {
     mockRequirePlatformAdmin.mockResolvedValueOnce({
       profile: {
         id: "user-1",
@@ -59,6 +58,8 @@ describe("GET /api/admin/users", () => {
 
     expect(response.status).toBe(200);
     expect(json).toEqual([{ id: "user-2", email: "member@example.com" }]);
-    expect(mockEq).toHaveBeenCalledWith("organization_id", "org-1");
+    expect(mockSelect).toHaveBeenCalledWith(
+      "id, organization_id, name, email, avatar_url, role, is_active, is_platform_admin, created_at"
+    );
   });
 });

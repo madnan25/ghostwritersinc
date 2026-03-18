@@ -7,6 +7,7 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
 } from "@/lib/agent-auth";
+import { resolveAgentScopeMode } from "@/lib/agent-context-sharing";
 
 describe("agent auth helpers", () => {
   it("derives a lookup prefix that includes random key material", () => {
@@ -55,5 +56,21 @@ describe("agent auth helpers", () => {
         "read"
       )
     ).toBe("read:org-1:user-1:key-123");
+  });
+
+  it("keeps agents user-scoped unless both sharing flags are enabled", () => {
+    expect(
+      resolveAgentScopeMode({
+        allowSharedContext: true,
+        organizationContextSharingEnabled: false,
+      })
+    ).toBe("user");
+
+    expect(
+      resolveAgentScopeMode({
+        allowSharedContext: true,
+        organizationContextSharingEnabled: true,
+      })
+    ).toBe("shared_org");
   });
 });

@@ -9,14 +9,19 @@ export function UsersManagementClient({
   currentUserId,
   initialUsers,
   initialInvitations,
+  organizations = [],
+  isPlatformView = false,
 }: {
   currentUserId: string;
   initialUsers: OrgUser[];
   initialInvitations: Invitation[];
+  organizations?: Array<{ id: string; name: string }>;
+  isPlatformView?: boolean;
 }) {
   const [tab, setTab] = useState<"users" | "invitations">("users");
   const [users, setUsers] = useState(initialUsers);
   const [invitations, setInvitations] = useState(initialInvitations);
+  const [inviteOrganizationId, setInviteOrganizationId] = useState(organizations[0]?.id ?? "");
 
   // Toggle active state
   const [confirmToggle, setConfirmToggle] = useState<string | null>(null);
@@ -150,7 +155,11 @@ export function UsersManagementClient({
       const res = await fetch("/api/admin/users/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail.trim().toLowerCase(), role: inviteRole }),
+        body: JSON.stringify({
+          email: inviteEmail.trim().toLowerCase(),
+          role: inviteRole,
+          organization_id: inviteOrganizationId || undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -160,10 +169,14 @@ export function UsersManagementClient({
         // Refresh invitations list
         const inv: Invitation = {
           id: data.id,
+          organization_id: data.organization_id,
           email: data.email,
           role: data.role,
           expires_at: data.expires_at,
           created_at: data.created_at,
+          organization_name:
+            organizations.find((organization) => organization.id === data.organization_id)?.name ??
+            null,
         };
         setInvitations((prev) => [inv, ...prev]);
       } else {
@@ -223,6 +236,9 @@ export function UsersManagementClient({
       {tab === "invitations" && (
         <InvitationsPanel
           invitations={invitations}
+          organizations={organizations}
+          selectedOrganizationId={inviteOrganizationId}
+          showOrganizationPicker={isPlatformView}
           revokePending={revokePending}
           inviteEmail={inviteEmail}
           inviteRole={inviteRole}
@@ -230,6 +246,7 @@ export function UsersManagementClient({
           inviteLink={inviteLink}
           invitePending={invitePending}
           onRevoke={handleRevoke}
+          onOrganizationChange={setInviteOrganizationId}
           onInviteEmailChange={(value) => {
             setInviteEmail(value);
             setInviteError("");

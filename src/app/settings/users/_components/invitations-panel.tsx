@@ -12,6 +12,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 interface InvitationsPanelProps {
   invitations: Invitation[];
+  organizations?: Array<{ id: string; name: string }>;
+  selectedOrganizationId?: string;
+  showOrganizationPicker?: boolean;
   revokePending: boolean;
   inviteEmail: string;
   inviteRole: "admin" | "member";
@@ -19,6 +22,7 @@ interface InvitationsPanelProps {
   inviteLink: string;
   invitePending: boolean;
   onRevoke: (invitationId: string) => void;
+  onOrganizationChange?: (value: string) => void;
   onInviteEmailChange: (value: string) => void;
   onInviteRoleChange: (value: "admin" | "member") => void;
   onInvite: (event: React.FormEvent) => void;
@@ -26,6 +30,9 @@ interface InvitationsPanelProps {
 
 export function InvitationsPanel({
   invitations,
+  organizations,
+  selectedOrganizationId,
+  showOrganizationPicker = false,
   revokePending,
   inviteEmail,
   inviteRole,
@@ -33,6 +40,7 @@ export function InvitationsPanel({
   inviteLink,
   invitePending,
   onRevoke,
+  onOrganizationChange,
   onInviteEmailChange,
   onInviteRoleChange,
   onInvite,
@@ -61,6 +69,9 @@ export function InvitationsPanel({
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Expires {new Date(invitation.expires_at).toLocaleDateString()}
                 </p>
+                {invitation.organization_name ? (
+                  <p className="mt-0.5 text-xs text-foreground/48">{invitation.organization_name}</p>
+                ) : null}
               </div>
               <Button
                 size="sm"
@@ -87,6 +98,26 @@ export function InvitationsPanel({
           </p>
         </div>
         <form onSubmit={onInvite} className="space-y-3">
+          {showOrganizationPicker && organizations && onOrganizationChange ? (
+            <div className="space-y-1.5">
+              <label htmlFor="invite-organization" className="premium-kicker text-[0.68rem]">
+                Organization
+              </label>
+              <select
+                id="invite-organization"
+                value={selectedOrganizationId}
+                onChange={(e) => onOrganizationChange(e.target.value)}
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm min-h-[48px] focus:outline-none focus:ring-2 focus:ring-ring/50"
+              >
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <div className="space-y-1.5">
             <label htmlFor="invite-email" className="premium-kicker text-[0.68rem]">
               Email address

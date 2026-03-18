@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { getSharedContextGuardMessage } from "@/lib/agent-context-sharing";
 import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { CommissionAgentDialog } from "./commission-agent-dialog";
@@ -44,10 +45,12 @@ export function CommissionedAgentsConsole({
   initialAgents,
   organizations,
   users,
+  organizationSharingById,
 }: {
   initialAgents: CommissionedAgent[];
   organizations: OrganizationOption[];
   users: UserOption[];
+  organizationSharingById: Record<string, boolean>;
 }) {
   const [agents, setAgents] = useState(initialAgents);
   const [newKey, setNewKey] = useState<NewKeyReveal | null>(null);
@@ -228,7 +231,12 @@ export function CommissionedAgentsConsole({
             permissions, and issue additional credentials when needed.
           </p>
         </div>
-        <CommissionAgentDialog organizations={organizations} users={users} onCreated={handleCreated} />
+        <CommissionAgentDialog
+          organizations={organizations}
+          users={users}
+          organizationSharingById={organizationSharingById}
+          onCreated={handleCreated}
+        />
       </div>
 
       {agents.length === 0 ? (
@@ -246,6 +254,11 @@ export function CommissionedAgentsConsole({
                 : agent.status === "inactive"
                   ? "border-yellow-500/20 bg-yellow-500/10 text-yellow-300"
                   : "border-destructive/20 bg-destructive/10 text-destructive";
+            const sharedContextGuardMessage = getSharedContextGuardMessage({
+              allowSharedContext: agent.allow_shared_context,
+              organizationContextSharingEnabled:
+                organizationSharingById[agent.organization_id] === true,
+            });
 
             return (
               <div key={agent.id} className="editorial-card p-5 sm:p-6">
@@ -289,6 +302,12 @@ export function CommissionedAgentsConsole({
                       <p className="text-xs text-foreground/58">
                         Provider ref: <span className="font-mono">{agent.provider_agent_ref}</span>
                       </p>
+                    ) : null}
+
+                    {sharedContextGuardMessage ? (
+                      <div className="rounded-[18px] border border-yellow-500/30 bg-yellow-500/8 px-3 py-2 text-xs leading-5 text-yellow-200">
+                        {sharedContextGuardMessage}
+                      </div>
                     ) : null}
 
                     <div>

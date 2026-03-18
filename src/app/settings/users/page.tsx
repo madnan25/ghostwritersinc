@@ -5,6 +5,8 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOrgUser } from "@/lib/server-auth";
+import { OrgAdminInviteRequestsClient } from "./_components/org-admin-invite-requests-client";
+import { PlatformInviteRequestsPanel } from "./_components/platform-invite-requests-panel";
 import { UsersManagementClient } from "./_components/users-management-client";
 
 export default async function UsersSettingsPage() {
@@ -44,6 +46,28 @@ export default async function UsersSettingsPage() {
   }
 
   if (!isPlatformAdmin) {
+    const admin = createAdminClient();
+    const { data: inviteRequests } = await admin
+      .from("invite_requests")
+      .select(
+        `
+          id,
+          organization_id,
+          requested_by,
+          requested_email,
+          requested_role,
+          status,
+          decision_notes,
+          reviewed_by,
+          reviewed_at,
+          fulfilled_invitation_id,
+          created_at,
+          updated_at
+        `
+      )
+      .eq("organization_id", context.profile.organization_id)
+      .order("created_at", { ascending: false });
+
     return (
       <div className="premium-page max-w-5xl space-y-6">
         <div className="dashboard-frame relative overflow-hidden p-7 sm:p-8">
@@ -85,36 +109,68 @@ export default async function UsersSettingsPage() {
           </div>
         </div>
         <div className="dashboard-frame p-6 sm:p-8">
-          <div className="space-y-4">
-            <p className="premium-kicker text-[0.68rem]">Coming Soon</p>
-            <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
-              Org-admin invite requests will live here
-            </h2>
-            <p className="max-w-3xl text-sm leading-7 text-foreground/66">
-              This page is reserved for the approval-based invite workflow. Platform admins
-              still control the current direct invitation system.
-            </p>
-          </div>
+          <OrgAdminInviteRequestsClient initialRequests={inviteRequests ?? []} />
         </div>
       </div>
     );
   }
 
   const admin = createAdminClient();
-  const [{ data: users }, { data: invitations }] = await Promise.all([
+  const [{ data: organizations }, { data: users }, { data: invitations }, { data: inviteRequests }] = await Promise.all([
+    admin.from("organizations").select("id, name").order("name", { ascending: true }),
     admin
       .from("users")
-      .select("id, name, email, avatar_url, role, is_active, is_platform_admin, created_at")
-      .eq("organization_id", context.profile.organization_id)
+      .select("id, organization_id, name, email, avatar_url, role, is_active, is_platform_admin, created_at")
       .order("created_at", { ascending: true }),
     admin
       .from("user_invitations")
-      .select("id, email, role, expires_at, created_at")
-      .eq("organization_id", context.profile.organization_id)
+      .select("id, organization_id, email, role, expires_at, created_at")
       .is("accepted_at", null)
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }),
+    admin
+      .from("invite_requests")
+      .select(
+        `
+          id,
+          organization_id,
+          requested_by,
+          requested_email,
+          requested_role,
+          status,
+          decision_notes,
+          reviewed_by,
+          reviewed_at,
+          fulfilled_invitation_id,
+          created_at,
+          updated_at
+        `
+      )
+      .order("created_at", { ascending: false }),
   ]);
+
+  const organizationMap = new Map((organizations ?? []).map((organization) => [organization.id, organization.name]));
+  const userNameMap = new Map((users ?? []).map((user) => [user.id, user.name]));
+
+  const hydratedUsers =
+    users?.map((user) => ({
+      ...user,
+      organization_name: organizationMap.get(user.organization_id) ?? null,
+    })) ?? [];
+
+  const hydratedInvitations =
+    invitations?.map((invitation) => ({
+      ...invitation,
+      organization_name: organizationMap.get(invitation.organization_id) ?? null,
+    })) ?? [];
+
+  const hydratedInviteRequests =
+    inviteRequests?.map((request) => ({
+      ...request,
+      organization_name: organizationMap.get(request.organization_id) ?? null,
+      requested_by_name: userNameMap.get(request.requested_by) ?? null,
+      reviewed_by_name: request.reviewed_by ? userNameMap.get(request.reviewed_by) ?? null : null,
+    })) ?? [];
 
   return (
     <div className="premium-page max-w-5xl space-y-6">
@@ -135,15 +191,20 @@ export default async function UsersSettingsPage() {
           User Management
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-foreground/68">
-          Manage platform-level access for the current organization. Org-admin invite
-          requests and org-scoped controls should move into a separate approval workflow.
+          Review org-admin invite requests, manage direct invitations across organizations,
+          and control platform-level account access for workspace users.
         </p>
       </div>
       <div className="dashboard-frame p-6 sm:p-8">
+        <div className="mb-8">
+          <PlatformInviteRequestsPanel initialRequests={hydratedInviteRequests} />
+        </div>
         <UsersManagementClient
           currentUserId={context.user.id}
-          initialUsers={users ?? []}
-          initialInvitations={invitations ?? []}
+          initialUsers={hydratedUsers}
+          initialInvitations={hydratedInvitations}
+          organizations={organizations ?? []}
+          isPlatformView
         />
       </div>
     </div>
