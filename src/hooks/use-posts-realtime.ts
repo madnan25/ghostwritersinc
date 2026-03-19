@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
@@ -17,7 +17,9 @@ type PostChangeHandler = {
  */
 export function usePostsRealtime(handlers: PostChangeHandler) {
   const handlersRef = useRef(handlers)
-  handlersRef.current = handlers
+  useLayoutEffect(() => {
+    handlersRef.current = handlers
+  })
 
   useEffect(() => {
     const supabase = createClient()

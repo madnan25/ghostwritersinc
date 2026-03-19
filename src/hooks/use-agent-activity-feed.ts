@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { AgentActivityLog } from '@/lib/types'
 
@@ -12,7 +12,9 @@ import type { AgentActivityLog } from '@/lib/types'
 export function useAgentActivityFeed(limit = 20) {
   const [entries, setEntries] = useState<AgentActivityLog[]>([])
   const limitRef = useRef(limit)
-  limitRef.current = limit
+  useLayoutEffect(() => {
+    limitRef.current = limit
+  })
 
   useEffect(() => {
     const supabase = createClient()

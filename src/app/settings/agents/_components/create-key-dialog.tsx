@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { ModalDialog } from "@/components/ui/modal-dialog";
 
@@ -60,11 +60,11 @@ export function CreateKeyDialog({
     [organizationId, users]
   );
 
-  useEffect(() => {
-    if (!scopedUsers.some((user) => user.id === userId)) {
-      setUserId(scopedUsers[0]?.id ?? "");
-    }
-  }, [scopedUsers, userId]);
+  function handleOrganizationChange(newOrgId: string) {
+    setOrganizationId(newOrgId);
+    const newScopedUsers = users.filter((user) => user.organization_id === newOrgId);
+    setUserId(newScopedUsers[0]?.id ?? "");
+  }
 
   function handleOpen() {
     setOpen(true);
@@ -126,7 +126,7 @@ export function CreateKeyDialog({
                 <label className="text-sm font-medium">Organization</label>
                 <select
                   value={organizationId}
-                  onChange={(e) => setOrganizationId(e.target.value)}
+                  onChange={(e) => handleOrganizationChange(e.target.value)}
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
                 >
                   {organizations.map((organization) => (
