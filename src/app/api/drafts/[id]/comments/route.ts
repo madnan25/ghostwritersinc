@@ -59,10 +59,28 @@ export async function GET(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  const { data: comments, error } = await supabase
+  // Optional server-side version filtering
+  const versionParam = request.nextUrl.searchParams.get('version')
+  let query = supabase
     .from('post_comments')
     .select('*')
     .eq('post_id', id)
+
+  if (versionParam != null) {
+    const version = parseInt(versionParam, 10)
+    if (isNaN(version) || version < 1) {
+      return NextResponse.json({ error: 'Invalid version parameter' }, { status: 400 })
+    }
+    // Return comments for the requested version.
+    // Legacy comments (content_version IS NULL) are treated as version 1.
+    if (version === 1) {
+      query = query.or('content_version.eq.1,content_version.is.null')
+    } else {
+      query = query.eq('content_version', version)
+    }
+  }
+
+  const { data: comments, error } = await query
     .order('created_at', { ascending: true })
 
   if (error) {
