@@ -8,6 +8,18 @@ function getLinkedInDisplayNameFromSettings(settings: unknown): string | null {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null
 }
 
+export async function getCurrentUserLinkedInName(): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: profile } = await supabase
+    .from('users')
+    .select('settings')
+    .eq('id', user.id)
+    .maybeSingle()
+  return profile ? getLinkedInDisplayNameFromSettings(profile.settings) : null
+}
+
 export async function getPendingReviewPosts(): Promise<Post[]> {
   const supabase = await createClient()
   const { data, error } = await supabase

@@ -207,7 +207,7 @@ export async function commissionAgentWithInitialKey({
       agent_id: agent.id,
       organization_id: organizationId,
       user_id: userId,
-      agent_name: agent.agent_type,
+      agent_name: agent.name,
       api_key_hash: keyHash,
       key_prefix: keyPrefix,
       permissions: resolvedPermissions,
@@ -244,7 +244,7 @@ export async function issueAgentKeyForAgent({
 }) {
   const { data: agent } = await admin
     .from("agents")
-    .select("id, organization_id, user_id, agent_type, allow_shared_context")
+    .select("id, name, organization_id, user_id, agent_type, allow_shared_context")
     .eq("id", agentId)
     .maybeSingle();
 
@@ -278,7 +278,7 @@ export async function issueAgentKeyForAgent({
       agent_id: agent.id,
       organization_id: agent.organization_id,
       user_id: agent.user_id,
-      agent_name: agent.agent_type,
+      agent_name: agent.name,
       api_key_hash: keyHash,
       key_prefix: keyPrefix,
       permissions,

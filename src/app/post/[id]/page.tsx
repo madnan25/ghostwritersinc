@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
 import type { Post } from '@/lib/types'
-import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars, getBriefById } from '@/lib/queries/posts'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars, getBriefById, getCurrentUserLinkedInName } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
@@ -19,12 +19,13 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments, revisions, pillars] = await Promise.all([
+  const [post, reviewEvents, comments, revisions, pillars, linkedInName] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
     getPostRevisions(id),
     getPillars(),
+    getCurrentUserLinkedInName(),
   ])
 
   if (!post) notFound()
@@ -189,7 +190,7 @@ export default async function PostPage({ params }: PostPageProps) {
         <div className="flex flex-col gap-6">
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">LinkedIn Preview</h2>
-            <LinkedInPreview content={post.content} />
+            <LinkedInPreview content={post.content} authorName={linkedInName ?? undefined} />
           </div>
 
           <BriefContext briefRef={post.brief_ref} pillar={pillar} brief={brief} />

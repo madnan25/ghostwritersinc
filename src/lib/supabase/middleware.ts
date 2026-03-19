@@ -114,8 +114,8 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // Redirect logged-in users from / to /dashboard
-    if (user && request.nextUrl.pathname === "/" && !isApiPath) {
+    // Redirect logged-in users from / or /login to /dashboard
+    if (user && (request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/login") && !isApiPath) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);
