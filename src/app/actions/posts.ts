@@ -560,10 +560,10 @@ export async function publishToLinkedIn(
   if (postError || !post)
     return { success: false, error: 'Post not found' }
 
-  if (post.status !== 'approved' && post.status !== 'scheduled')
+  if (post.status !== 'approved' && post.status !== 'scheduled' && post.status !== 'publish_failed')
     return {
       success: false,
-      error: 'Post must be approved or scheduled to publish',
+      error: 'Post must be approved, scheduled, or in a failed state to publish',
     }
 
   // Fetch user's LinkedIn credentials

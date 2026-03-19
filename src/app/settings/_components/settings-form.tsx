@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { updateUserSettings, signOut } from "@/app/actions/auth";
+import { updateUserSettings, signOut, disconnectLinkedIn } from "@/app/actions/auth";
 import { startLinkedInOAuth } from "@/lib/linkedin-oauth";
 
 const TIMEZONES = [
@@ -64,6 +64,12 @@ export function SettingsForm({
 
   async function handleLinkedInReconnect() {
     await startLinkedInOAuth("/settings");
+  }
+
+  async function handleLinkedInDisconnect() {
+    startTransition(async () => {
+      await disconnectLinkedIn();
+    });
   }
 
   function getExpiryLabel(expiresAt: string | null): { text: string; warn: boolean } {
@@ -236,9 +242,14 @@ export function SettingsForm({
                 <p className="text-sm font-medium text-emerald-400">Connected</p>
                 <p className={`text-xs ${warn ? "text-yellow-300" : "text-foreground/68"}`}>{text}</p>
               </div>
-              <Button variant="outline" size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">
-                Reconnect
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleLinkedInReconnect} disabled={isPending} className="min-h-[40px]">
+                  Reconnect
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLinkedInDisconnect} disabled={isPending} className="min-h-[40px] text-destructive hover:text-destructive hover:bg-destructive/10">
+                  Disconnect
+                </Button>
+              </div>
             </div>
           );
         })() : (

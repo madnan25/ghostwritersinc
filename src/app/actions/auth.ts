@@ -88,3 +88,40 @@ export async function updateUserSettings(formData: FormData) {
     if (orgError) throw new Error(orgError.message);
   }
 }
+
+export async function disconnectLinkedIn() {
+  "use server";
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("settings")
+    .eq("id", user.id)
+    .single();
+
+  const existing = (existingUser?.settings as Record<string, unknown>) ?? {};
+  // Remove LinkedIn-specific keys, keep other settings intact
+  const {
+    linkedin_access_token_encrypted: _tok,
+    linkedin_token_expires_at: _exp,
+    linkedin_profile_name: _name,
+    linkedin_profile_email: _email,
+    linkedin_profile_avatar_url: _avatar,
+    ...rest
+  } = existing;
+
+  const { error } = await supabase
+    .from("users")
+    .update({ linkedin_id: null, settings: rest })
+    .eq("id", user.id);
+
+  if (error) throw new Error(error.message);
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/settings");
+}

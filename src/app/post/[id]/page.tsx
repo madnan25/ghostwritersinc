@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
 import type { Post } from '@/lib/types'
-import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars } from '@/lib/queries/posts'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars, getBriefById } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
@@ -30,6 +30,7 @@ export default async function PostPage({ params }: PostPageProps) {
   if (!post) notFound()
 
   const pillar = post.pillar_id ? pillars.find((p) => p.id === post.pillar_id) ?? null : null
+  const brief = post.brief_id ? await getBriefById(post.brief_id) : null
 
   const isAgentReviewed = post.status === 'pending_review' && !!post.reviewed_by_agent
   const statusStyle = isAgentReviewed
@@ -170,6 +171,18 @@ export default async function PostPage({ params }: PostPageProps) {
               <p className="mt-1 text-sm text-muted-foreground">{post.rejection_reason}</p>
             </div>
           )}
+
+          {/* Publish failure notice */}
+          {post.status === 'publish_failed' && (
+            <div className="rounded-[24px] border border-destructive/25 bg-destructive/10 p-6">
+              <h3 className="text-sm font-medium text-destructive">Publish failed</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This post could not be published to LinkedIn. This may be due to an expired token,
+                a LinkedIn API error, or a network issue. Use the &ldquo;Publish to LinkedIn&rdquo; button
+                above to retry, or check your LinkedIn connection in Settings.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right column: LinkedIn preview + brief context + review chain */}
@@ -179,7 +192,7 @@ export default async function PostPage({ params }: PostPageProps) {
             <LinkedInPreview content={post.content} />
           </div>
 
-          <BriefContext briefRef={post.brief_ref} pillar={pillar} />
+          <BriefContext briefRef={post.brief_ref} pillar={pillar} brief={brief} />
 
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>

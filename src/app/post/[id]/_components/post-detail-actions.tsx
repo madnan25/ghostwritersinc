@@ -142,6 +142,19 @@ export function PostDetailActions({
       )
     }
 
+    if (status === 'publish_failed') {
+      return (
+        <div className={wrapClass}>
+          <PublishOptionsDialog
+            postId={postId}
+            status="approved"
+            scheduledPublishAt={scheduledPublishAt}
+          />
+          <DeletePostDialog postId={postId} />
+        </div>
+      )
+    }
+
     return (
       <div className="flex items-center gap-2">
         <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">

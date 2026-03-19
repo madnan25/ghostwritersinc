@@ -14,6 +14,7 @@ export const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted text-muted-foreground border-border",
   scheduled: "bg-purple-500/15 text-purple-400 border-purple-500/25",
   published: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+  publish_failed: "bg-destructive/15 text-destructive border-destructive/25",
 };
 
 export function formatPostDate(dateStr: string | null): string {
