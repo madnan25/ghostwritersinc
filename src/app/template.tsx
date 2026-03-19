@@ -33,13 +33,9 @@ export default function Template({ children }: { children: React.ReactNode }) {
         }}
       >
         {!shouldReduceMotion ? (
-          <m.div
+          <div
             aria-hidden="true"
-            className="pointer-events-none fixed inset-x-[10%] top-20 z-0 h-20 rounded-full bg-[radial-gradient(circle,rgba(145,255,88,0.12)_0%,rgba(255,255,255,0.04)_48%,transparent_76%)] blur-3xl"
-            initial={{ opacity: 0, scale: 0.96, y: -6 }}
-            animate={{ opacity: 0.72, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.02, y: -8 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none fixed inset-x-[10%] top-20 z-0 h-20 rounded-full bg-[radial-gradient(circle,rgba(145,255,88,0.12)_0%,rgba(255,255,255,0.04)_48%,transparent_76%)] opacity-70 blur-3xl"
           />
         ) : null}
 
