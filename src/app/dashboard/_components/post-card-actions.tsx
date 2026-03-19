@@ -11,18 +11,20 @@ import {
 } from '@/lib/post-actions'
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
+import { ScheduleDialog } from './schedule-dialog'
 
 interface PostCardActionsProps {
   postId: string
   status: string
   content: string
+  suggestedPublishAt?: string | null
 }
 
 // Shared button class for consistent 44px touch targets on mobile
 const btnClass = 'min-h-[40px] flex-1 sm:flex-none sm:min-h-0'
 const primaryBtnClass = `${btnClass} border-border/60 bg-transparent text-foreground/72 hover:border-primary/22 hover:bg-background/34 hover:text-foreground`
 
-export function PostCardActions({ postId, status, content }: PostCardActionsProps) {
+export function PostCardActions({ postId, status, content, suggestedPublishAt }: PostCardActionsProps) {
   const [isPending, startTransition] = useTransition()
 
   function handleApprove() {
@@ -49,11 +51,12 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
   }
 
   if (status === 'approved') {
-    return canEditPost(status) ? (
-      <div className="flex items-center gap-2">
-        <EditPostDialog postId={postId} initialContent={content} />
+    return (
+      <div className="flex w-full items-center gap-2">
+        <ScheduleDialog postId={postId} suggestedPublishAt={suggestedPublishAt} />
+        {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} />}
       </div>
-    ) : null
+    )
   }
 
   if (!isReviewQueueStatus(status)) {

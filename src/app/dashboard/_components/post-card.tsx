@@ -102,7 +102,17 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
         <div className={cn('flex flex-col gap-2', featured && 'gap-3 md:flex-row md:flex-wrap md:gap-x-5')}>
           <div className="flex items-center gap-1.5">
             <Calendar className="size-3.5 shrink-0" />
-            <span className="editorial-meta normal-case tracking-normal text-foreground/56">{formatDate(post.suggested_publish_at)}</span>
+            {post.status === 'scheduled' && post.scheduled_publish_at ? (
+              <span className="editorial-meta normal-case tracking-normal text-sky-400/80">
+                Scheduled: {formatDate(post.scheduled_publish_at)}
+              </span>
+            ) : post.suggested_publish_at ? (
+              <span className="editorial-meta normal-case tracking-normal text-sky-300/60">
+                Suggested: {formatDate(post.suggested_publish_at)}
+              </span>
+            ) : (
+              <span className="editorial-meta normal-case tracking-normal text-foreground/40">No date set</span>
+            )}
           </div>
           {post.brief_ref && (
             <div className="flex items-center gap-1.5">
@@ -140,7 +150,12 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
         </div>
 
         <div className="editorial-rule pt-4">
-          <PostCardActions postId={post.id} status={post.status} content={post.content} />
+          <PostCardActions
+            postId={post.id}
+            status={post.status}
+            content={post.content}
+            suggestedPublishAt={post.suggested_publish_at}
+          />
         </div>
       </div>
     </m.div>
