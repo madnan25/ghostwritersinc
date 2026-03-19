@@ -8,6 +8,7 @@ import type { RotationWarning } from '@/lib/post-display'
 import { DASHBOARD_FILTER_TABS, type DashboardFilterTab } from '@/lib/dashboard-ui'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post, PostStatus } from '@/lib/types'
+import type { PostWithRevisionCount } from '@/lib/queries/posts'
 import { PostCard } from './post-card'
 
 const cardContainerVariants: Variants = {
@@ -25,7 +26,7 @@ const cardItemVariants: Variants = {
 }
 
 interface PostGridProps {
-  posts: Post[]
+  posts: PostWithRevisionCount[]
   pillars: ContentPillar[]
   rotationWarnings: RotationWarning[]
 }
@@ -35,8 +36,8 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
 
-  // Keep posts in sync with realtime changes
-  usePostsRealtimeSync(setPosts)
+  // Keep posts in sync with realtime changes (cast: realtime updates don't carry revision_count, defaults to 0)
+  usePostsRealtimeSync(setPosts as React.Dispatch<React.SetStateAction<Post[]>>)
 
   const pillarMap = new Map(pillars.map((pillar) => [pillar.id, pillar]))
 
@@ -299,6 +300,7 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
                   post={post}
                   pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
                   featured={index === 0 && filtered.length > 2}
+                  hasRevisions={post.revision_count > 0}
                 />
               </m.div>
             ))}

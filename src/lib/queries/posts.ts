@@ -202,6 +202,53 @@ export async function getPostRevisions(postId: string): Promise<PostRevision[]> 
   return data ?? []
 }
 
+export type PostWithRevisionCount = Post & { revision_count: number }
+
+export async function getAllPostsWithRevisions(): Promise<PostWithRevisionCount[]> {
+  const supabase = await createClient()
+
+  const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('*')
+    .order('suggested_publish_at', { ascending: true })
+
+  if (postsError) {
+    logQueryError('all posts with revisions', postsError)
+    return []
+  }
+
+  const allPosts = posts ?? []
+  if (allPosts.length === 0) return []
+
+  const postIds = allPosts.map((p) => p.id)
+  const { data: revisionRows } = await supabase
+    .from('post_revisions')
+    .select('post_id')
+    .in('post_id', postIds)
+
+  const revisionCounts: Record<string, number> = {}
+  for (const row of revisionRows ?? []) {
+    revisionCounts[row.post_id] = (revisionCounts[row.post_id] ?? 0) + 1
+  }
+
+  const STATUS_ORDER: Record<string, number> = {
+    pending_review: 0,
+    draft: 1,
+    approved: 2,
+    scheduled: 3,
+    published: 4,
+    rejected: 5,
+  }
+
+  return allPosts
+    .map((p) => ({ ...p, revision_count: revisionCounts[p.id] ?? 0 }))
+    .sort((a, b) => {
+      const aOrder = STATUS_ORDER[a.status] ?? 99
+      const bOrder = STATUS_ORDER[b.status] ?? 99
+      return aOrder - bOrder
+    })
+}
+
 export async function getScheduledPosts(): Promise<Post[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
