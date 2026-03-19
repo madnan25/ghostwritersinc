@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { logQueryError } from '@/lib/queries/errors'
 import type { Notification } from '@/lib/types'
 
 export async function getNotifications(): Promise<Notification[]> {
@@ -11,8 +10,7 @@ export async function getNotifications(): Promise<Notification[]> {
     .limit(20)
 
   if (error) {
-    logQueryError('notifications', error)
-    return []
+    throw error
   }
   return data ?? []
 }
