@@ -4,6 +4,8 @@ import { OrgAccessLinks } from "./_components/org-access-links";
 import { getCurrentOrgUser } from "@/lib/server-auth";
 import { PlatformAdminLinks } from "./_components/platform-admin-links";
 import { SettingsForm } from "./_components/settings-form";
+import { StrategyConfigForm } from "./_components/strategy-config-form";
+import { getStrategyConfig } from "@/app/actions/strategy";
 
 export default async function SettingsPage() {
   const result = await getCurrentOrgUser(
@@ -37,6 +39,7 @@ export default async function SettingsPage() {
 
   const { context } = result;
   const { profile } = context;
+  const strategyConfig = await getStrategyConfig();
   const { data: organization } = await context.supabase
     .from("organizations")
     .select("context_sharing_enabled")
@@ -99,6 +102,19 @@ export default async function SettingsPage() {
           </div>
         </div>
       )}
+
+      <div className="dashboard-frame p-6 sm:p-8">
+        <div className="space-y-2 mb-6">
+          <p className="premium-kicker">Content Strategy</p>
+          <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+            Strategy Configuration
+          </h2>
+          <p className="max-w-3xl text-sm leading-7 text-foreground/66">
+            Control how the AI generates and schedules posts — set your monthly target, quality bar, publish timing, and voice guidelines.
+          </p>
+        </div>
+        <StrategyConfigForm initial={strategyConfig} />
+      </div>
 
       <div className="dashboard-frame p-6 sm:p-8">
         <SettingsForm
