@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import {
   approvePost,
   submitForAgentReview,
+  requestAgentReview,
 } from '@/app/actions/posts'
 import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
@@ -42,6 +43,12 @@ export function PostDetailActions({
   function handleApprove() {
     startTransition(async () => {
       await approvePost(postId)
+    })
+  }
+
+  function handleRequestReview() {
+    startTransition(async () => {
+      await requestAgentReview(postId)
     })
   }
 
@@ -122,6 +129,9 @@ export function PostDetailActions({
             <Button variant="outline" size="sm" className={sticky ? 'flex-1' : ''} onClick={handleCopyAndOpen}>
               Copy & Open LinkedIn
             </Button>
+            <Button variant="outline" size="sm" onClick={handleRequestReview} disabled={isPending}>
+              {isPending ? 'Requesting…' : 'Request Agent Review'}
+            </Button>
             <DeletePostDialog postId={postId} />
           </div>
           {copyToast && (
@@ -137,6 +147,9 @@ export function PostDetailActions({
           {revisionCount >= 3 && (
             <ReopenRejectedDialog postId={postId} className={sticky ? 'flex-1' : undefined} />
           )}
+          <Button variant="outline" size="sm" onClick={handleRequestReview} disabled={isPending}>
+            {isPending ? 'Requesting…' : 'Request Agent Review'}
+          </Button>
           <DeletePostDialog postId={postId} />
         </div>
       )
@@ -150,6 +163,9 @@ export function PostDetailActions({
             status="approved"
             scheduledPublishAt={scheduledPublishAt}
           />
+          <Button variant="outline" size="sm" onClick={handleRequestReview} disabled={isPending}>
+            {isPending ? 'Requesting…' : 'Request Agent Review'}
+          </Button>
           <DeletePostDialog postId={postId} />
         </div>
       )

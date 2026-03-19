@@ -11,9 +11,9 @@ const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   pending_review: ['approved', 'rejected'],
   approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft', 'pending_review'],
-  scheduled: ['published', 'approved', 'publish_failed'],
+  scheduled: ['published', 'approved', 'publish_failed', 'pending_review'],
   published: [],
-  publish_failed: ['scheduled', 'draft'],
+  publish_failed: ['scheduled', 'draft', 'pending_review'],
 }
 
 /** Maximum revision count before auto-rejection. */
@@ -75,7 +75,7 @@ export function validateTransition(input: TransitionInput): {
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
     (from === 'rejected' && to === 'pending_review') ? 'revised' :
-    (from === 'approved' && to === 'pending_review') ? 'escalated' :
+    (to === 'pending_review') ? 'escalated' :
     'approved'
 
   // Agent approvals keep the post at pending_review — only human
@@ -106,7 +106,7 @@ export function validateTransition(input: TransitionInput): {
 
   // Clear reviewed_by_agent when a post re-enters pending_review
   // so the agent will pick it up for a fresh review cycle.
-  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'draft')) {
+  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'draft' || from === 'scheduled' || from === 'publish_failed')) {
     updateFields.reviewed_by_agent = null
   }
 

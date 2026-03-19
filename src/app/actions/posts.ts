@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
+import { buildVersionedContentUpdate } from '@/lib/post-versioning'
 import { validateTransition } from '@/lib/workflow'
 import { createStrategyReviewTask } from '@/lib/paperclip'
 
@@ -371,12 +372,56 @@ export async function publishPost(postId: string, linkedinPostUrn?: string) {
 export async function updatePostContent(postId: string, content: string) {
   const supabase = await createClient()
 
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, content, content_version')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  const nextContent = content.trim()
+  if (nextContent === post.content) {
+    revalidatePath('/dashboard')
+    revalidatePath(`/post/${postId}`)
+    return
+  }
+
+  const currentVersion = post.content_version ?? 1
+  const { updateFields } = buildVersionedContentUpdate({
+    status: post.status as PostStatus,
+    currentVersion,
+  })
+
+  await supabase.from('post_revisions').upsert(
+    {
+      post_id: postId,
+      version: currentVersion,
+      content: post.content,
+    },
+    { onConflict: 'post_id,version' },
+  )
+
   const { error } = await supabase
     .from('posts')
-    .update({ content, updated_at: new Date().toISOString() })
+    .update({
+      ...updateFields,
+      content: nextContent,
+    })
     .eq('id', postId)
 
   if (error) throw new Error(error.message)
+
+  if (post.status !== 'draft') {
+    await supabase.from('review_events').insert({
+      post_id: postId,
+      agent_name: 'client',
+      action: 'revised' as const,
+      notes: `Content updated and resubmitted for review (v${currentVersion + 1})`,
+    })
+  }
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
@@ -519,6 +564,41 @@ export async function reopenRejectedPost(postId: string, notes: string) {
       post_id: postId,
     })
   }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function requestAgentReview(postId: string) {
+  const supabase = await createClient()
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select('status, content, scheduled_publish_at')
+    .eq('id', postId)
+    .single()
+
+  if (!post) throw new Error('Post not found')
+
+  await transitionPostStatus(postId, 'pending_review', 'client', {
+    notes: 'User requested agent review',
+  })
+
+  if (post.status === 'scheduled' && post.scheduled_publish_at) {
+    await supabase
+      .from('posts')
+      .update({ scheduled_publish_at: null })
+      .eq('id', postId)
+  }
+
+  const postTitle = post.content?.slice(0, 80) ?? `Post ${postId.slice(0, 8)}`
+  await createStrategyReviewTask({
+    postId,
+    postTitle,
+    commentId: '',
+    commentBody: 'User requested agent review',
+    selectedText: null,
+  })
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)
