@@ -80,6 +80,16 @@ export interface ReviewEvent {
   created_at: string
 }
 
+export interface PostRevision {
+  id: string
+  post_id: string
+  version_number: number
+  content: string
+  revised_by_agent: string
+  revision_reason: string | null
+  created_at: string
+}
+
 export interface AgentKey {
   id: string
   organization_id: string

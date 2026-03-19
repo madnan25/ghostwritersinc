@@ -12,6 +12,7 @@ const UpdateDraftSchema = z.object({
   brief_ref: z.string().nullable().optional(),
   suggested_publish_at: z.string().nullable().optional(),
   media_urls: z.array(z.string()).nullable().optional(),
+  revision_reason: z.string().nullable().optional(),
 })
 
 /** PATCH /api/drafts/:id — update draft content/metadata */
@@ -54,7 +55,7 @@ export async function PATCH(
   // Verify the post belongs to the agent's organization
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, status')
+    .select('organization_id, status, content')
     .eq('id', id)
     .single()
 
@@ -73,8 +74,32 @@ export async function PATCH(
     )
   }
 
+  // Snapshot previous content into post_revisions before overwriting
+  if (parsed.data.content && existing.content && parsed.data.content !== existing.content) {
+    // Get the next version number
+    const { data: lastRevision } = await supabase
+      .from('post_revisions')
+      .select('version_number')
+      .eq('post_id', id)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .single()
+
+    const nextVersion = (lastRevision?.version_number ?? 0) + 1
+
+    await supabase.from('post_revisions').insert({
+      post_id: id,
+      version_number: nextVersion,
+      content: existing.content,
+      revised_by_agent: auth.agentName,
+      revision_reason: parsed.data.revision_reason ?? null,
+    })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { revision_reason, ...updateData } = parsed.data
   const updateFields = {
-    ...parsed.data,
+    ...updateData,
     updated_at: new Date().toISOString(),
   }
 
