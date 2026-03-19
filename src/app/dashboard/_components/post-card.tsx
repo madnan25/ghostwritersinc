@@ -11,6 +11,7 @@ interface PostCardProps {
   post: Post
   pillar?: ContentPillar
   featured?: boolean
+  variant?: 'default' | 'board'
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -21,6 +22,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   scheduled: { label: 'Scheduled', className: 'editorial-chip border-sky-300/22 text-sky-200' },
   published: { label: 'Published', className: 'editorial-chip status-chip-live border-transparent' },
   rejected: { label: 'Rejected', className: 'editorial-chip border-red-300/20 text-red-200' },
+  publish_failed: { label: 'Publish Failed', className: 'editorial-chip border-red-300/30 text-red-200' },
 }
 
 function normalizeContentLines(content: string): string[] {
@@ -61,13 +63,14 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function PostCard({ post, pillar, featured = false }: PostCardProps) {
+export function PostCard({ post, pillar, featured = false, variant = 'default' }: PostCardProps) {
   const title = getPostTitle(post.content)
   const preview = getPostPreview(post.content)
   const statusKey =
     post.status === 'pending_review' && post.reviewed_by_agent ? 'pending_review_agent' : post.status
   const statusConfig = STATUS_CONFIG[statusKey]
   const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
+  const isBoardCard = variant === 'board'
 
   return (
     <m.div
@@ -77,7 +80,8 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
       whileTap={{ scale: 0.995 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className={cn(
-        'editorial-card group flex h-full flex-col gap-5 p-6',
+        'editorial-card group flex h-full flex-col',
+        isBoardCard ? 'gap-4 rounded-[24px] p-4' : 'gap-5 p-6',
         featured && 'min-h-[360px] justify-between md:p-7',
       )}
       style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}14` } : undefined}
@@ -114,10 +118,18 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
 
       <div className="editorial-rule" />
 
-      <Link href={`/post/${post.id}`} className={cn('relative z-10 block min-h-[96px] space-y-3', featured && 'min-h-[140px]')}>
+      <Link
+        href={`/post/${post.id}`}
+        className={cn(
+          'relative z-10 block space-y-3',
+          isBoardCard ? 'min-h-[84px]' : 'min-h-[96px]',
+          featured && 'min-h-[140px]'
+        )}
+      >
         <h3
           className={cn(
-            'line-clamp-2 text-lg font-semibold leading-7 tracking-[-0.035em] text-foreground transition-colors duration-200 group-hover:text-primary/92',
+            'font-semibold tracking-[-0.035em] text-foreground transition-colors duration-200 group-hover:text-primary/92',
+            isBoardCard ? 'line-clamp-3 text-[1.02rem] leading-6' : 'line-clamp-2 text-lg leading-7',
             featured && 'max-w-2xl text-[1.7rem] leading-10 tracking-[-0.05em]',
           )}
         >
@@ -125,7 +137,8 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
         </h3>
         <p
           className={cn(
-            'line-clamp-3 text-sm leading-7 text-foreground/68 transition-colors duration-200 group-hover:text-foreground/82',
+            'text-foreground/68 transition-colors duration-200 group-hover:text-foreground/82',
+            isBoardCard ? 'line-clamp-3 text-[0.82rem] leading-6' : 'line-clamp-3 text-sm leading-7',
             featured && 'max-w-2xl text-[1.02rem] leading-8 md:line-clamp-4',
           )}
         >
@@ -133,7 +146,7 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
         </p>
       </Link>
 
-      <div className="relative z-10 mt-auto space-y-4">
+      <div className={cn('relative z-10 mt-auto', isBoardCard ? 'space-y-3' : 'space-y-4')}>
         <div className={cn('flex flex-col gap-2', featured && 'gap-3 md:flex-row md:flex-wrap md:gap-x-5')}>
           <div className="flex items-center gap-1.5">
             <Calendar className="size-3.5 shrink-0" />
@@ -180,8 +193,8 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
           )}
         </div>
 
-        <div className="editorial-rule pt-4">
-          <PostCardActions postId={post.id} status={post.status} content={post.content} />
+        <div className={cn('editorial-rule', isBoardCard ? 'pt-3' : 'pt-4')}>
+          <PostCardActions postId={post.id} status={post.status} content={post.content} compact={isBoardCard} />
         </div>
       </div>
     </m.div>

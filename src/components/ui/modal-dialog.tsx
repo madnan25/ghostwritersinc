@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useModalPortal } from "@/hooks/use-modal-portal";
 
 interface ModalDialogProps {
   open: boolean;
@@ -16,6 +18,7 @@ export function ModalDialog({
   children,
 }: ModalDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const mounted = useModalPortal(open);
 
   useEffect(() => {
     if (!open) {
@@ -36,7 +39,11 @@ export function ModalDialog({
     return null;
   }
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <div
       ref={overlayRef}
       onClick={(event) => {
@@ -47,9 +54,10 @@ export function ModalDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
       {children}
-    </div>
+    </div>,
+    document.body
   );
 }

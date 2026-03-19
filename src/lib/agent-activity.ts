@@ -18,6 +18,17 @@ interface LogActivityParams {
   providerMetadata?: ProviderMetadata
 }
 
+function derivePostTitle(content: string | null | undefined): string | null {
+  if (!content) return null
+
+  const firstLine = content
+    .split('\n')
+    .map((line) => line.trim().replace(/^[-*#>\s]+/, ''))
+    .find(Boolean)
+
+  return firstLine ? firstLine.slice(0, 120) : null
+}
+
 function sanitizeProviderMetadata(meta?: ProviderMetadata): Record<string, unknown> {
   if (!meta) return {}
   const sanitized: Record<string, unknown> = {}
@@ -39,15 +50,38 @@ function sanitizeProviderMetadata(meta?: ProviderMetadata): Record<string, unkno
  */
 export function logAgentActivity(params: LogActivityParams): void {
   const adminClient = createAdminClient()
-  void adminClient
-    .from('agent_activity_log')
-    .insert({
-      organization_id: params.organizationId,
-      agent_id: params.agentId,
-      post_id: params.postId ?? null,
-      action_type: params.actionType,
-      metadata: { ...(params.metadata ?? {}), ...sanitizeProviderMetadata(params.providerMetadata) },
-    })
+  void Promise.all([
+    adminClient
+      .from('agents')
+      .select('name')
+      .eq('id', params.agentId)
+      .eq('organization_id', params.organizationId)
+      .maybeSingle(),
+    params.postId
+      ? adminClient
+          .from('posts')
+          .select('content')
+          .eq('id', params.postId)
+          .eq('organization_id', params.organizationId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+    .then(([agentResult, postResult]) =>
+      adminClient
+        .from('agent_activity_log')
+        .insert({
+          organization_id: params.organizationId,
+          agent_id: params.agentId,
+          post_id: params.postId ?? null,
+          action_type: params.actionType,
+          metadata: {
+            ...(params.metadata ?? {}),
+            ...sanitizeProviderMetadata(params.providerMetadata),
+            ...(agentResult.data?.name ? { agent_name: agentResult.data.name } : {}),
+            ...(derivePostTitle(postResult.data?.content) ? { post_title: derivePostTitle(postResult.data?.content) } : {}),
+          },
+        })
+    )
     .then(({ error }) => {
       if (error) {
         console.error('[agent-activity] Failed to log activity:', error)

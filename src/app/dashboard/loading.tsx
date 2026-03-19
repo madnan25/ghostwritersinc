@@ -1,62 +1,81 @@
 export default function DashboardLoading() {
   return (
-    <div className="container px-4 py-8">
-      {/* Header skeleton */}
-      <div className="mb-8">
-        <div className="h-8 w-40 animate-pulse rounded-lg bg-muted" />
-        <div className="mt-1.5 h-4 w-64 animate-pulse rounded bg-muted" />
-      </div>
-
-      {/* Pillar distribution bar skeleton */}
-      <div className="mb-6 flex flex-col gap-2">
-        <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-        <div className="h-2.5 w-full animate-pulse rounded-full bg-muted" />
-        <div className="flex gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-3 w-20 animate-pulse rounded bg-muted" />
-          ))}
+    <div className="premium-page space-y-6">
+      <section className="dashboard-frame p-7 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+          <div>
+            <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+            <div className="mt-4 h-12 w-4/5 animate-pulse rounded bg-muted" />
+            <div className="mt-3 h-6 w-3/4 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="grid gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="dashboard-rail rounded-[22px] p-5">
+                <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                <div className="mt-3 h-8 w-16 animate-pulse rounded bg-muted" />
+                <div className="mt-2 h-4 w-40 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Filter pills skeleton */}
-      <div className="mb-6 flex gap-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-7 w-20 animate-pulse rounded-full bg-muted" />
-        ))}
-      </div>
+      <section className="dashboard-frame p-5 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            <div className="mt-3 h-8 w-60 animate-pulse rounded bg-muted" />
+            <div className="mt-2 h-4 w-72 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="h-10 w-40 animate-pulse rounded-full bg-muted" />
+        </div>
 
-      {/* Tab bar skeleton */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-muted/40 p-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-8 w-24 animate-pulse rounded-md bg-muted" />
-        ))}
-      </div>
+        <div className="space-y-4">
+          <div className="dashboard-rail p-4">
+            <div className="mb-3 h-3 w-16 animate-pulse rounded bg-muted" />
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-10 w-28 animate-pulse rounded-full bg-muted" />
+              ))}
+            </div>
+          </div>
 
-      {/* Post card grid skeleton */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="dashboard-rail p-4">
+            <div className="mb-3 h-3 w-16 animate-pulse rounded bg-muted" />
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 w-32 animate-pulse rounded-full bg-muted" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
-            <div className="flex gap-2">
-              <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
-              <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="h-3.5 w-full animate-pulse rounded bg-muted" />
-              <div className="h-3.5 w-5/6 animate-pulse rounded bg-muted" />
-              <div className="h-3.5 w-4/6 animate-pulse rounded bg-muted" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-            </div>
-            <div className="h-12 w-full animate-pulse rounded-lg bg-muted" />
-            <div className="flex gap-2">
-              <div className="h-7 w-20 animate-pulse rounded-lg bg-muted" />
-              <div className="h-7 w-16 animate-pulse rounded-lg bg-muted" />
+          <div
+            key={i}
+            className={i === 0 ? 'md:col-span-2 xl:col-span-2' : undefined}
+          >
+            <div className="editorial-card flex h-full flex-col gap-5 p-6">
+              <div className="flex gap-2">
+                <div className="h-5 w-20 animate-pulse rounded-full bg-muted" />
+                <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-6 w-4/5 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-36 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+              </div>
+              <div className="h-10 w-full animate-pulse rounded-xl bg-muted" />
             </div>
           </div>
         ))}
-      </div>
+      </section>
     </div>
   )
 }

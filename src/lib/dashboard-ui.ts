@@ -1,20 +1,33 @@
-import type { Post, PostStatus } from "@/lib/types";
+import type { ContentPillar, Post, PostStatus } from "@/lib/types";
 
-export type DashboardFilterTab = {
+export type AgentReviewedFilter = "with" | "without" | null;
+
+export type DashboardStatusFilter = {
+  id:
+    | "all"
+    | "awaiting_agent"
+    | "needs_approval"
+    | "draft"
+    | "approved"
+    | "scheduled"
+    | "published"
+    | "rejected"
+    | "publish_failed";
   label: string;
   statuses: PostStatus[] | null;
-  /** When set, further filter by whether reviewed_by_agent is present */
-  agentReviewedFilter?: 'with' | 'without' | null;
+  agentReviewedFilter?: AgentReviewedFilter;
 };
 
-export const DASHBOARD_FILTER_TABS: DashboardFilterTab[] = [
-  { label: "All", statuses: null },
-  { label: "Awaiting Agent", statuses: ["pending_review"], agentReviewedFilter: 'without' },
-  { label: "Needs Approval", statuses: ["pending_review"], agentReviewedFilter: 'with' },
-  { label: "Drafts", statuses: ["draft"] },
-  { label: "Approved", statuses: ["approved", "scheduled"] },
-  { label: "Published", statuses: ["published"] },
-  { label: "Rejected", statuses: ["rejected"] },
+export const DASHBOARD_STATUS_FILTERS: DashboardStatusFilter[] = [
+  { id: "all", label: "All", statuses: null, agentReviewedFilter: null },
+  { id: "awaiting_agent", label: "Awaiting Agent", statuses: ["pending_review"], agentReviewedFilter: "without" },
+  { id: "needs_approval", label: "Needs Approval", statuses: ["pending_review"], agentReviewedFilter: "with" },
+  { id: "draft", label: "Drafts", statuses: ["draft"], agentReviewedFilter: null },
+  { id: "approved", label: "Approved", statuses: ["approved"], agentReviewedFilter: null },
+  { id: "scheduled", label: "Scheduled", statuses: ["scheduled"], agentReviewedFilter: null },
+  { id: "published", label: "Published", statuses: ["published"], agentReviewedFilter: null },
+  { id: "rejected", label: "Rejected", statuses: ["rejected"], agentReviewedFilter: null },
+  { id: "publish_failed", label: "Failed", statuses: ["publish_failed"], agentReviewedFilter: null },
 ];
 
 export type DashboardMetrics = {
@@ -48,6 +61,113 @@ export const DASHBOARD_METRIC_CARDS: DashboardMetricCard[] = [
     detail: "Already live across your channels.",
   },
 ];
+
+export function filterPostsByDashboardRule(
+  posts: Post[],
+  rule: {
+    statuses: PostStatus[] | null;
+    agentReviewedFilter?: AgentReviewedFilter;
+  }
+): Post[] {
+  let result =
+    rule.statuses === null
+      ? posts
+      : posts.filter((post) => rule.statuses?.includes(post.status));
+
+  if (rule.agentReviewedFilter === "with") {
+    result = result.filter((post) => !!post.reviewed_by_agent);
+  } else if (rule.agentReviewedFilter === "without") {
+    result = result.filter((post) => !post.reviewed_by_agent);
+  }
+
+  return result;
+}
+
+export function filterPostsByPillars(posts: Post[], selectedPillarIds: Set<string>): Post[] {
+  if (selectedPillarIds.size === 0) {
+    return posts;
+  }
+
+  return posts.filter((post) => post.pillar_id && selectedPillarIds.has(post.pillar_id));
+}
+
+export function getDashboardStatusFilterById(
+  filterId: DashboardStatusFilter["id"]
+): DashboardStatusFilter {
+  return (
+    DASHBOARD_STATUS_FILTERS.find((filter) => filter.id === filterId) ??
+    DASHBOARD_STATUS_FILTERS[0]
+  );
+}
+
+export function getPillarFilterOptions(
+  pillars: ContentPillar[],
+  posts: Post[],
+  activeFilterId: DashboardStatusFilter["id"]
+) {
+  const statusFilteredPosts = filterPostsByDashboardRule(
+    posts,
+    getDashboardStatusFilterById(activeFilterId)
+  );
+
+  return pillars.map((pillar) => ({
+    ...pillar,
+    count: statusFilteredPosts.filter((post) => post.pillar_id === pillar.id).length,
+  }));
+}
+
+export function getStatusFilterCount(
+  posts: Post[],
+  filter: DashboardStatusFilter,
+  selectedPillarIds: Set<string>
+): number {
+  return filterPostsByPillars(
+    filterPostsByDashboardRule(posts, filter),
+    selectedPillarIds
+  ).length;
+}
+
+function getDashboardPriority(post: Post): number {
+  if (post.status === "pending_review" && post.reviewed_by_agent) return 0;
+  if (post.status === "pending_review") return 1;
+  if (post.status === "approved") return 2;
+  if (post.status === "scheduled") return 3;
+  if (post.status === "draft") return 4;
+  if (post.status === "publish_failed") return 5;
+  if (post.status === "published") return 6;
+  if (post.status === "rejected") return 7;
+  return 99;
+}
+
+function getDashboardSortTimestamp(post: Post): number {
+  const relevantDate =
+    post.status === "scheduled"
+      ? post.scheduled_publish_at ?? post.suggested_publish_at ?? post.updated_at
+      : post.status === "published"
+        ? post.published_at ?? post.updated_at
+        : post.suggested_publish_at ?? post.updated_at;
+
+  return new Date(relevantDate).getTime();
+}
+
+export function sortDashboardPosts(posts: Post[], activeFilterId: DashboardStatusFilter["id"]): Post[] {
+  const sorted = [...posts];
+
+  sorted.sort((a, b) => {
+    if (activeFilterId === "all") {
+      const priorityDiff = getDashboardPriority(a) - getDashboardPriority(b);
+      if (priorityDiff !== 0) return priorityDiff;
+    }
+
+    if (activeFilterId === "published") {
+      return getDashboardSortTimestamp(b) - getDashboardSortTimestamp(a);
+    }
+
+    return getDashboardSortTimestamp(a) - getDashboardSortTimestamp(b);
+  });
+
+  return sorted;
+}
 
 export function getDashboardMetrics(posts: Post[]): DashboardMetrics {
   return {

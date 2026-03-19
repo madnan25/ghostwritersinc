@@ -116,14 +116,14 @@ export function AgentActivityFeed() {
                     </div>
                     <p className="mt-0.5 truncate text-xs text-foreground/60">
                       Agent:{' '}
-                      <span className="font-mono text-foreground/80">
-                        {entry.agent_id.slice(0, 8)}…
+                      <span className="text-foreground/80">
+                        {entry.agent_name ?? 'Unknown agent'}
                       </span>
                       {entry.post_id && (
                         <>
                           {' · Post: '}
-                          <span className="font-mono text-foreground/80">
-                            {entry.post_id.slice(0, 8)}…
+                          <span className="text-foreground/80">
+                            {entry.post_title ?? 'Untitled post'}
                           </span>
                         </>
                       )}

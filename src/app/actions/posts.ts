@@ -101,6 +101,24 @@ async function transitionPostStatus(
   revalidatePath(`/post/${postId}`)
 }
 
+async function approveThenSchedulePost(postId: string, publishAt: string) {
+  const supabase = await createClient()
+
+  await transitionPostStatus(postId, 'approved', 'client')
+  await transitionPostStatus(postId, 'scheduled', 'client', {
+    notes: `Approved and scheduled for ${publishAt}`,
+  })
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ scheduled_publish_at: publishAt })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  return supabase
+}
+
 // ---------------------------------------------------------------------------
 // Inline comments
 // ---------------------------------------------------------------------------
@@ -188,14 +206,8 @@ export async function approvePost(postId: string) {
     .single()
 
   if (postData?.suggested_publish_at) {
-    // Auto-schedule with the brief's suggested date
-    await transitionPostStatus(postId, 'scheduled', 'client', {
-      notes: `Approved and scheduled for ${postData.suggested_publish_at}`,
-    })
-    await supabase
-      .from('posts')
-      .update({ scheduled_publish_at: postData.suggested_publish_at })
-      .eq('id', postId)
+    // Auto-schedule with the brief's suggested date after explicit approval.
+    await approveThenSchedulePost(postId, postData.suggested_publish_at)
   } else {
     await transitionPostStatus(postId, 'approved', 'client')
   }
@@ -217,17 +229,7 @@ export async function approvePost(postId: string) {
 }
 
 export async function approveAndSchedulePost(postId: string, publishAt: string) {
-  await transitionPostStatus(postId, 'scheduled', 'client', {
-    notes: `Approved and scheduled for ${publishAt}`,
-  })
-
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('posts')
-    .update({ scheduled_publish_at: publishAt })
-    .eq('id', postId)
-
-  if (error) throw new Error(error.message)
+  const supabase = await approveThenSchedulePost(postId, publishAt)
 
   const post = await getPostWithUser(supabase, postId)
   if (post?.user_id) {
