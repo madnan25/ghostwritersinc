@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition } from '@/lib/workflow'
+import { createStrategyReviewTask } from '@/lib/paperclip'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -124,18 +125,32 @@ export async function addPostComment(
     .eq('id', postId)
     .single()
 
-  const { error } = await supabase.from('post_comments').insert({
-    post_id: postId,
-    author_type: 'user',
-    author_id: user.id,
-    body,
-    selected_text: selectedText ?? null,
-    selection_start: selectionStart ?? null,
-    selection_end: selectionEnd ?? null,
-    content_version: post?.content_version ?? 1,
-  })
+  const { data: comment, error } = await supabase
+    .from('post_comments')
+    .insert({
+      post_id: postId,
+      author_type: 'user',
+      author_id: user.id,
+      body,
+      selected_text: selectedText ?? null,
+      selection_start: selectionStart ?? null,
+      selection_end: selectionEnd ?? null,
+      content_version: post?.content_version ?? 1,
+    })
+    .select('id')
+    .single()
 
   if (error) throw new Error(error.message)
+
+  // Create a Strategist review task in Paperclip so the agent picks up the comment
+  const postTitle = post?.content?.slice(0, 80) ?? `Post ${postId.slice(0, 8)}`
+  await createStrategyReviewTask({
+    postId,
+    postTitle,
+    commentId: comment.id,
+    commentBody: body,
+    selectedText: selectedText ?? null,
+  })
 
   // Auto-revert approved posts to pending_review when a user comments (LIN-225)
   if (post?.status === 'approved') {
