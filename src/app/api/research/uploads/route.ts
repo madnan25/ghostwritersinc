@@ -16,7 +16,14 @@ const CreateUploadSchema = z.object({
   filename: z.string().max(500).optional(),
   summary: z.string().max(5000).nullable().optional(),
   source_kind: z.enum(['upload', 'note', 'url', 'api']).default('note'),
-  storage_path: z.string().max(1000).default(''),
+  storage_path: z
+    .string()
+    .max(1000)
+    .refine(
+      (val) => val === '' || /^[a-f0-9-]{36}\/[a-zA-Z0-9._\/-]+$/.test(val),
+      { message: 'storage_path must be empty or match format: {uuid}/{path}' }
+    )
+    .default(''),
   upload_type: z.enum(['whatsapp_chat', 'agent_note', 'document', 'transcript']).default('agent_note'),
   file_size_bytes: z.number().int().nonnegative().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional().default({}),

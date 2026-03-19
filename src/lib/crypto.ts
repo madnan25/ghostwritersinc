@@ -9,7 +9,11 @@ function getEncryptionKey(): Buffer {
   if (!key) {
     throw new Error("TOKEN_ENCRYPTION_KEY environment variable is required");
   }
-  // Key must be 32 bytes (64 hex chars) for AES-256
+  if (key.length !== 64) {
+    throw new Error(
+      "TOKEN_ENCRYPTION_KEY must be 64 hex characters (32 bytes for AES-256)"
+    );
+  }
   return Buffer.from(key, "hex");
 }
 
