@@ -131,7 +131,7 @@ export default async function PostPage({ params }: PostPageProps) {
               <div className="flex items-start gap-2">
                 <Bot className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Written by</div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Drafted by</div>
                   <div className="mt-0.5 font-medium">{post.created_by_agent}</div>
                 </div>
               </div>

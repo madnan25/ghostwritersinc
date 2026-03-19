@@ -130,7 +130,7 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
                 <div className="flex items-center gap-1.5 text-foreground/66">
                   <Bot className="size-3.5 shrink-0" />
                   <span>
-                    Written by <span className="font-medium text-foreground/88">{post.created_by_agent}</span>
+                    Drafted by <span className="font-medium text-foreground/88">{post.created_by_agent}</span>
                   </span>
                 </div>
               )}

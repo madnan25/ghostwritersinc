@@ -19,6 +19,7 @@ const ReviewSchema = z.object({
   action: z.enum(['approved', 'rejected']),
   notes: z.string().nullable().optional(),
   rejection_reason: z.string().optional(),
+  suggestedPublishDate: z.string().datetime().nullable().optional(),
 })
 
 /** POST /api/drafts/:id/review — agent pre-review (approve/reject with notes) */
@@ -64,7 +65,7 @@ export async function POST(
   // Fetch the post
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status')
+    .select('organization_id, user_id, status, created_by_agent')
     .eq('id', id)
     .single()
 
@@ -74,6 +75,14 @@ export async function POST(
 
   if (!canAccessAgentUserRecord(auth, post)) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  // Defense-in-depth: prevent agents from reviewing their own drafts
+  if (post.created_by_agent === auth.agentName) {
+    return NextResponse.json(
+      { error: 'Agent cannot review its own draft' },
+      { status: 403 }
+    )
   }
 
   // Determine target status based on action
@@ -100,12 +109,18 @@ export async function POST(
     })
 
     // Update post
+    const postUpdate: Record<string, unknown> = {
+      ...updateFields,
+      reviewed_by_agent: auth.agentName,
+    }
+
+    if (parsed.data.action === 'approved' && parsed.data.suggestedPublishDate !== undefined) {
+      postUpdate.suggested_publish_at = parsed.data.suggestedPublishDate
+    }
+
     let mutation = supabase
       .from('posts')
-      .update({
-        ...updateFields,
-        reviewed_by_agent: auth.agentName,
-      })
+      .update(postUpdate)
       .eq('id', id)
       .eq('organization_id', auth.organizationId)
 

@@ -15,6 +15,8 @@ create table post_revisions (
   post_id uuid not null references posts(id) on delete cascade,
   version integer not null,
   content text not null,
+  revised_by_agent text,
+  revision_reason text,
   created_at timestamptz not null default now(),
   constraint uq_post_revisions_post_version unique (post_id, version)
 );

@@ -57,6 +57,8 @@ export interface PostRevision {
   post_id: string
   version: number
   content: string
+  revised_by_agent: string | null
+  revision_reason: string | null
   created_at: string
 }
 
