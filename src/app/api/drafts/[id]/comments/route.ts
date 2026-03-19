@@ -114,7 +114,7 @@ export async function POST(
   const supabase = createAdminClient()
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id, content_version')
+    .select('organization_id, user_id, content_version, status')
     .eq('id', id)
     .single()
 
@@ -151,6 +151,26 @@ export async function POST(
     metadata: { comment_id: comment.id, has_selection: !!parsed.data.selected_text },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
+
+  // Notify the post owner when an agent comments on a rejected/pending_review post
+  // so Strategist can pick up the revision on their next heartbeat
+  if (
+    post.user_id &&
+    (post.status === 'rejected' || post.status === 'pending_review')
+  ) {
+    try {
+      await supabase.from('notifications').insert({
+        organization_id: post.organization_id,
+        user_id: post.user_id,
+        type: 'feedback_received',
+        title: 'Agent commented on post',
+        body: parsed.data.body.slice(0, 80),
+        post_id: id,
+      })
+    } catch {
+      // Best-effort — don't block the response
+    }
+  }
 
   return NextResponse.json(comment, { status: 201 })
 }
