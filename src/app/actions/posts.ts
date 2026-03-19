@@ -195,6 +195,38 @@ export async function schedulePost(postId: string, publishAt: string) {
   revalidatePath(`/post/${postId}`)
 }
 
+export async function cancelScheduledPost(postId: string) {
+  const supabase = await createClient()
+
+  await transitionPostStatus(postId, 'approved', 'client', {
+    notes: 'Scheduled publish cancelled',
+  })
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ scheduled_publish_at: null })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function reschedulePost(postId: string, publishAt: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ scheduled_publish_at: publishAt })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
 export async function publishPost(postId: string, linkedinPostUrn?: string) {
   const supabase = await createClient()
 
