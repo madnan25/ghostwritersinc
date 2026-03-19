@@ -25,8 +25,13 @@ export default async function PostPage({ params }: PostPageProps) {
 
   if (!post) notFound()
 
-  const statusStyle =
-    STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
+  const isAgentReviewed = post.status === 'pending_review' && !!post.reviewed_by_agent
+  const statusStyle = isAgentReviewed
+    ? 'bg-amber-500/10 text-amber-300 border-amber-400/50'
+    : STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
+  const statusLabel = isAgentReviewed
+    ? 'Agent Reviewed — Needs Approval'
+    : post.status.replace(/_/g, ' ')
 
   return (
     <div className="premium-page pb-28 md:pb-8">
@@ -53,7 +58,7 @@ export default async function PostPage({ params }: PostPageProps) {
               <span
                 className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
               >
-                {post.status.replace('_', ' ')}
+                {statusLabel}
               </span>
             </div>
             {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
