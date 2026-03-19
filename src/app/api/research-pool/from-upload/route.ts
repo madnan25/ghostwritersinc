@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
       pillar_id: pillarId,
       relevance_score: relevanceScore,
       raw_content: rawContent,
-      created_by_agent_id: auth.agentId,
+      created_by_agent_id: getAgentFkId(auth),
     })
     .select()
     .single()

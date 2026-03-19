@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isValidUuid } from '@/lib/validation'
 import type { AgentActionType } from '@/lib/types'
 
 const MAX_PROVIDER_STRING_LENGTH = 128
@@ -38,6 +39,9 @@ function sanitizeProviderMetadata(meta?: ProviderMetadata): Record<string, unkno
  * Never throws — failures are logged to stderr only.
  */
 export function logAgentActivity(params: LogActivityParams): void {
+  // agent_activity_log.agent_id is NOT NULL + FK to agents — skip for legacy keys
+  if (!isValidUuid(params.agentId)) return
+
   const adminClient = createAdminClient()
   void adminClient
     .from('agent_activity_log')

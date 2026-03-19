@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   authenticateAgent,
   canAccessAgentUserRecord,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -101,7 +102,7 @@ export async function PATCH(
     .from('strategy_documents')
     .update({
       ...parsed.data,
-      updated_by_agent_id: auth.agentId,
+      updated_by_agent_id: getAgentFkId(auth),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

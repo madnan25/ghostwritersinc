@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       suggested_publish_at: parsed.data.suggested_publish_at ?? null,
       media_urls: parsed.data.media_urls ?? [],
       status: 'pending_review',
-      agent_id: auth.agentId,
+      agent_id: getAgentFkId(auth),
       created_by_agent: auth.agentName,
     })
     .select()

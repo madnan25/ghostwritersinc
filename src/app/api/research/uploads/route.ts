@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     .insert({
       organization_id: auth.organizationId,
       uploaded_by: auth.userId,
-      agent_id: auth.agentId,
+      agent_id: getAgentFkId(auth),
       filename: parsed.data.filename ?? `${parsed.data.title}.txt`,
       title: parsed.data.title.trim(),
       summary: parsed.data.summary ?? null,

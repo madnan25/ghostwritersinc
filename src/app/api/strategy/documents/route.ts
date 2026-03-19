@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   authenticateAgent,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
       body: parsed.data.body,
       summary: parsed.data.summary ?? null,
       pillar_id: parsed.data.pillar_id ?? null,
-      created_by_agent_id: auth.agentId,
-      updated_by_agent_id: auth.agentId,
+      created_by_agent_id: getAgentFkId(auth),
+      updated_by_agent_id: getAgentFkId(auth),
     })
     .select('*')
     .single()

@@ -297,6 +297,17 @@ export function isSharedOrgAgentContext(auth: AgentContext): boolean {
   return auth.scopeMode === 'shared_org'
 }
 
+/**
+ * Returns the agent's UUID suitable for FK columns, or null for legacy keys
+ * whose agentId is a synthetic non-UUID string (e.g. "legacy-<id>").
+ */
+export function getAgentFkId(auth: AgentContext): string | null {
+  // Inline check avoids circular import with validation.ts
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(auth.agentId)
+    ? auth.agentId
+    : null
+}
+
 export function canAccessAgentUserRecord(
   auth: AgentContext,
   record: { organization_id: string; user_id: string | null }

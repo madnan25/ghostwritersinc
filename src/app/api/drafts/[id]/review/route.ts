@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   authenticateAgent,
   canAccessAgentUserRecord,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -172,7 +173,7 @@ export async function POST(
     // Create review event
     await supabase.from('review_events').insert({
       post_id: id,
-      agent_id: auth.agentId,
+      agent_id: getAgentFkId(auth),
       agent_name: auth.agentName,
       action: reviewAction,
       notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,

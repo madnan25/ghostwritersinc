@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   authenticateAgent,
   canAccessAgentUserRecord,
+  getAgentFkId,
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
@@ -146,7 +147,7 @@ export async function POST(
       post_id: id,
       author_type: 'agent',
       author_id: auth.agentId,
-      agent_id: auth.agentId,
+      agent_id: getAgentFkId(auth),
       body: parsed.data.body,
       selected_text: parsed.data.selected_text ?? null,
       selection_start: parsed.data.selection_start ?? null,
