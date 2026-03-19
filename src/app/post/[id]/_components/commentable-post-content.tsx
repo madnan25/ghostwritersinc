@@ -2,12 +2,14 @@
 
 import { useState, useRef, useTransition, useEffect } from 'react'
 import { addPostComment } from '@/app/actions/posts'
+import { ModalDialog } from '@/components/ui/modal-dialog'
 import type { PostComment } from '@/lib/types'
 
 interface Props {
   postId: string
   content: string
   comments: PostComment[]
+  postStatus: string
 }
 
 interface SelectionState {
@@ -55,11 +57,12 @@ function buildSegments(content: string, inlineComments: PostComment[]): Segment[
   return segments
 }
 
-export function CommentablePostContent({ postId, content, comments }: Props) {
+export function CommentablePostContent({ postId, content, comments, postStatus }: Props) {
   const [selection, setSelection] = useState<SelectionState | null>(null)
   const [commentText, setCommentText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [showWarning, setShowWarning] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -113,6 +116,16 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
 
   function handleSubmit() {
     if (!commentText.trim() || !selection) return
+    if (postStatus === 'approved') {
+      setShowWarning(true)
+      return
+    }
+    doSubmit()
+  }
+
+  function doSubmit() {
+    if (!selection) return
+    setShowWarning(false)
     setError(null)
     startTransition(async () => {
       try {
@@ -147,6 +160,32 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
           ),
         )}
       </div>
+
+      {/* Warning dialog for approved post reversion */}
+      <ModalDialog open={showWarning} onClose={() => setShowWarning(false)} titleId="inline-revert-warning-title">
+        <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl">
+          <h2 id="inline-revert-warning-title" className="mb-2 text-base font-semibold text-foreground">
+            Revert approved post?
+          </h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Commenting on this approved post will revert it to review status. The AI team will re-review based on your feedback before it can be re-approved.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowWarning(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={doSubmit}
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+            >
+              Comment &amp; Revert
+            </button>
+          </div>
+        </div>
+      </ModalDialog>
 
       {/* Inline selection popover */}
       {selection && (

@@ -70,7 +70,7 @@ export default async function PostPage({ params }: PostPageProps) {
                 — select text to leave an inline comment
               </span>
             </h2>
-            <CommentablePostContent postId={post.id} content={post.content} comments={comments} />
+            <CommentablePostContent postId={post.id} content={post.content} comments={comments} postStatus={post.status} />
           </div>
 
           {/* Comment thread + overall comment form */}
@@ -86,7 +86,7 @@ export default async function PostPage({ params }: PostPageProps) {
             </h2>
             <CommentThread comments={comments} />
             <div className="mt-4 pt-4 border-t border-border">
-              <OverallCommentForm postId={post.id} />
+              <OverallCommentForm postId={post.id} postStatus={post.status} />
             </div>
           </div>
 
