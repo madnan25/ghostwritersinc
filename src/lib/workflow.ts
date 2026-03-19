@@ -77,10 +77,14 @@ export function validateTransition(input: TransitionInput): {
 
   if (to === 'rejected') {
     updateFields.rejection_reason = rejectionReason
+    updateFields.delete_scheduled_at = new Date(
+      Date.now() + 24 * 60 * 60 * 1000
+    ).toISOString()
   }
 
   if (to === 'draft' && from === 'rejected') {
     updateFields.rejection_reason = null
+    updateFields.delete_scheduled_at = null
   }
 
   if (notes) {
