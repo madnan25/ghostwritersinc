@@ -60,6 +60,7 @@ function makePost(id: string, pillarId: string | null, suggestedAt: string): Pos
     created_by_agent: null,
     reviewed_by_agent: null,
     review_notes: null,
+    content_version: 1,
     created_at: suggestedAt,
     updated_at: suggestedAt,
   };

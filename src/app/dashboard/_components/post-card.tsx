@@ -16,6 +16,7 @@ interface PostCardProps {
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'editorial-chip' },
   pending_review: { label: 'Needs Review', className: 'editorial-chip border-amber-300/24 text-amber-200' },
+  pending_review_agent: { label: 'Agent Reviewed — Needs Approval', className: 'editorial-chip border-amber-400/50 bg-amber-500/10 text-amber-300' },
   approved: { label: 'Approved', className: 'editorial-chip border-emerald-300/20 text-emerald-200' },
   scheduled: { label: 'Scheduled', className: 'editorial-chip border-sky-300/22 text-sky-200' },
   published: { label: 'Published', className: 'editorial-chip status-chip-live border-transparent' },
@@ -39,7 +40,9 @@ function formatDate(dateStr: string | null): string {
 
 export function PostCard({ post, pillar, featured = false }: PostCardProps) {
   const hook = getHook(post.content)
-  const statusConfig = STATUS_CONFIG[post.status]
+  const statusKey =
+    post.status === 'pending_review' && post.reviewed_by_agent ? 'pending_review_agent' : post.status
+  const statusConfig = STATUS_CONFIG[statusKey]
   const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
 
   return (

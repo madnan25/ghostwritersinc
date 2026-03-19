@@ -150,6 +150,13 @@ export async function GET(request: NextRequest) {
     query = query.in('status', statuses)
   }
 
+  // Exclude posts already reviewed by an agent — prevents review loops
+  // where Strategist re-reviews the same pending_review post repeatedly.
+  const excludeReviewed = searchParams.get('exclude_reviewed')
+  if (excludeReviewed === 'true') {
+    query = query.is('reviewed_by_agent', null)
+  }
+
   const { data, error } = await query
 
   if (error) {
