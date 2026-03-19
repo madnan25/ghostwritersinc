@@ -54,7 +54,7 @@ export function EditPostDialog({ postId, initialContent }: EditPostDialogProps) 
             transition={{ duration: 0.2 }}
             onClick={(e) => { if (e.target === overlayRef.current) handleClose() }}
             className={cn(
-              'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex',
+              'fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex',
               mobile ? 'items-end' : 'items-center justify-center p-4',
             )}
           >

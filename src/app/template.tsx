@@ -1,11 +1,16 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, m, useReducedMotion } from 'framer-motion'
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const shouldReduceMotion = useReducedMotion()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [pathname])
 
   return (
     <AnimatePresence mode="wait" initial={false}>

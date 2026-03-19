@@ -23,9 +23,32 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   rejected: { label: 'Rejected', className: 'editorial-chip border-red-300/20 text-red-200' },
 }
 
-function getHook(content: string): string {
-  const lines = content.split('\n').filter((l) => l.trim())
-  return lines.slice(0, 2).join('\n') || content.slice(0, 120)
+function normalizeContentLines(content: string): string[] {
+  return content
+    .split('\n')
+    .map((line) => line.trim().replace(/^[-*#>\s]+/, ''))
+    .filter(Boolean)
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`
+}
+
+function getPostTitle(content: string): string {
+  const [firstLine] = normalizeContentLines(content)
+  return truncateText(firstLine || 'Untitled post', 88)
+}
+
+function getPostPreview(content: string): string {
+  const lines = normalizeContentLines(content)
+
+  if (lines.length > 1) {
+    return truncateText(lines.slice(1, 4).join(' '), 220)
+  }
+
+  const [firstLine = ''] = lines
+  return firstLine.length > 88 ? truncateText(firstLine.slice(88).trim(), 180) : ''
 }
 
 function formatDate(dateStr: string | null): string {
@@ -39,7 +62,8 @@ function formatDate(dateStr: string | null): string {
 }
 
 export function PostCard({ post, pillar, featured = false }: PostCardProps) {
-  const hook = getHook(post.content)
+  const title = getPostTitle(post.content)
+  const preview = getPostPreview(post.content)
   const statusKey =
     post.status === 'pending_review' && post.reviewed_by_agent ? 'pending_review_agent' : post.status
   const statusConfig = STATUS_CONFIG[statusKey]
@@ -90,14 +114,22 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
 
       <div className="editorial-rule" />
 
-      <Link href={`/post/${post.id}`} className={cn('relative z-10 block min-h-[96px]', featured && 'min-h-[140px]')}>
-        <p
+      <Link href={`/post/${post.id}`} className={cn('relative z-10 block min-h-[96px] space-y-3', featured && 'min-h-[140px]')}>
+        <h3
           className={cn(
-            'line-clamp-4 text-[1.05rem] leading-8 tracking-[-0.03em] text-foreground/96 transition-colors duration-200 group-hover:text-foreground',
-            featured && 'max-w-2xl text-[1.42rem] leading-10 tracking-[-0.045em] md:line-clamp-5',
+            'line-clamp-2 text-lg font-semibold leading-7 tracking-[-0.035em] text-foreground transition-colors duration-200 group-hover:text-primary/92',
+            featured && 'max-w-2xl text-[1.7rem] leading-10 tracking-[-0.05em]',
           )}
         >
-          {hook}
+          {title}
+        </h3>
+        <p
+          className={cn(
+            'line-clamp-3 text-sm leading-7 text-foreground/68 transition-colors duration-200 group-hover:text-foreground/82',
+            featured && 'max-w-2xl text-[1.02rem] leading-8 md:line-clamp-4',
+          )}
+        >
+          {preview || title}
         </p>
       </Link>
 

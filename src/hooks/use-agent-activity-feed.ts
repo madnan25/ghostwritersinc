@@ -9,7 +9,7 @@ import type { AgentActivityLog } from '@/lib/types'
  * Returns the most recent activity entries (capped at `limit`).
  * RLS ensures only the user's org rows are received.
  */
-export function useAgentActivityFeed(limit = 20) {
+export function useAgentActivityFeed(limit = 50) {
   const [entries, setEntries] = useState<AgentActivityLog[]>([])
   const limitRef = useRef(limit)
   useLayoutEffect(() => {
