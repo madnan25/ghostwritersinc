@@ -10,6 +10,7 @@ const ReviewSchema = z.object({
   action: z.enum(['approved', 'rejected']),
   notes: z.string().nullable().optional(),
   rejection_reason: z.string().optional(),
+  suggestedPublishDate: z.string().datetime().nullable().optional(),
 })
 
 /** POST /api/drafts/:id/review — agent pre-review (approve/reject with notes) */
@@ -95,12 +96,18 @@ export async function POST(
     })
 
     // Update post
+    const postUpdate: Record<string, unknown> = {
+      ...updateFields,
+      reviewed_by_agent: auth.agentName,
+    }
+
+    if (parsed.data.action === 'approved' && parsed.data.suggestedPublishDate !== undefined) {
+      postUpdate.suggested_publish_at = parsed.data.suggestedPublishDate
+    }
+
     const { error: updateError } = await supabase
       .from('posts')
-      .update({
-        ...updateFields,
-        reviewed_by_agent: auth.agentName,
-      })
+      .update(postUpdate)
       .eq('id', id)
 
     if (updateError) {
