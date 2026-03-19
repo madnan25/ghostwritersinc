@@ -3,8 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { updateUserSettings, signOut, disconnectLinkedIn } from "@/app/actions/auth";
-import { startLinkedInOAuth } from "@/lib/linkedin-oauth";
+import { updateUserSettings, signOut } from "@/app/actions/auth";
 
 const TIMEZONES = [
   "UTC",
@@ -30,8 +29,6 @@ export function SettingsForm({
   avatarUrl,
   timezone,
   notificationsEnabled,
-  linkedInConnected,
-  linkedInExpiresAt,
   canManageOrgSettings,
   contextSharingEnabled,
 }: {
@@ -40,8 +37,6 @@ export function SettingsForm({
   avatarUrl: string | null;
   timezone: string;
   notificationsEnabled: boolean;
-  linkedInConnected: boolean;
-  linkedInExpiresAt: string | null;
   canManageOrgSettings: boolean;
   contextSharingEnabled: boolean;
 }) {
@@ -61,26 +56,6 @@ export function SettingsForm({
     if (canManageOrgSettings && contextSharing !== savedSettings.contextSharing) return true;
     return false;
   }, [canManageOrgSettings, contextSharing, notifications, savedSettings, selectedTimezone]);
-
-  async function handleLinkedInReconnect() {
-    await startLinkedInOAuth("/settings");
-  }
-
-  async function handleLinkedInDisconnect() {
-    startTransition(async () => {
-      await disconnectLinkedIn();
-    });
-  }
-
-  function getExpiryLabel(expiresAt: string | null): { text: string; warn: boolean } {
-    if (!expiresAt) return { text: "Unknown expiry", warn: false };
-    const exp = new Date(expiresAt);
-    const now = new Date();
-    const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return { text: "Token expired", warn: true };
-    if (diffDays <= 7) return { text: `Expires in ${diffDays} day${diffDays === 1 ? "" : "s"}`, warn: true };
-    return { text: `Expires ${exp.toLocaleDateString()}`, warn: false };
-  }
 
   function handleSubmit(formData: FormData) {
     // Sync toggle state into form data since we use controlled state
@@ -231,36 +206,6 @@ export function SettingsForm({
           {isPending ? "Saving…" : "Save Settings"}
         </Button>
       </form>
-
-      <div className="space-y-3">
-        <h2 className="premium-kicker text-[0.72rem] tracking-[0.24em]">LinkedIn Connection</h2>
-        {linkedInConnected ? (() => {
-          const { text, warn } = getExpiryLabel(linkedInExpiresAt);
-          return (
-            <div className="dashboard-rail flex items-center justify-between p-5 min-h-[72px]">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-emerald-400">Connected</p>
-                <p className={`text-xs ${warn ? "text-yellow-300" : "text-foreground/68"}`}>{text}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleLinkedInReconnect} disabled={isPending} className="min-h-[40px]">
-                  Reconnect
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleLinkedInDisconnect} disabled={isPending} className="min-h-[40px] text-destructive hover:text-destructive hover:bg-destructive/10">
-                  Disconnect
-                </Button>
-              </div>
-            </div>
-          );
-        })() : (
-          <div className="dashboard-rail flex items-center justify-between p-5 min-h-[72px]">
-            <p className="text-sm text-foreground/68">Not connected</p>
-            <Button size="sm" onClick={handleLinkedInReconnect} className="min-h-[40px]">
-              Connect LinkedIn
-            </Button>
-          </div>
-        )}
-      </div>
 
       <div className="editorial-rule pt-6">
         <form action={signOut}>

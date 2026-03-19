@@ -5,6 +5,7 @@ import { getCurrentOrgUser } from "@/lib/server-auth";
 import { PlatformAdminLinks } from "./_components/platform-admin-links";
 import { SettingsForm } from "./_components/settings-form";
 import { StrategyConfigForm } from "./_components/strategy-config-form";
+import { LinkedInConnectionSection } from "./_components/linkedin-connection-section";
 import { getStrategyConfig } from "@/app/actions/strategy";
 
 export default async function SettingsPage() {
@@ -48,7 +49,6 @@ export default async function SettingsPage() {
 
   const settings = (profile.settings ?? {}) as Record<string, unknown>;
   const linkedInConnected = !!(profile.linkedin_id && settings.linkedin_access_token_encrypted);
-  const linkedInExpiresAt = settings.linkedin_token_expires_at as string | null | undefined;
   const linkedInProfileName = settings.linkedin_profile_name as string | null | undefined;
   const linkedInProfileEmail = settings.linkedin_profile_email as string | null | undefined;
   const linkedInProfileAvatarUrl =
@@ -117,14 +117,25 @@ export default async function SettingsPage() {
       </div>
 
       <div className="dashboard-frame p-6 sm:p-8">
+        <div className="space-y-2 mb-6">
+          <p className="premium-kicker">LinkedIn</p>
+          <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+            LinkedIn Connection
+          </h2>
+          <p className="max-w-3xl text-sm leading-7 text-foreground/66">
+            Connect your LinkedIn account to publish posts directly from the workspace.
+          </p>
+        </div>
+        <LinkedInConnectionSection />
+      </div>
+
+      <div className="dashboard-frame p-6 sm:p-8">
         <SettingsForm
           name={displayName ?? ""}
           email={displayEmail ?? ""}
           avatarUrl={displayAvatarUrl ?? null}
           timezone={profile.timezone ?? "UTC"}
           notificationsEnabled={settings.notifications_enabled !== false}
-          linkedInConnected={linkedInConnected}
-          linkedInExpiresAt={linkedInExpiresAt ?? null}
           canManageOrgSettings={canManageOrgSettings}
           contextSharingEnabled={organization?.context_sharing_enabled ?? false}
         />
