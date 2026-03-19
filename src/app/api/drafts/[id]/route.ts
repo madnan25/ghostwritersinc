@@ -21,6 +21,7 @@ const UpdateDraftSchema = z.object({
   brief_ref: z.string().max(512).nullable().optional(),
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
+  revision_reason: z.string().nullable().optional(),
 })
 
 /** GET /api/drafts/:id — fetch a single draft */
@@ -126,8 +127,32 @@ export async function PATCH(
     )
   }
 
+  // Snapshot previous content into post_revisions before overwriting
+  if (parsed.data.content && existing.content && parsed.data.content !== existing.content) {
+    // Get the next version number
+    const { data: lastRevision } = await supabase
+      .from('post_revisions')
+      .select('version')
+      .eq('post_id', id)
+      .order('version', { ascending: false })
+      .limit(1)
+      .single()
+
+    const nextVersion = (lastRevision?.version ?? 0) + 1
+
+    await supabase.from('post_revisions').insert({
+      post_id: id,
+      version: nextVersion,
+      content: existing.content,
+      revised_by_agent: auth.agentName,
+      revision_reason: parsed.data.revision_reason ?? null,
+    })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { revision_reason, ...updateData } = parsed.data
   const updateFields = {
-    ...parsed.data,
+    ...updateData,
     updated_at: new Date().toISOString(),
   }
 
