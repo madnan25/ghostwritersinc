@@ -2,6 +2,15 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ContentPillar, Post, Brief, StrategyConfig, ResearchPoolItem } from '@/lib/types'
+import {
+  computeActualPct,
+  computeCalendarGap,
+  distributeBriefsByWeight,
+  findEmptyDays,
+  getPillarBalance,
+  getPostsThisMonth,
+  planBriefsFromResearch,
+} from '@/lib/content-planning'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -112,156 +121,6 @@ function makeStrategyConfig(overrides: Partial<StrategyConfig> = {}): StrategyCo
   }
 }
 
-// ---------------------------------------------------------------------------
-// Content planning pure logic — mirrors strategy page functions
-// ---------------------------------------------------------------------------
-
-function computeActualPct(posts: Post[], pillarId: string): number {
-  const pillarPosts = posts.filter((p) => p.pillar_id === pillarId)
-  const assigned = posts.filter((p) => p.pillar_id)
-  if (assigned.length === 0) return 0
-  return Math.round((pillarPosts.length / assigned.length) * 100)
-}
-
-function getPillarBalance(
-  posts: Post[],
-  pillars: { id: string; weight_pct: number }[],
-): { label: string; variant: 'good' | 'ok' | 'off' } {
-  const assigned = posts.filter((p) => p.pillar_id)
-  if (assigned.length === 0) return { label: 'No data yet', variant: 'ok' }
-
-  const maxDeviation = Math.max(
-    ...pillars.map((p) => {
-      const actual = Math.round(
-        (assigned.filter((post) => post.pillar_id === p.id).length / assigned.length) * 100,
-      )
-      return Math.abs(actual - p.weight_pct)
-    }),
-  )
-
-  if (maxDeviation <= 5) return { label: 'Well balanced', variant: 'good' }
-  if (maxDeviation <= 15) return { label: 'Slightly off-target', variant: 'ok' }
-  return { label: 'Needs rebalancing', variant: 'off' }
-}
-
-function getPostsThisMonth(posts: Post[]): number {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  return posts.filter((p) => {
-    const date = p.suggested_publish_at ?? p.created_at
-    return new Date(date) >= start
-  }).length
-}
-
-// ---------------------------------------------------------------------------
-// Calendar gap calculation logic
-// ---------------------------------------------------------------------------
-
-/**
- * Compute the number of posting slots needed for the remainder of a month.
- * If monthlyTarget is 12 and we already have 3 posts, gap = 9.
- */
-function computeCalendarGap(
-  existingPostCount: number,
-  monthlyTarget: number,
-): number {
-  return Math.max(0, monthlyTarget - existingPostCount)
-}
-
-/**
- * Determine which days in a given month have no scheduled posts.
- * Returns dates with no posts as ISO strings.
- */
-function findEmptyDays(
-  year: number,
-  month: number,
-  scheduledDates: string[],
-): string[] {
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const occupiedDays = new Set(
-    scheduledDates.map((d) => new Date(d).getDate()),
-  )
-  const emptyDays: string[] = []
-  for (let day = 1; day <= daysInMonth; day++) {
-    if (!occupiedDays.has(day)) {
-      emptyDays.push(new Date(year, month, day).toISOString().split('T')[0])
-    }
-  }
-  return emptyDays
-}
-
-// ---------------------------------------------------------------------------
-// Pillar weight distribution logic
-// ---------------------------------------------------------------------------
-
-/**
- * Distribute N briefs across pillars proportional to their weight_pct.
- * Uses largest-remainder method to handle fractional allocations.
- */
-function distributeBriefsByWeight(
-  pillars: { id: string; weight_pct: number }[],
-  totalBriefs: number,
-): Record<string, number> {
-  if (pillars.length === 0 || totalBriefs <= 0) return {}
-
-  const totalWeight = pillars.reduce((s, p) => s + p.weight_pct, 0)
-  if (totalWeight === 0) return {}
-
-  // Initial allocation (floor)
-  const allocation: Record<string, number> = {}
-  const remainders: { id: string; remainder: number }[] = []
-  let allocated = 0
-
-  for (const p of pillars) {
-    const exact = (p.weight_pct / totalWeight) * totalBriefs
-    const floored = Math.floor(exact)
-    allocation[p.id] = floored
-    allocated += floored
-    remainders.push({ id: p.id, remainder: exact - floored })
-  }
-
-  // Distribute leftover via largest remainder
-  remainders.sort((a, b) => b.remainder - a.remainder)
-  let leftover = totalBriefs - allocated
-  for (const r of remainders) {
-    if (leftover <= 0) break
-    allocation[r.id]++
-    leftover--
-  }
-
-  return allocation
-}
-
-// ---------------------------------------------------------------------------
-// Brief creation from research items
-// ---------------------------------------------------------------------------
-
-/**
- * Create briefs from research items, matching each to a pillar and marking
- * the research item as consumed.
- */
-function planBriefsFromResearch(
-  researchItems: ResearchPoolItem[],
-  pillars: ContentPillar[],
-  gap: number,
-): { briefs: Brief[]; consumedIds: string[] } {
-  const available = researchItems.filter((r) => r.status === 'new')
-  // Sort by relevance score descending (nulls last)
-  const sorted = [...available].sort(
-    (a, b) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0),
-  )
-
-  const toConsume = sorted.slice(0, gap)
-  const briefs: Brief[] = toConsume.map((item) => {
-    return makeBrief({
-      pillar_id: item.pillar_id,
-      angle: item.title,
-      research_refs: [item.id],
-    })
-  })
-
-  return { briefs, consumedIds: toConsume.map((i) => i.id) }
-}
 
 // ===========================================================================
 // 1. Calendar Gap Calculation

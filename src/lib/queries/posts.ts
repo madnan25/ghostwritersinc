@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { logQueryError } from '@/lib/queries/errors'
-import type { ContentPillar, Post, PostComment, PostRevision, PostStatus, ReviewEvent } from '@/lib/types'
+import type { Brief, ContentPillar, Post, PostComment, PostRevision, PostStatus, ReviewEvent } from '@/lib/types'
 
 function getLinkedInDisplayNameFromSettings(settings: unknown): string | null {
   if (!settings || typeof settings !== 'object') return null
@@ -322,6 +322,21 @@ export async function getCalendarPosts(): Promise<CalendarPosts> {
     scheduled: all.filter((p) => !!p.scheduled_publish_at),
     unscheduled: all.filter((p) => !p.scheduled_publish_at),
   }
+}
+
+export async function getBriefById(id: string): Promise<Brief | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('briefs')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    logQueryError(`brief ${id}`, error)
+    return null
+  }
+  return data
 }
 
 export async function getPillars(): Promise<ContentPillar[]> {

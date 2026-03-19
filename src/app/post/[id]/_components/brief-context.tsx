@@ -1,13 +1,14 @@
-import { Tag, FileText } from 'lucide-react'
-import type { ContentPillar } from '@/lib/types'
+import { Tag, FileText, Target, StickyNote } from 'lucide-react'
+import type { Brief, ContentPillar } from '@/lib/types'
 
 interface BriefContextProps {
   briefRef: string | null
   pillar: ContentPillar | null
+  brief: Brief | null
 }
 
-export function BriefContext({ briefRef, pillar }: BriefContextProps) {
-  if (!briefRef && !pillar) return null
+export function BriefContext({ briefRef, pillar, brief }: BriefContextProps) {
+  if (!briefRef && !pillar && !brief) return null
 
   return (
     <div className="dashboard-frame p-5 sm:p-6">
@@ -30,6 +31,26 @@ export function BriefContext({ briefRef, pillar }: BriefContextProps) {
               {pillar.audience_summary && (
                 <p className="mt-1 text-xs text-muted-foreground/70 italic">{pillar.audience_summary}</p>
               )}
+            </div>
+          </div>
+        )}
+
+        {brief?.angle && (
+          <div className="flex items-start gap-3">
+            <Target className="mt-0.5 size-4 shrink-0 text-sky-400" />
+            <div>
+              <div className="text-[0.72rem] uppercase tracking-[0.18em] text-sky-400/80">Angle</div>
+              <div className="mt-0.5 text-sm">{brief.angle}</div>
+            </div>
+          </div>
+        )}
+
+        {brief?.voice_notes && (
+          <div className="flex items-start gap-3">
+            <StickyNote className="mt-0.5 size-4 shrink-0 text-amber-400" />
+            <div>
+              <div className="text-[0.72rem] uppercase tracking-[0.18em] text-amber-400/80">Strategist Notes</div>
+              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{brief.voice_notes}</p>
             </div>
           </div>
         )}
