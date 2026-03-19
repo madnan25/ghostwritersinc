@@ -162,6 +162,60 @@ export async function PATCH(
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
+  // Auto-resubmit: if the agent updated content on a rejected post, transition
+  // to pending_review so the Strategist can re-review the revised draft.
+  if (existing.status === 'rejected' && parsed.data.content) {
+    const currentVersion = (post as Record<string, unknown>).content_version as number ?? 1
+    const newVersion = currentVersion + 1
+
+    // Snapshot the previous content
+    await supabase.from('post_revisions').insert({
+      post_id: id,
+      version: currentVersion,
+      content: parsed.data.content,
+    })
+
+    // Transition rejected → pending_review, clear rejection fields, bump version
+    const { error: transitionError } = await supabase
+      .from('posts')
+      .update({
+        status: 'pending_review',
+        content_version: newVersion,
+        rejection_reason: null,
+        delete_scheduled_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (!transitionError) {
+      // Record the revision event
+      await supabase.from('review_events').insert({
+        post_id: id,
+        agent_name: auth.agentId,
+        action: 'revised',
+        notes: `Agent revised and resubmitted (v${newVersion})`,
+      })
+
+      logAgentActivity({
+        organizationId: auth.organizationId,
+        agentId: auth.agentId,
+        postId: id,
+        actionType: 'status_changed',
+        metadata: { from: 'rejected', to: 'pending_review', content_version: newVersion },
+        providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
+      })
+
+      // Re-fetch for the response
+      const { data: updated } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (updated) return NextResponse.json(updated)
+    }
+  }
+
   return NextResponse.json(post)
 }
 

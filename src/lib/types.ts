@@ -10,7 +10,7 @@ export type ContentType = 'text' | 'image' | 'document'
 
 export type AuthorType = 'user' | 'agent'
 
-export type ReviewAction = 'approved' | 'rejected' | 'escalated'
+export type ReviewAction = 'approved' | 'rejected' | 'escalated' | 'revised'
 
 export type UserRole = 'admin' | 'member'
 

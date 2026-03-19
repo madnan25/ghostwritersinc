@@ -247,6 +247,75 @@ export async function updatePostContent(postId: string, content: string) {
   revalidatePath(`/post/${postId}`)
 }
 
+export async function reviseAndResubmit(postId: string) {
+  const supabase = await createClient()
+
+  // Fetch current post state
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, content, content_version, user_id, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  if (post.status !== 'rejected') {
+    throw new Error('Only rejected posts can be revised and resubmitted')
+  }
+
+  const currentVersion = post.content_version ?? 1
+  const newVersion = currentVersion + 1
+
+  // Snapshot current content into post_revisions
+  await supabase.from('post_revisions').insert({
+    post_id: postId,
+    version: currentVersion,
+    content: post.content,
+  })
+
+  // Transition rejected → pending_review via validateTransition
+  const { updateFields } = validateTransition({
+    postId,
+    from: 'rejected' as PostStatus,
+    to: 'pending_review',
+    agentName: 'client',
+    notes: `Revised and resubmitted (v${newVersion})`,
+  })
+
+  // Increment content_version alongside the transition fields
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ ...updateFields, content_version: newVersion })
+    .eq('id', postId)
+
+  if (updateError) throw new Error(updateError.message)
+
+  // Record review event
+  await supabase.from('review_events').insert({
+    post_id: postId,
+    agent_name: 'client',
+    action: 'revised' as const,
+    notes: `Revised and resubmitted (v${newVersion})`,
+  })
+
+  // Notify the post owner for Strategist re-review
+  if (post.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_submitted',
+      title: 'Revised post resubmitted for review',
+      body: post.content.slice(0, 80),
+      post_id: postId,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
 export async function reviseDraft(postId: string) {
   await transitionPostStatus(postId, 'draft', 'client', {
     notes: 'Returned to draft for revision',

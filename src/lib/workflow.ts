@@ -10,7 +10,7 @@ const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   draft: ['pending_review'],
   pending_review: ['approved', 'rejected'],
   approved: ['scheduled', 'published'],
-  rejected: ['draft'],
+  rejected: ['draft', 'pending_review'],
   scheduled: ['published'],
   published: [],
 }
@@ -70,6 +70,7 @@ export function validateTransition(input: TransitionInput): {
 
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
+    (from === 'rejected' && to === 'pending_review') ? 'revised' :
     'approved'
 
   // Agent approvals keep the post at pending_review — only human
@@ -93,7 +94,7 @@ export function validateTransition(input: TransitionInput): {
     }
   }
 
-  if (to === 'draft' && from === 'rejected') {
+  if (from === 'rejected' && (to === 'draft' || to === 'pending_review')) {
     updateFields.rejection_reason = null
     updateFields.delete_scheduled_at = null
   }
