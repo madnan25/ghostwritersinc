@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { logQueryError } from '@/lib/queries/errors'
-import type { ResearchPoolItem, ContentPillar } from '@/lib/types'
+import type { ResearchPoolItem } from '@/lib/types'
 
 export interface ResearchPoolStats {
   total: number
@@ -107,6 +107,34 @@ export async function getRecentResearchItems(
   return (data ?? []).map((item) => ({
     ...item,
     pillar_name: (item.content_pillars as unknown as { name: string } | null)?.name ?? undefined,
+    content_pillars: undefined,
+  }))
+}
+
+/** Fetch all research pool items for the org (for dashboard list with local filtering). */
+export async function getResearchPoolItems(): Promise<
+  (ResearchPoolItem & { pillar_name?: string; pillar_color?: string })[]
+> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('research_pool')
+    .select('*, content_pillars(name, color)')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    logQueryError('research pool items', error)
+    return []
+  }
+
+  return (data ?? []).map((item) => ({
+    ...item,
+    pillar_name:
+      (item.content_pillars as unknown as { name: string; color: string } | null)?.name ??
+      undefined,
+    pillar_color:
+      (item.content_pillars as unknown as { name: string; color: string } | null)?.color ??
+      undefined,
     content_pillars: undefined,
   }))
 }
