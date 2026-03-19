@@ -43,6 +43,11 @@ export const AGENT_PERMISSION_GROUPS = [
     label: "Strategy",
     permissions: ["strategy:read", "strategy:write"] as const,
   },
+  {
+    key: "briefs",
+    label: "Briefs",
+    permissions: ["briefs:read", "briefs:write"] as const,
+  },
 ] as const;
 
 export const ALL_AGENT_PERMISSIONS = AGENT_PERMISSION_GROUPS.flatMap((group) =>
@@ -106,6 +111,9 @@ export const AGENT_PERMISSION_PRESETS: Record<string, string[]> = {
     "pillars:write",
     "strategy:read",
     "strategy:write",
+    "briefs:read",
+    "briefs:write",
+    "research:read",
   ],
   researcher: ["research:read", "research:write", "strategy:read"],
 };
