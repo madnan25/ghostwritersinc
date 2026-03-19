@@ -10,7 +10,7 @@ export type ContentType = 'text' | 'image' | 'document'
 
 export type AuthorType = 'user' | 'agent'
 
-export type ReviewAction = 'approved' | 'rejected' | 'escalated'
+export type ReviewAction = 'approved' | 'rejected' | 'escalated' | 'revised'
 
 export type UserRole = 'admin' | 'member'
 
@@ -47,8 +47,17 @@ export interface Post {
   created_by_agent: string | null
   reviewed_by_agent: string | null
   review_notes: string | null
+  content_version: number
   created_at: string
   updated_at: string
+}
+
+export interface PostRevision {
+  id: string
+  post_id: string
+  version: number
+  content: string
+  created_at: string
 }
 
 export interface PostComment {
@@ -61,6 +70,7 @@ export interface PostComment {
   selected_text: string | null
   selection_start: number | null
   selection_end: number | null
+  content_version: number | null
   created_at: string
 }
 

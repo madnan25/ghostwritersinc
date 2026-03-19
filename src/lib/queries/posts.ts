@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { logQueryError } from '@/lib/queries/errors'
-import type { ContentPillar, Post, PostComment, PostStatus, ReviewEvent } from '@/lib/types'
+import type { ContentPillar, Post, PostComment, PostRevision, PostStatus, ReviewEvent } from '@/lib/types'
 
 function getLinkedInDisplayNameFromSettings(settings: unknown): string | null {
   if (!settings || typeof settings !== 'object') return null
@@ -140,6 +140,21 @@ export async function getPostComments(postId: string): Promise<PostComment[]> {
       'Agent'
     return { ...comment, author_name }
   })
+}
+
+export async function getPostRevisions(postId: string): Promise<PostRevision[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('post_revisions')
+    .select('*')
+    .eq('post_id', postId)
+    .order('version', { ascending: true })
+
+  if (error) {
+    // Table may not exist yet during migration; return empty array gracefully
+    return []
+  }
+  return data ?? []
 }
 
 export async function getPostsByStatus(status: PostStatus | PostStatus[]): Promise<Post[]> {

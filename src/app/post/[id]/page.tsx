@@ -2,11 +2,12 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
-import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
+import type { Post } from '@/lib/types'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
-import { CommentablePostContent } from './_components/commentable-post-content'
+import { PostContentWithVersions } from './_components/post-content-with-versions'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
 
@@ -17,16 +18,22 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments] = await Promise.all([
+  const [post, reviewEvents, comments, revisions] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
+    getPostRevisions(id),
   ])
 
   if (!post) notFound()
 
-  const statusStyle =
-    STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
+  const isAgentReviewed = post.status === 'pending_review' && !!post.reviewed_by_agent
+  const statusStyle = isAgentReviewed
+    ? 'bg-amber-500/10 text-amber-300 border-amber-400/50'
+    : STATUS_STYLES[post.status] ?? 'bg-muted text-muted-foreground border-border'
+  const statusLabel = isAgentReviewed
+    ? 'Agent Reviewed — Needs Approval'
+    : post.status.replace(/_/g, ' ')
 
   return (
     <div className="premium-page pb-28 md:pb-8">
@@ -53,7 +60,7 @@ export default async function PostPage({ params }: PostPageProps) {
               <span
                 className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
               >
-                {post.status.replace('_', ' ')}
+                {statusLabel}
               </span>
             </div>
             {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
@@ -68,7 +75,13 @@ export default async function PostPage({ params }: PostPageProps) {
                 — select text to leave an inline comment
               </span>
             </h2>
-            <CommentablePostContent postId={post.id} content={post.content} comments={comments} />
+            <PostContentWithVersions
+              postId={post.id}
+              content={post.content}
+              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+              comments={comments}
+              revisions={revisions}
+            />
           </div>
 
           {/* Comment thread + overall comment form */}
@@ -82,7 +95,10 @@ export default async function PostPage({ params }: PostPageProps) {
                 </span>
               )}
             </h2>
-            <CommentThread comments={comments} />
+            <CommentThread
+              comments={comments}
+              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+            />
             <div className="mt-4 pt-4 border-t border-border">
               <OverallCommentForm postId={post.id} />
             </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition } from '@/lib/workflow'
+import { createStrategyReviewTask } from '@/lib/paperclip'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,10 +49,10 @@ async function transitionPostStatus(
 ) {
   const supabase = await createClient()
 
-  // Fetch current post to get its status
+  // Fetch current post to get its status + version info for snapshotting
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status')
+    .select('status, content, content_version')
     .eq('id', postId)
     .single()
 
@@ -70,6 +71,15 @@ async function transitionPostStatus(
     notes: opts?.notes ?? null,
     rejectionReason: opts?.rejectionReason ?? null,
   })
+
+  // Snapshot content into post_revisions on pending_review transitions
+  if (to === 'pending_review') {
+    const version = post.content_version ?? 1
+    await supabase.from('post_revisions').upsert(
+      { post_id: postId, version, content: post.content },
+      { onConflict: 'post_id,version' }
+    )
+  }
 
   // Update the post status
   const { error: updateError } = await supabase
@@ -108,17 +118,57 @@ export async function addPostComment(
   } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { error } = await supabase.from('post_comments').insert({
-    post_id: postId,
-    author_type: 'user',
-    author_id: user.id,
-    body,
-    selected_text: selectedText ?? null,
-    selection_start: selectionStart ?? null,
-    selection_end: selectionEnd ?? null,
-  })
+  // Fetch current post state to stamp content_version and check for auto-revert
+  const { data: post } = await supabase
+    .from('posts')
+    .select('status, content_version, user_id, organization_id, content')
+    .eq('id', postId)
+    .single()
+
+  const { data: comment, error } = await supabase
+    .from('post_comments')
+    .insert({
+      post_id: postId,
+      author_type: 'user',
+      author_id: user.id,
+      body,
+      selected_text: selectedText ?? null,
+      selection_start: selectionStart ?? null,
+      selection_end: selectionEnd ?? null,
+      content_version: post?.content_version ?? 1,
+    })
+    .select('id')
+    .single()
 
   if (error) throw new Error(error.message)
+
+  // Create a Strategist review task in Paperclip so the agent picks up the comment
+  const postTitle = post?.content?.slice(0, 80) ?? `Post ${postId.slice(0, 8)}`
+  await createStrategyReviewTask({
+    postId,
+    postTitle,
+    commentId: comment.id,
+    commentBody: body,
+    selectedText: selectedText ?? null,
+  })
+
+  // Auto-revert approved posts to pending_review when a user comments (LIN-225)
+  if (post?.status === 'approved') {
+    await transitionPostStatus(postId, 'pending_review', 'user', {
+      notes: 'Reverted from approved — user commented',
+    })
+
+    if (post.user_id) {
+      await tryCreateNotification(supabase, {
+        organization_id: post.organization_id,
+        user_id: post.user_id,
+        type: 'post_reverted',
+        title: 'Post reverted for review',
+        body: 'Your comment triggered a re-review of this post.',
+        post_id: postId,
+      })
+    }
+  }
 
   revalidatePath(`/post/${postId}`)
 }
@@ -242,6 +292,75 @@ export async function updatePostContent(postId: string, content: string) {
     .eq('id', postId)
 
   if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function reviseAndResubmit(postId: string) {
+  const supabase = await createClient()
+
+  // Fetch current post state
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, content, content_version, user_id, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  if (post.status !== 'rejected') {
+    throw new Error('Only rejected posts can be revised and resubmitted')
+  }
+
+  const currentVersion = post.content_version ?? 1
+  const newVersion = currentVersion + 1
+
+  // Snapshot current content into post_revisions
+  await supabase.from('post_revisions').insert({
+    post_id: postId,
+    version: currentVersion,
+    content: post.content,
+  })
+
+  // Transition rejected → pending_review via validateTransition
+  const { updateFields } = validateTransition({
+    postId,
+    from: 'rejected' as PostStatus,
+    to: 'pending_review',
+    agentName: 'client',
+    notes: `Revised and resubmitted (v${newVersion})`,
+  })
+
+  // Increment content_version alongside the transition fields
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ ...updateFields, content_version: newVersion })
+    .eq('id', postId)
+
+  if (updateError) throw new Error(updateError.message)
+
+  // Record review event
+  await supabase.from('review_events').insert({
+    post_id: postId,
+    agent_name: 'client',
+    action: 'revised' as const,
+    notes: `Revised and resubmitted (v${newVersion})`,
+  })
+
+  // Notify the post owner for Strategist re-review
+  if (post.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_submitted',
+      title: 'Revised post resubmitted for review',
+      body: post.content.slice(0, 80),
+      post_id: postId,
+    })
+  }
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)

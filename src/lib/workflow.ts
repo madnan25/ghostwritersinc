@@ -9,8 +9,8 @@ import type { PostStatus, ReviewAction } from './types'
 const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   draft: ['pending_review'],
   pending_review: ['approved', 'rejected'],
-  approved: ['scheduled', 'published'],
-  rejected: ['draft'],
+  approved: ['scheduled', 'published', 'pending_review'],
+  rejected: ['draft', 'pending_review'],
   scheduled: ['published'],
   published: [],
 }
@@ -40,6 +40,8 @@ export interface TransitionInput {
   agentName: string
   notes?: string | null
   rejectionReason?: string | null
+  /** When true, an agent "approve" keeps the post at pending_review (two-stage gate). */
+  isAgentReview?: boolean
 }
 
 /**
@@ -50,7 +52,7 @@ export function validateTransition(input: TransitionInput): {
   reviewAction: ReviewAction
   updateFields: Record<string, unknown>
 } {
-  const { from, to, notes, rejectionReason } = input
+  const { from, to, notes, rejectionReason, isAgentReview } = input
 
   if (!isValidTransition(from, to)) {
     throw new WorkflowError(
@@ -68,19 +70,40 @@ export function validateTransition(input: TransitionInput): {
 
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
+    (from === 'rejected' && to === 'pending_review') ? 'revised' :
+    (from === 'approved' && to === 'pending_review') ? 'escalated' :
     'approved'
 
+  // Agent approvals keep the post at pending_review — only human
+  // approvePost() moves it to approved (two-stage gate).
+  const effectiveStatus: PostStatus =
+    isAgentReview && to === 'approved' ? 'pending_review' : to
+
   const updateFields: Record<string, unknown> = {
-    status: to,
+    status: effectiveStatus,
     updated_at: new Date().toISOString(),
   }
 
   if (to === 'rejected') {
     updateFields.rejection_reason = rejectionReason
+    // Only user rejections schedule deletion — agent rejections flag
+    // quality issues and should not auto-delete.
+    if (!isAgentReview) {
+      updateFields.delete_scheduled_at = new Date(
+        Date.now() + 24 * 60 * 60 * 1000
+      ).toISOString()
+    }
   }
 
-  if (to === 'draft' && from === 'rejected') {
+  if (from === 'rejected' && (to === 'draft' || to === 'pending_review')) {
     updateFields.rejection_reason = null
+    updateFields.delete_scheduled_at = null
+  }
+
+  // Clear reviewed_by_agent when a post re-enters pending_review
+  // so the agent will pick it up for a fresh review cycle.
+  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'draft')) {
+    updateFields.reviewed_by_agent = null
   }
 
   if (notes) {

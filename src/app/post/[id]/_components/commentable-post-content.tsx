@@ -8,6 +8,12 @@ interface Props {
   postId: string
   content: string
   comments: PostComment[]
+  /** The post's current content_version number */
+  currentVersion?: number
+  /** When set, renders snapshotted content for this historical version (read-only) */
+  viewingVersion?: number | null
+  /** Snapshotted content for the selected historical version */
+  versionContent?: string
 }
 
 interface SelectionState {
@@ -55,7 +61,10 @@ function buildSegments(content: string, inlineComments: PostComment[]): Segment[
   return segments
 }
 
-export function CommentablePostContent({ postId, content, comments }: Props) {
+export function CommentablePostContent({ postId, content, comments, currentVersion, viewingVersion, versionContent }: Props) {
+  const isHistoricalVersion = viewingVersion != null
+  const displayContent = isHistoricalVersion && versionContent != null ? versionContent : content
+
   const [selection, setSelection] = useState<SelectionState | null>(null)
   const [commentText, setCommentText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -70,12 +79,19 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selection])
 
-  const inlineComments = comments.filter(
-    (c) => c.selection_start !== null && c.selection_end !== null,
-  )
-  const segments = buildSegments(content, inlineComments)
+  // Show only inline comments that belong to the version being viewed
+  const activeVersion = isHistoricalVersion ? viewingVersion : (currentVersion ?? 1)
+  const inlineComments = comments.filter((c) => {
+    if (c.selection_start === null || c.selection_end === null) return false
+    const cv = (c as PostComment & { content_version?: number | null }).content_version
+    // Match comments stamped for this version, or legacy null comments for v1
+    return cv === activeVersion || (activeVersion === 1 && cv == null)
+  })
+  const segments = buildSegments(displayContent, inlineComments)
 
   function handleMouseUp() {
+    if (isHistoricalVersion) return
+
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
       return
@@ -127,11 +143,16 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
 
   return (
     <div className="relative">
+      {isHistoricalVersion && (
+        <div className="mb-3 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-300">
+          Viewing a historical snapshot — inline comments are read-only on this version.
+        </div>
+      )}
       {/* Post content with highlights */}
       <div
         ref={contentRef}
         onMouseUp={handleMouseUp}
-        className="select-text cursor-text whitespace-pre-wrap text-sm leading-relaxed text-foreground"
+        className={`select-text whitespace-pre-wrap text-sm leading-relaxed text-foreground ${isHistoricalVersion ? 'cursor-default' : 'cursor-text'}`}
       >
         {segments.map((seg, i) =>
           seg.highlighted ? (
@@ -148,8 +169,8 @@ export function CommentablePostContent({ postId, content, comments }: Props) {
         )}
       </div>
 
-      {/* Inline selection popover */}
-      {selection && (
+      {/* Inline selection popover — hidden on historical versions */}
+      {selection && !isHistoricalVersion && (
         <div
           className="absolute z-10 -translate-x-1/2 -translate-y-full"
           style={{ left: selection.x, top: selection.y - 8 }}
