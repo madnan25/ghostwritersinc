@@ -1,6 +1,6 @@
 -- Create post_revisions table for version history
 CREATE TABLE post_revisions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   version integer NOT NULL,
   content text NOT NULL,
