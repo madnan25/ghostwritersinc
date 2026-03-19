@@ -168,11 +168,11 @@ export async function PATCH(
     const currentVersion = (post as Record<string, unknown>).content_version as number ?? 1
     const newVersion = currentVersion + 1
 
-    // Snapshot the previous content
+    // Snapshot the previous content (before the agent's update)
     await supabase.from('post_revisions').insert({
       post_id: id,
       version: currentVersion,
-      content: parsed.data.content,
+      content: existing.content,
     })
 
     // Transition rejected → pending_review, clear rejection fields, bump version
