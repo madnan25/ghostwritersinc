@@ -253,6 +253,19 @@ export async function reviseDraft(postId: string) {
   })
 }
 
+export async function deletePost(postId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+}
+
 // ---------------------------------------------------------------------------
 // LinkedIn publishing
 // ---------------------------------------------------------------------------

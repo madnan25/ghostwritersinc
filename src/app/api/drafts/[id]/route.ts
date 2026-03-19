@@ -164,3 +164,69 @@ export async function PATCH(
 
   return NextResponse.json(post)
 }
+
+/** DELETE /api/drafts/:id — hard delete a post */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authenticateAgent(request)
+  if (!isAgentContext(auth)) return auth
+
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  if (limited) return limited
+
+  if (!hasAgentPermission(auth.permissions, 'drafts:write')) {
+    return NextResponse.json(
+      { error: 'Insufficient permissions: drafts:write access required' },
+      { status: 403 }
+    )
+  }
+
+  const { id } = await params
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Invalid draft ID format' }, { status: 400 })
+  }
+
+  const supabase = createAdminClient()
+
+  // Verify the post exists and belongs to the agent's scope
+  const { data: existing } = await supabase
+    .from('posts')
+    .select('organization_id, user_id, status')
+    .eq('id', id)
+    .single()
+
+  if (!existing || !canAccessAgentUserRecord(auth, existing)) {
+    return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  let deleteQuery = supabase
+    .from('posts')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', auth.organizationId)
+
+  if (!isSharedOrgAgentContext(auth)) {
+    deleteQuery = deleteQuery.eq('user_id', auth.userId)
+  }
+
+  const { error } = await deleteQuery
+
+  if (error) {
+    console.error('[drafts] DB error deleting post:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  const providerRunId = request.headers.get('x-paperclip-run-id')
+  logAgentActivity({
+    organizationId: auth.organizationId,
+    agentId: auth.agentId,
+    postId: id,
+    actionType: 'status_changed',
+    metadata: { status: existing.status },
+    providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
+  })
+
+  return new NextResponse(null, { status: 204 })
+}

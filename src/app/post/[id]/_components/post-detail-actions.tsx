@@ -17,6 +17,7 @@ import {
 } from '@/lib/post-actions'
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
 import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
+import { DeletePostDialog } from '@/app/dashboard/_components/delete-post-dialog'
 
 interface PostDetailActionsProps {
   postId: string
@@ -75,6 +76,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             {isPending ? 'Submitting…' : 'Submit for Review'}
           </Button>
           <EditPostDialog postId={postId} initialContent={content} />
+          <DeletePostDialog postId={postId} />
         </div>
       )
     }
@@ -89,6 +91,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             <EditPostDialog postId={postId} initialContent={content} />
           )}
           {canRejectPost(status) && <RejectDialog postId={postId} />}
+          <DeletePostDialog postId={postId} />
         </div>
       )
     }
@@ -108,6 +111,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             <Button variant="outline" size="sm" className={sticky ? 'flex-1' : ''} onClick={handleCopyAndOpen}>
               Copy & Open LinkedIn
             </Button>
+            <DeletePostDialog postId={postId} />
           </div>
           {publishError && (
             <p className="text-xs text-destructive">{publishError}</p>
@@ -120,8 +124,11 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
     }
 
     return (
-      <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
-        {status.replace('_', ' ')}
+      <div className="flex items-center gap-2">
+        <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
+          {status.replace('_', ' ')}
+        </div>
+        <DeletePostDialog postId={postId} />
       </div>
     )
   }

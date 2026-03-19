@@ -11,6 +11,7 @@ import {
 } from '@/lib/post-actions'
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
+import { DeletePostDialog } from './delete-post-dialog'
 
 interface PostCardActionsProps {
   postId: string
@@ -44,20 +45,26 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
           {isPending ? 'Submitting…' : 'Submit for Review'}
         </Button>
         <EditPostDialog postId={postId} initialContent={content} />
+        <DeletePostDialog postId={postId} className={btnClass} />
       </div>
     )
   }
 
   if (status === 'approved') {
-    return canEditPost(status) ? (
+    return (
       <div className="flex items-center gap-2">
-        <EditPostDialog postId={postId} initialContent={content} />
+        {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} />}
+        <DeletePostDialog postId={postId} className={btnClass} />
       </div>
-    ) : null
+    )
   }
 
   if (!isReviewQueueStatus(status)) {
-    return null
+    return (
+      <div className="flex items-center gap-2">
+        <DeletePostDialog postId={postId} className={btnClass} />
+      </div>
+    )
   }
 
   return (
@@ -69,6 +76,7 @@ export function PostCardActions({ postId, status, content }: PostCardActionsProp
         <EditPostDialog postId={postId} initialContent={content} />
       )}
       {canRejectPost(status) && <RejectDialog postId={postId} />}
+      <DeletePostDialog postId={postId} className={btnClass} />
     </div>
   )
 }
