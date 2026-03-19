@@ -17,6 +17,10 @@ const TYPE_LABEL: Record<string, string> = {
   post_rejected: 'Post rejected',
   post_published: 'Post published',
   feedback_received: 'Feedback received',
+  post_reverted: 'Post reverted for review',
+  agent_review_complete: 'Agent review complete',
+  revision_requested: 'Revision requested',
+  publish_failed: 'Publish failed',
 }
 
 function formatTime(dateStr: string): string {

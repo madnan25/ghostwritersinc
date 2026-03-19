@@ -10,22 +10,32 @@ import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
   canEditPost,
   canRejectPost,
-  getApproveActionLabel,
   isReviewQueueStatus,
 } from '@/lib/post-actions'
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
 import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
 import { DeletePostDialog } from '@/app/dashboard/_components/delete-post-dialog'
 import { PublishOptionsDialog } from './publish-options-dialog'
+import { ApproveUnscheduledDialog } from './approve-unscheduled-dialog'
+import { ReopenRejectedDialog } from './reopen-rejected-dialog'
 
 interface PostDetailActionsProps {
   postId: string
   status: string
   content: string
   scheduledPublishAt?: string | null
+  suggestedPublishAt?: string | null
+  revisionCount?: number
 }
 
-export function PostDetailActions({ postId, status, content, scheduledPublishAt }: PostDetailActionsProps) {
+export function PostDetailActions({
+  postId,
+  status,
+  content,
+  scheduledPublishAt,
+  suggestedPublishAt,
+  revisionCount = 0,
+}: PostDetailActionsProps) {
   const [isPending, startTransition] = useTransition()
   const { copied: copyToast, copy } = useCopyFeedback(3000)
 
@@ -38,6 +48,33 @@ export function PostDetailActions({ postId, status, content, scheduledPublishAt 
   async function handleCopyAndOpen() {
     await copy(content)
     window.open('https://www.linkedin.com/feed/', '_blank')
+  }
+
+  function renderApproveButton(sticky = false) {
+    // If post has a suggested date: Approve auto-schedules it
+    // If not: show date/time picker dialog
+    if (suggestedPublishAt) {
+      return (
+        <Button
+          size="sm"
+          className={sticky ? 'flex-1' : ''}
+          onClick={handleApprove}
+          disabled={isPending}
+          title={`Will schedule for ${new Date(suggestedPublishAt).toLocaleDateString()}`}
+        >
+          {isPending ? 'Approving…' : 'Approve & Schedule'}
+        </Button>
+      )
+    }
+
+    return (
+      <ApproveUnscheduledDialog
+        postId={postId}
+        label="Approve & Schedule"
+        size="sm"
+        className={sticky ? 'flex-1' : undefined}
+      />
+    )
   }
 
   function renderActions(sticky = false) {
@@ -63,9 +100,7 @@ export function PostDetailActions({ postId, status, content, scheduledPublishAt 
     if (isReviewQueueStatus(status)) {
       return (
         <div className={wrapClass}>
-          <Button size="sm" className={sticky ? 'flex-1' : ''} onClick={handleApprove} disabled={isPending}>
-            {isPending ? 'Approving…' : getApproveActionLabel()}
-          </Button>
+          {renderApproveButton(sticky)}
           {canEditPost(status) && (
             <EditPostDialog postId={postId} initialContent={content} />
           )}
@@ -92,6 +127,17 @@ export function PostDetailActions({ postId, status, content, scheduledPublishAt 
           {copyToast && (
             <p className="text-xs text-emerald-400">Post copied to clipboard!</p>
           )}
+        </div>
+      )
+    }
+
+    if (status === 'rejected') {
+      return (
+        <div className={wrapClass}>
+          {revisionCount >= 3 && (
+            <ReopenRejectedDialog postId={postId} className={sticky ? 'flex-1' : undefined} />
+          )}
+          <DeletePostDialog postId={postId} />
         </div>
       )
     }

@@ -52,12 +52,21 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
     })
   }
 
-  const afterStatus =
-    DASHBOARD_FILTER_TABS[activeTab].statuses === null
-      ? posts
-      : posts.filter((post) =>
-          (DASHBOARD_FILTER_TABS[activeTab].statuses as PostStatus[]).includes(post.status),
-        )
+  function applyTabFilter(tab: DashboardFilterTab, allPosts: Post[]): Post[] {
+    let result = tab.statuses === null
+      ? allPosts
+      : allPosts.filter((post) => (tab.statuses as PostStatus[]).includes(post.status))
+
+    if (tab.agentReviewedFilter === 'with') {
+      result = result.filter((post) => !!post.reviewed_by_agent)
+    } else if (tab.agentReviewedFilter === 'without') {
+      result = result.filter((post) => !post.reviewed_by_agent)
+    }
+
+    return result
+  }
+
+  const afterStatus = applyTabFilter(DASHBOARD_FILTER_TABS[activeTab], posts)
 
   const filtered =
     selectedPillarIds.size === 0
@@ -65,10 +74,7 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
       : afterStatus.filter((post) => post.pillar_id && selectedPillarIds.has(post.pillar_id))
 
   function getTabCount(tab: DashboardFilterTab): number {
-    const statusFiltered =
-      tab.statuses === null
-        ? posts
-        : posts.filter((post) => (tab.statuses as PostStatus[]).includes(post.status))
+    const statusFiltered = applyTabFilter(tab, posts)
 
     if (selectedPillarIds.size === 0) {
       return statusFiltered.length
@@ -129,7 +135,7 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
               {DASHBOARD_FILTER_TABS.map((tab, index) => {
                 const count = getTabCount(tab)
 

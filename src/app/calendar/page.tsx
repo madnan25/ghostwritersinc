@@ -1,22 +1,27 @@
-import { getScheduledPosts } from '@/lib/queries/posts'
+import { getCalendarPosts, getPillars } from '@/lib/queries/posts'
 import { CalendarView } from './_components/calendar-view'
 
 export default async function CalendarPage() {
   // Auth handled by middleware
-  const posts = await getScheduledPosts()
+  const [{ scheduled, unscheduled }, pillars] = await Promise.all([
+    getCalendarPosts(),
+    getPillars(),
+  ])
+
+  const totalPosts = scheduled.length + unscheduled.length
 
   return (
     <div className="container px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Content Calendar</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {posts.length === 0
+          {totalPosts === 0
             ? 'No posts scheduled yet'
-            : `${posts.length} post${posts.length !== 1 ? 's' : ''} scheduled or approved`}
+            : `${scheduled.length} scheduled · ${unscheduled.length} unscheduled`}
         </p>
       </div>
 
-      {posts.length === 0 ? (
+      {totalPosts === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-24 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-muted text-2xl">
             📅
@@ -27,7 +32,7 @@ export default async function CalendarPage() {
           </p>
         </div>
       ) : (
-        <CalendarView posts={posts} />
+        <CalendarView posts={scheduled} unscheduledPosts={unscheduled} pillars={pillars} />
       )}
     </div>
   )

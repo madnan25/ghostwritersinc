@@ -178,20 +178,71 @@ export async function addPostComment(
 // ---------------------------------------------------------------------------
 
 export async function approvePost(postId: string) {
-  await transitionPostStatus(postId, 'approved', 'client')
+  const supabase = await createClient()
+
+  // If the post has a suggested_publish_at, auto-schedule it
+  const { data: postData } = await supabase
+    .from('posts')
+    .select('suggested_publish_at, user_id, content, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (postData?.suggested_publish_at) {
+    // Auto-schedule with the brief's suggested date
+    await transitionPostStatus(postId, 'scheduled', 'client', {
+      notes: `Approved and scheduled for ${postData.suggested_publish_at}`,
+    })
+    await supabase
+      .from('posts')
+      .update({ scheduled_publish_at: postData.suggested_publish_at })
+      .eq('id', postId)
+  } else {
+    await transitionPostStatus(postId, 'approved', 'client')
+  }
+
+  const post = postData ?? await getPostWithUser(supabase, postId)
+  if (post?.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'post_approved',
+      title: postData?.suggested_publish_at ? 'Post approved and scheduled' : 'Post approved',
+      body: (postData?.content ?? '').slice(0, 80),
+      post_id: postId,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function approveAndSchedulePost(postId: string, publishAt: string) {
+  await transitionPostStatus(postId, 'scheduled', 'client', {
+    notes: `Approved and scheduled for ${publishAt}`,
+  })
 
   const supabase = await createClient()
+  const { error } = await supabase
+    .from('posts')
+    .update({ scheduled_publish_at: publishAt })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
   const post = await getPostWithUser(supabase, postId)
   if (post?.user_id) {
     await tryCreateNotification(supabase, {
       organization_id: post.organization_id,
       user_id: post.user_id,
       type: 'post_approved',
-      title: 'Post approved',
+      title: 'Post approved and scheduled',
       body: post.content.slice(0, 80),
       post_id: postId,
     })
   }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
 }
 
 export async function rejectPost(postId: string, reason: string) {
@@ -402,6 +453,73 @@ export async function reviseDraft(postId: string) {
   await transitionPostStatus(postId, 'draft', 'client', {
     notes: 'Returned to draft for revision',
   })
+}
+
+/** Reopen a rejected post that has been through 3+ revision cycles.
+ *  Resets content_version to 1 and sends back to pending_review for a fresh start.
+ */
+export async function reopenRejectedPost(postId: string, notes: string) {
+  const supabase = await createClient()
+
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, content, content_version, user_id, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  if (post.status !== 'rejected') {
+    throw new Error('Only rejected posts can be reopened')
+  }
+
+  // Snapshot current content before resetting
+  const currentVersion = post.content_version ?? 1
+  await supabase.from('post_revisions').insert({
+    post_id: postId,
+    version: currentVersion,
+    content: post.content,
+    revision_reason: `Reopened: ${notes}`,
+  })
+
+  // Transition back to pending_review and reset version to 1
+  const { updateFields } = validateTransition({
+    postId,
+    from: 'rejected' as PostStatus,
+    to: 'pending_review',
+    agentName: 'client',
+    notes: `Reopened after ${currentVersion} revision cycles: ${notes}`,
+  })
+
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ ...updateFields, content_version: 1, rejection_reason: null })
+    .eq('id', postId)
+
+  if (updateError) throw new Error(updateError.message)
+
+  await supabase.from('review_events').insert({
+    post_id: postId,
+    agent_name: 'client',
+    action: 'revised' as const,
+    notes: `Reopened: ${notes}`,
+  })
+
+  if (post.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'revision_requested',
+      title: 'Post reopened for revision',
+      body: notes.slice(0, 80),
+      post_id: postId,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
 }
 
 export async function deletePost(postId: string) {

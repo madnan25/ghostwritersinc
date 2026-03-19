@@ -3,13 +3,14 @@ import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
 import type { Post } from '@/lib/types'
-import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions } from '@/lib/queries/posts'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
 import { PostContentWithVersions } from './_components/post-content-with-versions'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
+import { BriefContext } from './_components/brief-context'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -18,14 +19,17 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments, revisions] = await Promise.all([
+  const [post, reviewEvents, comments, revisions, pillars] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
     getPostRevisions(id),
+    getPillars(),
   ])
 
   if (!post) notFound()
+
+  const pillar = post.pillar_id ? pillars.find((p) => p.id === post.pillar_id) ?? null : null
 
   const isAgentReviewed = post.status === 'pending_review' && !!post.reviewed_by_agent
   const statusStyle = isAgentReviewed
@@ -59,7 +63,14 @@ export default async function PostPage({ params }: PostPageProps) {
               </span>
             </div>
             {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
-            <PostDetailActions postId={post.id} status={post.status} content={post.content} scheduledPublishAt={post.scheduled_publish_at} />
+            <PostDetailActions
+              postId={post.id}
+              status={post.status}
+              content={post.content}
+              scheduledPublishAt={post.scheduled_publish_at}
+              suggestedPublishAt={post.suggested_publish_at}
+              revisionCount={revisions.length}
+            />
           </div>
 
           {/* Post content with inline commenting */}
@@ -161,12 +172,14 @@ export default async function PostPage({ params }: PostPageProps) {
           )}
         </div>
 
-        {/* Right column: LinkedIn preview + review chain */}
+        {/* Right column: LinkedIn preview + brief context + review chain */}
         <div className="flex flex-col gap-6">
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">LinkedIn Preview</h2>
             <LinkedInPreview content={post.content} />
           </div>
+
+          <BriefContext briefRef={post.brief_ref} pillar={pillar} />
 
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>

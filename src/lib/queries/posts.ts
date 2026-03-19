@@ -298,6 +298,32 @@ export async function getScheduledPosts(): Promise<Post[]> {
   return data ?? []
 }
 
+export interface CalendarPosts {
+  scheduled: Post[]
+  unscheduled: Post[]
+}
+
+/** Returns all approved/scheduled posts, split into scheduled (has date) and unscheduled (no date) */
+export async function getCalendarPosts(): Promise<CalendarPosts> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .in('status', ['scheduled', 'approved'])
+    .order('suggested_publish_at', { ascending: true })
+
+  if (error) {
+    logQueryError('calendar posts', error)
+    return { scheduled: [], unscheduled: [] }
+  }
+
+  const all = data ?? []
+  return {
+    scheduled: all.filter((p) => !!p.scheduled_publish_at),
+    unscheduled: all.filter((p) => !p.scheduled_publish_at),
+  }
+}
+
 export async function getPillars(): Promise<ContentPillar[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
