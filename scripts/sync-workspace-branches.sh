@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # sync-workspace-branches.sh
-# Resets all agent workspace branches to match main.
+# Fast-forwards agent workspace branches to match main.
+# Skips branches with unmerged work (ahead of main) to prevent data loss.
 # Handles both bare branches and worktree-checked-out branches.
 #
 # Usage:
@@ -47,10 +48,20 @@ for branch in $(git branch --list '*-workspace' | sed 's/^[+* ]*//' ); do
 
   BEHIND="$(git rev-list --count "$branch".."$MAIN_BRANCH")"
   AHEAD="$(git rev-list --count "$MAIN_BRANCH".."$branch")"
-  echo "  [stale] $branch — $BEHIND behind, $AHEAD ahead of main"
+
+  # If the workspace branch has commits not on main, do NOT reset — that would
+  # destroy unmerged work.  Fast-forward only (behind main, 0 ahead).
+  if [[ "$AHEAD" -gt 0 ]]; then
+    echo "  [SKIP] $branch — $BEHIND behind, $AHEAD ahead of main (has unmerged work)"
+    echo "         ⚠ refusing to reset: merge the $AHEAD commit(s) to main first"
+    ((SKIPPED++))
+    continue
+  fi
+
+  echo "  [stale] $branch — $BEHIND behind main"
 
   if $DRY_RUN; then
-    echo "         (dry-run) would reset to $MAIN_SHA"
+    echo "         (dry-run) would fast-forward to $MAIN_SHA"
     continue
   fi
 
@@ -61,10 +72,14 @@ for branch in $(git branch --list '*-workspace' | sed 's/^[+* ]*//' ); do
   ')"
 
   if [[ -n "$WORKTREE_PATH" ]]; then
-    echo "         resetting via worktree at $WORKTREE_PATH"
-    git -C "$WORKTREE_PATH" reset --hard "$MAIN_BRANCH"
+    echo "         fast-forwarding via worktree at $WORKTREE_PATH"
+    git -C "$WORKTREE_PATH" merge --ff-only "$MAIN_BRANCH" 2>/dev/null || {
+      echo "         ⚠ fast-forward failed — skipping to avoid data loss"
+      ((SKIPPED++))
+      continue
+    }
   else
-    echo "         resetting branch ref"
+    echo "         fast-forwarding branch ref"
     git branch -f "$branch" "$MAIN_BRANCH"
   fi
 
