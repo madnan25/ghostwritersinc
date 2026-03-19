@@ -2,13 +2,14 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
-import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
 import { CommentablePostContent } from './_components/commentable-post-content'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
+import { RevisionHistory } from './_components/revision-history'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -17,10 +18,11 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments] = await Promise.all([
+  const [post, reviewEvents, comments, revisions] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
+    getPostRevisions(id),
   ])
 
   if (!post) notFound()
@@ -87,6 +89,9 @@ export default async function PostPage({ params }: PostPageProps) {
               <OverallCommentForm postId={post.id} />
             </div>
           </div>
+
+          {/* Revision history */}
+          <RevisionHistory revisions={revisions} />
 
           {/* Metadata */}
           <div className="dashboard-rail grid grid-cols-1 gap-4 p-6 text-sm sm:grid-cols-2">

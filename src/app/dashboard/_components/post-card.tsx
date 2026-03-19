@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, Calendar, FileText, User } from 'lucide-react'
+import { Bot, Calendar, FileText, GitBranch, User } from 'lucide-react'
 import { m } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post } from '@/lib/types'
@@ -11,6 +11,7 @@ interface PostCardProps {
   post: Post
   pillar?: ContentPillar
   featured?: boolean
+  hasRevisions?: boolean
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -37,7 +38,7 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function PostCard({ post, pillar, featured = false }: PostCardProps) {
+export function PostCard({ post, pillar, featured = false, hasRevisions = false }: PostCardProps) {
   const hook = getHook(post.content)
   const statusConfig = STATUS_CONFIG[post.status]
   const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
@@ -81,6 +82,17 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
             }}
           >
             {pillar.name}
+          </m.span>
+        )}
+        {hasRevisions && (
+          <m.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+            className="inline-flex items-center gap-1 rounded-full border border-sky-400/25 bg-sky-400/8 px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.12em] text-sky-300/80"
+          >
+            <GitBranch className="size-3" />
+            Revised
           </m.span>
         )}
       </div>

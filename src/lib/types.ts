@@ -240,3 +240,14 @@ export interface Notification {
   read: boolean
   created_at: string
 }
+
+export interface PostRevision {
+  id: string
+  post_id: string
+  version: number
+  content: string
+  revised_by_agent: string | null
+  revised_by_user: string | null
+  revision_reason: string | null
+  created_at: string
+}
