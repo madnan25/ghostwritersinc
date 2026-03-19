@@ -100,6 +100,12 @@ export function validateTransition(input: TransitionInput): {
     updateFields.delete_scheduled_at = null
   }
 
+  // Clear reviewed_by_agent when a post re-enters pending_review
+  // so the agent will pick it up for a fresh review cycle.
+  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'draft')) {
+    updateFields.reviewed_by_agent = null
+  }
+
   if (notes) {
     updateFields.review_notes = notes
   }
