@@ -95,7 +95,10 @@ export default async function PostPage({ params }: PostPageProps) {
                 </span>
               )}
             </h2>
-            <CommentThread comments={comments} />
+            <CommentThread
+              comments={comments}
+              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+            />
             <div className="mt-4 pt-4 border-t border-border">
               <OverallCommentForm postId={post.id} />
             </div>
