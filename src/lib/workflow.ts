@@ -11,9 +11,13 @@ const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   pending_review: ['approved', 'rejected'],
   approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft', 'pending_review'],
-  scheduled: ['published', 'approved'],
+  scheduled: ['published', 'approved', 'publish_failed'],
   published: [],
+  publish_failed: ['scheduled', 'draft'],
 }
+
+/** Maximum revision count before auto-rejection. */
+export const REVISION_CAP = 3
 
 export function isValidTransition(from: PostStatus, to: PostStatus): boolean {
   return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false

@@ -61,6 +61,8 @@ function makePost(id: string, pillarId: string | null, suggestedAt: string): Pos
     reviewed_by_agent: null,
     review_notes: null,
     content_version: 1,
+    revision_count: 0,
+    brief_id: null,
     created_at: suggestedAt,
     updated_at: suggestedAt,
   };

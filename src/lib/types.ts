@@ -5,6 +5,7 @@ export type PostStatus =
   | 'scheduled'
   | 'published'
   | 'rejected'
+  | 'publish_failed'
 
 export type ContentType = 'text' | 'image' | 'document'
 
@@ -48,6 +49,8 @@ export interface Post {
   reviewed_by_agent: string | null
   review_notes: string | null
   content_version: number
+  revision_count: number
+  brief_id: string | null
   created_at: string
   updated_at: string
 }
@@ -251,4 +254,51 @@ export interface Notification {
   post_id: string | null
   read: boolean
   created_at: string
+}
+
+export type ResearchPoolStatus = 'new' | 'consumed'
+
+export interface ResearchPoolItem {
+  id: string
+  organization_id: string
+  title: string
+  source_url: string | null
+  source_type: string
+  pillar_id: string | null
+  relevance_score: number | null
+  raw_content: string | null
+  status: ResearchPoolStatus
+  created_by_agent_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BriefStatus = 'pending' | 'in_review' | 'revision_requested' | 'done'
+
+export interface Brief {
+  id: string
+  organization_id: string
+  pillar_id: string | null
+  angle: string
+  research_refs: string[]
+  voice_notes: string | null
+  publish_at: string | null
+  status: BriefStatus
+  revision_count: number
+  revision_notes: string | null
+  assigned_agent_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface StrategyConfig {
+  id: string
+  user_id: string
+  organization_id: string
+  monthly_post_target: number
+  intel_score_threshold: number
+  default_publish_hour: number
+  voice_notes: string | null
+  created_at: string
+  updated_at: string
 }

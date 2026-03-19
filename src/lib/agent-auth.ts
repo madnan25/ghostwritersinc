@@ -22,6 +22,7 @@ const CAPABILITY_TO_PERMISSIONS: Record<string, string[]> = {
     'pillars:read',
     'research:read',
     'strategy:read',
+    'briefs:read',
   ],
   write: [
     'posts:write',
@@ -30,6 +31,7 @@ const CAPABILITY_TO_PERMISSIONS: Record<string, string[]> = {
     'pillars:write',
     'research:write',
     'strategy:write',
+    'briefs:write',
   ],
   review: ['reviews:write'],
 }

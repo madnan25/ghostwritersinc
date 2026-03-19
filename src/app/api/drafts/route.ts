@@ -12,7 +12,7 @@ import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
 const VALID_POST_STATUSES = [
-  'draft', 'pending_review', 'approved', 'rejected', 'scheduled', 'published',
+  'draft', 'pending_review', 'approved', 'rejected', 'scheduled', 'published', 'publish_failed',
 ] as const
 
 const CreateDraftSchema = z.object({
