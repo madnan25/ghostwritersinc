@@ -7,6 +7,19 @@ const useUpstash = !!(
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
+// Warn once in production if Upstash is not configured
+if (
+  !useUpstash &&
+  process.env.NODE_ENV === "production" &&
+  typeof globalThis !== "undefined"
+) {
+  console.warn(
+    "[rate-limit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set. " +
+      "Falling back to in-memory rate limiting, which is per-instance only and " +
+      "will NOT enforce limits correctly in serverless environments."
+  );
+}
+
 // Upstash rate limiters keyed by config string
 const upstashLimiters = new Map<string, Ratelimit>();
 

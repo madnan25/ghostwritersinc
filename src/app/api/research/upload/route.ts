@@ -4,6 +4,33 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { authenticateAgent, getAgentRateLimitKey, hasAgentPermission, isAgentContext } from '@/lib/agent-auth'
 import { rateLimit } from '@/lib/rate-limit'
 
+/**
+ * Detect MIME type from file magic bytes.
+ * Returns detected type or null if inconclusive.
+ */
+function detectMimeFromBytes(buffer: Buffer, ext: string): string | null {
+  if (buffer.length < 4) return null
+
+  // ZIP magic bytes: PK\x03\x04
+  if (buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04) {
+    return 'application/zip'
+  }
+
+  // .txt files: verify content is valid UTF-8 text (no binary control chars except whitespace)
+  if (ext === '.txt') {
+    // Check first 1KB for non-text bytes
+    const sample = buffer.subarray(0, Math.min(1024, buffer.length))
+    for (const byte of sample) {
+      if (byte < 0x09 || (byte > 0x0D && byte < 0x20 && byte !== 0x1B)) {
+        return 'application/octet-stream' // binary content in a .txt file
+      }
+    }
+    return 'text/plain'
+  }
+
+  return null // inconclusive
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_TYPES = ['text/plain', 'application/zip']
 const ALLOWED_EXTENSIONS = ['.txt', '.zip']
@@ -76,6 +103,16 @@ export async function POST(request: NextRequest) {
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     return NextResponse.json(
       { error: `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}` },
+      { status: 400 }
+    )
+  }
+
+  // Server-side MIME verification via magic bytes (defense-in-depth)
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const detectedType = detectMimeFromBytes(buffer, ext)
+  if (detectedType && !ALLOWED_TYPES.includes(detectedType)) {
+    return NextResponse.json(
+      { error: `File content does not match declared MIME type (detected: ${detectedType})` },
       { status: 400 }
     )
   }
