@@ -196,10 +196,24 @@ export async function getPostRevisions(postId: string): Promise<PostRevision[]> 
     .order('version', { ascending: true })
 
   if (error) {
-    // Table may not exist yet; return empty gracefully
+    logQueryError(`post revisions for ${postId}`, error)
     return []
   }
   return data ?? []
+}
+
+export async function getRevisionCount(postId: string): Promise<number> {
+  const supabase = await createClient()
+  const { count, error } = await supabase
+    .from('post_revisions')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId)
+
+  if (error) {
+    logQueryError(`revision count for ${postId}`, error)
+    return 0
+  }
+  return count ?? 0
 }
 
 export type PostWithRevisionCount = Post & { revision_count: number }

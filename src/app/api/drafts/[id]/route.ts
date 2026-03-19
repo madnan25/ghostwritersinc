@@ -22,6 +22,7 @@ const UpdateDraftSchema = z.object({
   brief_ref: z.string().max(512).nullable().optional(),
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
+  revision_reason: z.string().nullable().optional(),
 })
 
 /** GET /api/drafts/:id — fetch a single draft */
@@ -146,15 +147,17 @@ export async function PATCH(
         p_content: currentPost.content,
         p_revised_by_agent: auth.agentId,
         p_revised_by_user: null,
-        p_revision_reason: 'Agent content update',
+        p_revision_reason: parsed.data.revision_reason ?? 'Agent content update',
       }).then(({ error }) => {
         if (error) console.error('[drafts] Revision snapshot failed:', error.message)
       })
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { revision_reason, ...updateData } = parsed.data
   const updateFields = {
-    ...parsed.data,
+    ...updateData,
     updated_at: new Date().toISOString(),
   }
 
