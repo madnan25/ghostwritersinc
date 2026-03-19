@@ -291,6 +291,13 @@ export interface Brief {
   updated_at: string
 }
 
+export interface LinkedInConnection {
+  connected: boolean
+  linkedinMemberId: string | null
+  connectedAt: string | null
+  expiresAt: string | null
+}
+
 export interface StrategyConfig {
   id: string
   user_id: string
