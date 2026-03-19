@@ -1,8 +1,8 @@
 'use client'
 
 import { useTransition, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { m, AnimatePresence } from 'framer-motion'
-import { X, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deletePost } from '@/app/actions/posts'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -10,41 +10,42 @@ import { cn } from '@/lib/utils'
 
 interface DeletePostDialogProps {
   postId: string
-  onDeleted?: () => void
+  /** After deletion, redirect to this path. Defaults to '/dashboard'. */
+  redirectTo?: string
+  className?: string
 }
 
-export function DeletePostDialog({ postId, onDeleted }: DeletePostDialogProps) {
+export function DeletePostDialog({ postId, redirectTo = '/dashboard', className }: DeletePostDialogProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const mobile = useMediaQuery('(max-width: 767px)')
   const overlayRef = useRef<HTMLDivElement>(null)
-
-  function handleOpen() {
-    setOpen(true)
-  }
+  const router = useRouter()
 
   function handleClose() {
     if (isPending) return
     setOpen(false)
   }
 
-  function handleConfirm() {
+  function handleDelete() {
     startTransition(async () => {
       await deletePost(postId)
       setOpen(false)
-      onDeleted?.()
+      router.push(redirectTo)
     })
   }
 
   return (
     <>
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
-        onClick={handleOpen}
-        className="min-h-[40px] text-destructive hover:text-destructive hover:bg-destructive/10 sm:min-h-0"
+        onClick={() => setOpen(true)}
+        className={cn(
+          'border-destructive/40 text-destructive/80 hover:border-destructive hover:bg-destructive/10 hover:text-destructive',
+          className,
+        )}
       >
-        <Trash2 className="size-4 mr-1.5" />
         Delete
       </Button>
 
@@ -77,7 +78,7 @@ export function DeletePostDialog({ postId, onDeleted }: DeletePostDialogProps) {
                 'w-full bg-card border-border shadow-2xl',
                 mobile
                   ? 'rounded-t-3xl border-t px-5 pt-3'
-                  : 'max-w-md rounded-xl border p-6',
+                  : 'max-w-sm rounded-xl border p-6',
               )}
               style={
                 mobile
@@ -92,34 +93,22 @@ export function DeletePostDialog({ postId, onDeleted }: DeletePostDialogProps) {
                 </div>
               )}
 
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base font-semibold">Delete Post</h2>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    This action cannot be undone. The post and all its comments and revisions will be permanently deleted.
-                  </p>
-                </div>
-                {mobile && (
-                  <button
-                    onClick={handleClose}
-                    className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95 transition-transform ml-3 shrink-0"
-                    aria-label="Close"
-                  >
-                    <X className="size-4" />
-                  </button>
-                )}
+              <div className="mb-5">
+                <h2 className="text-base font-semibold">Delete post?</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Are you sure? This cannot be undone.
+                </p>
               </div>
 
-              <div className={cn('mt-4 flex gap-3', mobile ? 'flex-col' : 'flex-row justify-end')}>
+              <div className={cn('flex gap-3', mobile ? 'flex-col' : 'flex-row justify-end')}>
                 <Button
                   variant="destructive"
-                  onClick={handleConfirm}
+                  onClick={handleDelete}
                   disabled={isPending}
                   className={mobile ? 'h-[52px] rounded-xl text-base' : ''}
                   size={mobile ? 'default' : 'sm'}
                 >
-                  {isPending ? 'Deleting…' : 'Delete Post'}
+                  {isPending ? 'Deleting…' : 'Delete'}
                 </Button>
                 <Button
                   variant="outline"

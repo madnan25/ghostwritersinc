@@ -4,7 +4,6 @@ import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { approvePost, submitForAgentReview } from '@/app/actions/posts'
 import {
-  canDeletePost,
   canEditPost,
   canRejectPost,
   getApproveActionLabel,
@@ -12,21 +11,19 @@ import {
 } from '@/lib/post-actions'
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
-import { ScheduleDialog } from './schedule-dialog'
 import { DeletePostDialog } from './delete-post-dialog'
 
 interface PostCardActionsProps {
   postId: string
   status: string
   content: string
-  suggestedPublishAt?: string | null
 }
 
 // Shared button class for consistent 44px touch targets on mobile
 const btnClass = 'min-h-[40px] flex-1 sm:flex-none sm:min-h-0'
 const primaryBtnClass = `${btnClass} border-border/60 bg-transparent text-foreground/72 hover:border-primary/22 hover:bg-background/34 hover:text-foreground`
 
-export function PostCardActions({ postId, status, content, suggestedPublishAt }: PostCardActionsProps) {
+export function PostCardActions({ postId, status, content }: PostCardActionsProps) {
   const [isPending, startTransition] = useTransition()
 
   function handleApprove() {
@@ -48,30 +45,26 @@ export function PostCardActions({ postId, status, content, suggestedPublishAt }:
           {isPending ? 'Submitting…' : 'Submit for Review'}
         </Button>
         <EditPostDialog postId={postId} initialContent={content} />
-        <DeletePostDialog postId={postId} />
+        <DeletePostDialog postId={postId} className={btnClass} />
       </div>
     )
   }
 
   if (status === 'approved') {
     return (
-      <div className="flex w-full items-center gap-2">
-        <ScheduleDialog postId={postId} suggestedPublishAt={suggestedPublishAt} />
+      <div className="flex items-center gap-2">
         {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} />}
-      </div>
-    )
-  }
-
-  if (status === 'rejected') {
-    return (
-      <div className="flex w-full items-center gap-2">
-        <DeletePostDialog postId={postId} />
+        <DeletePostDialog postId={postId} className={btnClass} />
       </div>
     )
   }
 
   if (!isReviewQueueStatus(status)) {
-    return null
+    return (
+      <div className="flex items-center gap-2">
+        <DeletePostDialog postId={postId} className={btnClass} />
+      </div>
+    )
   }
 
   return (
@@ -83,6 +76,7 @@ export function PostCardActions({ postId, status, content, suggestedPublishAt }:
         <EditPostDialog postId={postId} initialContent={content} />
       )}
       {canRejectPost(status) && <RejectDialog postId={postId} />}
+      <DeletePostDialog postId={postId} className={btnClass} />
     </div>
   )
 }

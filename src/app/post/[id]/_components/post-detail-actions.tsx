@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   approvePost,
-  publishToLinkedIn,
   submitForAgentReview,
 } from '@/app/actions/posts'
 import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
-  canDeletePost,
   canEditPost,
   canRejectPost,
   getApproveActionLabel,
@@ -19,42 +17,23 @@ import {
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
 import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
 import { DeletePostDialog } from '@/app/dashboard/_components/delete-post-dialog'
+import { PublishOptionsDialog } from './publish-options-dialog'
 
 interface PostDetailActionsProps {
   postId: string
   status: string
   content: string
+  scheduledPublishAt?: string | null
 }
 
-export function PostDetailActions({ postId, status, content }: PostDetailActionsProps) {
+export function PostDetailActions({ postId, status, content, scheduledPublishAt }: PostDetailActionsProps) {
   const [isPending, startTransition] = useTransition()
-  const [publishError, setPublishError] = useState<string | null>(null)
-  const [isPublishing, setIsPublishing] = useState(false)
   const { copied: copyToast, copy } = useCopyFeedback(3000)
-  const router = useRouter()
 
   function handleApprove() {
     startTransition(async () => {
       await approvePost(postId)
-      router.push('/dashboard')
     })
-  }
-
-  async function handlePublish() {
-    setPublishError(null)
-    setIsPublishing(true)
-    try {
-      const result = await publishToLinkedIn(postId)
-      if (result.success) {
-        router.push('/dashboard')
-      } else {
-        setPublishError(result.error ?? 'Failed to publish')
-      }
-    } catch {
-      setPublishError('An unexpected error occurred')
-    } finally {
-      setIsPublishing(false)
-    }
   }
 
   async function handleCopyAndOpen() {
@@ -77,7 +56,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             {isPending ? 'Submitting…' : 'Submit for Review'}
           </Button>
           <EditPostDialog postId={postId} initialContent={content} />
-          <DeletePostDialog postId={postId} onDeleted={() => router.push('/dashboard')} />
+          <DeletePostDialog postId={postId} />
         </div>
       )
     }
@@ -92,6 +71,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             <EditPostDialog postId={postId} initialContent={content} />
           )}
           {canRejectPost(status) && <RejectDialog postId={postId} />}
+          <DeletePostDialog postId={postId} />
         </div>
       )
     }
@@ -100,21 +80,16 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
       return (
         <div className="flex flex-col gap-2 w-full">
           <div className={wrapClass}>
-            <Button
-              size="sm"
-              className={sticky ? 'flex-1' : ''}
-              onClick={handlePublish}
-              disabled={isPublishing}
-            >
-              {isPublishing ? 'Publishing…' : 'Publish to LinkedIn'}
-            </Button>
+            <PublishOptionsDialog
+              postId={postId}
+              status={status}
+              scheduledPublishAt={scheduledPublishAt}
+            />
             <Button variant="outline" size="sm" className={sticky ? 'flex-1' : ''} onClick={handleCopyAndOpen}>
               Copy & Open LinkedIn
             </Button>
+            <DeletePostDialog postId={postId} />
           </div>
-          {publishError && (
-            <p className="text-xs text-destructive">{publishError}</p>
-          )}
           {copyToast && (
             <p className="text-xs text-emerald-400">Post copied to clipboard!</p>
           )}
@@ -122,20 +97,12 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
       )
     }
 
-    if (canDeletePost(status)) {
-      return (
-        <div className={wrapClass}>
-          <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
-            {status.replace('_', ' ')}
-          </div>
-          <DeletePostDialog postId={postId} onDeleted={() => router.push('/dashboard')} />
-        </div>
-      )
-    }
-
     return (
-      <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
-        {status.replace('_', ' ')}
+      <div className="flex items-center gap-2">
+        <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
+          {status.replace('_', ' ')}
+        </div>
+        <DeletePostDialog postId={postId} />
       </div>
     )
   }

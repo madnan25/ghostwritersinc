@@ -306,7 +306,6 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
                   post={post}
                   pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
                   featured={index === 0 && filtered.length > 2}
-                  hasRevisions={post.revision_count > 0}
                 />
               </m.div>
             ))}

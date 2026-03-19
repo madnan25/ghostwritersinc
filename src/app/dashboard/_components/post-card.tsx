@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bot, Calendar, FileText, GitBranch, User } from 'lucide-react'
+import { Bot, Calendar, FileText, User } from 'lucide-react'
 import { m } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post } from '@/lib/types'
@@ -11,7 +11,6 @@ interface PostCardProps {
   post: Post
   pillar?: ContentPillar
   featured?: boolean
-  hasRevisions?: boolean
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -28,30 +27,6 @@ function getHook(content: string): string {
   return lines.slice(0, 2).join('\n') || content.slice(0, 120)
 }
 
-function getDerivedTitle(content: string): string {
-  const compact = content.replace(/\s+/g, ' ').trim()
-  if (!compact) return 'Untitled post'
-
-  const sentenceMatch = compact.match(/^(.{20,110}?[.!?])(?:\s|$)/)
-  if (sentenceMatch?.[1]) {
-    return sentenceMatch[1]
-  }
-
-  return compact.length > 90 ? `${compact.slice(0, 87).trimEnd()}...` : compact
-}
-
-function getBodyPreview(content: string, title: string): string {
-  const compact = content.replace(/\s+/g, ' ').trim()
-  if (!compact) return ''
-
-  const remainder = compact.startsWith(title)
-    ? compact.slice(title.length).trimStart()
-    : compact
-
-  if (!remainder) return compact
-  return remainder
-}
-
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'No date set'
   return new Intl.DateTimeFormat('en-US', {
@@ -62,9 +37,8 @@ function formatDate(dateStr: string | null): string {
   }).format(new Date(dateStr))
 }
 
-export function PostCard({ post, pillar, featured = false, hasRevisions = false }: PostCardProps) {
-  const title = getDerivedTitle(post.content)
-  const preview = getBodyPreview(getHook(post.content), title)
+export function PostCard({ post, pillar, featured = false }: PostCardProps) {
+  const hook = getHook(post.content)
   const statusConfig = STATUS_CONFIG[post.status]
   const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
 
@@ -109,40 +83,19 @@ export function PostCard({ post, pillar, featured = false, hasRevisions = false 
             {pillar.name}
           </m.span>
         )}
-        {hasRevisions && (
-          <m.span
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, delay: 0.1 }}
-            className="inline-flex items-center gap-1 rounded-full border border-sky-400/25 bg-sky-400/8 px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.12em] text-sky-300/80"
-          >
-            <GitBranch className="size-3" />
-            Revised
-          </m.span>
-        )}
       </div>
 
       <div className="editorial-rule" />
 
       <Link href={`/post/${post.id}`} className={cn('relative z-10 block min-h-[96px]', featured && 'min-h-[140px]')}>
-        <div className="space-y-3">
-          <h3
-            className={cn(
-              'line-clamp-2 text-[1.08rem] font-semibold leading-7 tracking-[-0.03em] text-foreground transition-colors duration-200 group-hover:text-foreground',
-              featured && 'max-w-2xl text-[1.42rem] leading-10 tracking-[-0.045em]',
-            )}
-          >
-            {title}
-          </h3>
-          <p
-            className={cn(
-              'line-clamp-3 text-[0.98rem] leading-7 tracking-[-0.02em] text-foreground/74 transition-colors duration-200 group-hover:text-foreground/84',
-              featured && 'max-w-2xl text-[1.06rem] leading-8 md:line-clamp-3',
-            )}
-          >
-            {preview}
-          </p>
-        </div>
+        <p
+          className={cn(
+            'line-clamp-4 text-[1.05rem] leading-8 tracking-[-0.03em] text-foreground/96 transition-colors duration-200 group-hover:text-foreground',
+            featured && 'max-w-2xl text-[1.42rem] leading-10 tracking-[-0.045em] md:line-clamp-5',
+          )}
+        >
+          {hook}
+        </p>
       </Link>
 
       <div className="relative z-10 mt-auto space-y-4">
@@ -153,12 +106,8 @@ export function PostCard({ post, pillar, featured = false, hasRevisions = false 
               <span className="editorial-meta normal-case tracking-normal text-sky-400/80">
                 Scheduled: {formatDate(post.scheduled_publish_at)}
               </span>
-            ) : post.suggested_publish_at ? (
-              <span className="editorial-meta normal-case tracking-normal text-sky-300/60">
-                Suggested: {formatDate(post.suggested_publish_at)}
-              </span>
             ) : (
-              <span className="editorial-meta normal-case tracking-normal text-foreground/40">No date set</span>
+              <span className="editorial-meta normal-case tracking-normal text-foreground/56">{formatDate(post.suggested_publish_at)}</span>
             )}
           </div>
           {post.brief_ref && (
@@ -197,12 +146,7 @@ export function PostCard({ post, pillar, featured = false, hasRevisions = false 
         </div>
 
         <div className="editorial-rule pt-4">
-          <PostCardActions
-            postId={post.id}
-            status={post.status}
-            content={post.content}
-            suggestedPublishAt={post.suggested_publish_at}
-          />
+          <PostCardActions postId={post.id} status={post.status} content={post.content} />
         </div>
       </div>
     </m.div>
