@@ -17,6 +17,7 @@ const VALID_POST_STATUSES = [
 
 const CreateDraftSchema = z.object({
   content: z.string().min(1, 'Content is required'),
+  title: z.string().max(200).nullable().optional(),
   content_type: z.enum(['text', 'image', 'document']).default('text'),
   pillar: z.string().nullable().optional(),
   pillar_id: z.string().uuid().nullable().optional(),
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       organization_id: auth.organizationId,
       user_id: user.id,
       content: parsed.data.content,
+      title: parsed.data.title ?? null,
       content_type: parsed.data.content_type,
       pillar: parsed.data.pillar ?? null,
       pillar_id: parsed.data.pillar_id ?? null,
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
     agentId: auth.agentId,
     postId: post.id,
     actionType: 'draft_created',
-    metadata: { content_type: parsed.data.content_type, pillar_id: parsed.data.pillar_id ?? null },
+    metadata: { content_type: parsed.data.content_type, pillar_id: parsed.data.pillar_id ?? null, title: parsed.data.title ?? null },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 

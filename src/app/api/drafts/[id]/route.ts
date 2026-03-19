@@ -15,6 +15,7 @@ import { isValidUuid } from '@/lib/validation'
 
 const UpdateDraftSchema = z.object({
   content: z.string().min(1).optional(),
+  title: z.string().max(200).nullable().optional(),
   content_type: z.enum(['text', 'image', 'document']).optional(),
   pillar: z.string().nullable().optional(),
   pillar_id: z.string().uuid().nullable().optional(),
@@ -107,7 +108,7 @@ export async function PATCH(
   // Verify the post belongs to the agent's organization
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status')
+    .select('organization_id, user_id, status, title')
     .eq('id', id)
     .single()
 
@@ -158,7 +159,7 @@ export async function PATCH(
     agentId: auth.agentId,
     postId: id,
     actionType: 'draft_updated',
-    metadata: { updated_fields: Object.keys(parsed.data) },
+    metadata: { updated_fields: Object.keys(parsed.data), title: parsed.data.title ?? existing.title ?? null },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
