@@ -15,7 +15,6 @@ interface PostCardProps {
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'editorial-chip' },
-  agent_review: { label: 'Agent Review', className: 'editorial-chip border-violet-300/22 text-violet-200' },
   pending_review: { label: 'Needs Review', className: 'editorial-chip border-amber-300/24 text-amber-200' },
   approved: { label: 'Approved', className: 'editorial-chip border-emerald-300/20 text-emerald-200' },
   scheduled: { label: 'Scheduled', className: 'editorial-chip border-sky-300/22 text-sky-200' },

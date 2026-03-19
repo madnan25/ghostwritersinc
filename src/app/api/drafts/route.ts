@@ -12,7 +12,7 @@ import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
 const VALID_POST_STATUSES = [
-  'draft', 'agent_review', 'pending_review', 'approved', 'rejected', 'scheduled', 'published',
+  'draft', 'pending_review', 'approved', 'rejected', 'scheduled', 'published',
 ] as const
 
 const CreateDraftSchema = z.object({
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       brief_ref: parsed.data.brief_ref ?? null,
       suggested_publish_at: parsed.data.suggested_publish_at ?? null,
       media_urls: parsed.data.media_urls ?? [],
-      status: 'draft',
+      status: 'pending_review',
       agent_id: auth.agentId,
       created_by_agent: auth.agentName,
     })

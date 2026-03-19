@@ -1,6 +1,5 @@
 export type PostStatus =
   | 'draft'
-  | 'agent_review'
   | 'pending_review'
   | 'approved'
   | 'scheduled'

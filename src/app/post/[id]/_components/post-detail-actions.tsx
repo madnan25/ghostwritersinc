@@ -7,7 +7,6 @@ import {
   approvePost,
   publishToLinkedIn,
   submitForAgentReview,
-  submitForClientReview,
 } from '@/app/actions/posts'
 import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
@@ -34,11 +33,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
 
   function handleApprove() {
     startTransition(async () => {
-      if (status === 'agent_review') {
-        await submitForClientReview(postId, 'client')
-      } else {
-        await approvePost(postId)
-      }
+      await approvePost(postId)
       router.push('/dashboard')
     })
   }
@@ -88,7 +83,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
       return (
         <div className={wrapClass}>
           <Button size="sm" className={sticky ? 'flex-1' : ''} onClick={handleApprove} disabled={isPending}>
-            {isPending ? 'Approving…' : getApproveActionLabel(status)}
+            {isPending ? 'Approving…' : getApproveActionLabel()}
           </Button>
           {canEditPost(status) && (
             <EditPostDialog postId={postId} initialContent={content} />

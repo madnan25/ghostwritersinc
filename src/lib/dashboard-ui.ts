@@ -7,7 +7,7 @@ export type DashboardFilterTab = {
 
 export const DASHBOARD_FILTER_TABS: DashboardFilterTab[] = [
   { label: "All", statuses: null },
-  { label: "Needs Review", statuses: ["pending_review", "agent_review"] },
+  { label: "Needs Review", statuses: ["pending_review"] },
   { label: "Drafts", statuses: ["draft"] },
   { label: "Approved", statuses: ["approved", "scheduled"] },
   { label: "Published", statuses: ["published"] },
@@ -49,7 +49,7 @@ export function getDashboardMetrics(posts: Post[]): DashboardMetrics {
   return {
     totalPosts: posts.length,
     needsReview: posts.filter(
-      (post) => post.status === "pending_review" || post.status === "agent_review"
+      (post) => post.status === "pending_review"
     ).length,
     readyToPublish: posts.filter(
       (post) => post.status === "approved" || post.status === "scheduled"

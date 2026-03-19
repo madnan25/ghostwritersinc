@@ -3,12 +3,11 @@ import type { PostStatus, ReviewAction } from './types'
 /**
  * Allowed status transitions for the multi-step approval workflow.
  *
- * Flow: draft → agent_review → pending_review → approved/rejected → scheduled → published
+ * Flow: draft → pending_review → approved/rejected → scheduled → published
  * Rejected posts can be revised back to draft.
  */
 const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
-  draft: ['agent_review'],
-  agent_review: ['pending_review', 'rejected'],
+  draft: ['pending_review'],
   pending_review: ['approved', 'rejected'],
   approved: ['scheduled', 'published'],
   rejected: ['draft'],
@@ -69,7 +68,6 @@ export function validateTransition(input: TransitionInput): {
 
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
-    to === 'pending_review' ? 'escalated' :
     'approved'
 
   const updateFields: Record<string, unknown> = {

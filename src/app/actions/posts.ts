@@ -164,7 +164,7 @@ export async function rejectPost(postId: string, reason: string) {
 }
 
 export async function submitForAgentReview(postId: string, notes?: string) {
-  await transitionPostStatus(postId, 'agent_review', 'system', { notes })
+  await transitionPostStatus(postId, 'pending_review', 'system', { notes })
 }
 
 export async function submitForClientReview(
