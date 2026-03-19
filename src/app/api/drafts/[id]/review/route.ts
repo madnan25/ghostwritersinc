@@ -64,7 +64,7 @@ export async function POST(
   // Fetch the post
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status')
+    .select('organization_id, user_id, status, created_by_agent')
     .eq('id', id)
     .single()
 
@@ -74,6 +74,14 @@ export async function POST(
 
   if (!canAccessAgentUserRecord(auth, post)) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  // Defense-in-depth: prevent agents from reviewing their own drafts
+  if (post.created_by_agent === auth.agentName) {
+    return NextResponse.json(
+      { error: 'Agent cannot review its own draft' },
+      { status: 403 }
+    )
   }
 
   // Determine target status based on action
