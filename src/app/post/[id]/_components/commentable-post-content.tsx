@@ -8,6 +8,8 @@ interface Props {
   postId: string
   content: string
   comments: PostComment[]
+  /** The post's current content_version number */
+  currentVersion?: number
   /** When set, renders snapshotted content for this historical version (read-only) */
   viewingVersion?: number | null
   /** Snapshotted content for the selected historical version */
@@ -59,7 +61,7 @@ function buildSegments(content: string, inlineComments: PostComment[]): Segment[
   return segments
 }
 
-export function CommentablePostContent({ postId, content, comments, viewingVersion, versionContent }: Props) {
+export function CommentablePostContent({ postId, content, comments, currentVersion, viewingVersion, versionContent }: Props) {
   const isHistoricalVersion = viewingVersion != null
   const displayContent = isHistoricalVersion && versionContent != null ? versionContent : content
 
@@ -77,16 +79,13 @@ export function CommentablePostContent({ postId, content, comments, viewingVersi
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selection])
 
-  // For historical versions, show comments tied to that version; for current, show current-version comments
+  // Show only inline comments that belong to the version being viewed
+  const activeVersion = isHistoricalVersion ? viewingVersion : (currentVersion ?? 1)
   const inlineComments = comments.filter((c) => {
     if (c.selection_start === null || c.selection_end === null) return false
-    if (isHistoricalVersion) {
-      // Show comments whose content_version matches the viewed version (or legacy null)
-      const cv = (c as PostComment & { content_version?: number | null }).content_version
-      return cv === viewingVersion || (viewingVersion === 1 && cv == null)
-    }
-    // Current view: show comments where content_version matches latest (null = legacy)
-    return true
+    const cv = (c as PostComment & { content_version?: number | null }).content_version
+    // Match comments stamped for this version, or legacy null comments for v1
+    return cv === activeVersion || (activeVersion === 1 && cv == null)
   })
   const segments = buildSegments(displayContent, inlineComments)
 

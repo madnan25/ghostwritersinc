@@ -35,6 +35,7 @@ export function PostContentWithVersions({ postId, content, currentVersion, comme
         postId={postId}
         content={content}
         comments={comments}
+        currentVersion={currentVersion}
         viewingVersion={selectedVersion}
         versionContent={versionContent}
       />
