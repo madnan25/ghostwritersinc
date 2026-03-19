@@ -120,11 +120,37 @@ export async function PATCH(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  if (!['draft', 'rejected'].includes(existing.status)) {
+  // Allow title-only updates on pre-publish statuses (backfill), but not on published/scheduled
+  const isTitleOnlyUpdate = Object.keys(parsed.data).length === 1 && 'title' in parsed.data
+  const editableStatuses = isTitleOnlyUpdate
+    ? ['draft', 'rejected', 'pending_review', 'approved']
+    : ['draft', 'rejected']
+  if (!editableStatuses.includes(existing.status)) {
     return NextResponse.json(
       { error: `Cannot update post in "${existing.status}" status` },
       { status: 409 }
     )
+  }
+
+  // Snapshot current content as a revision before overwriting (agent edits should be tracked)
+  if (parsed.data.content) {
+    const { data: currentPost } = await supabase
+      .from('posts')
+      .select('content')
+      .eq('id', id)
+      .single()
+
+    if (currentPost?.content) {
+      await supabase.rpc('insert_post_revision', {
+        p_post_id: id,
+        p_content: currentPost.content,
+        p_revised_by_agent: auth.agentId,
+        p_revised_by_user: null,
+        p_revision_reason: 'Agent content update',
+      }).then(({ error }) => {
+        if (error) console.error('[drafts] Revision snapshot failed:', error.message)
+      })
+    }
   }
 
   const updateFields = {

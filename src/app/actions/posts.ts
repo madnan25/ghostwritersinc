@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
 import { validateTransition } from '@/lib/workflow'
+import { createStrategyReviewTask } from '@/lib/paperclip'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,6 +39,36 @@ async function getPostWithUser(
     .eq('id', postId)
     .single()
   return data
+}
+
+async function snapshotRevision(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  postId: string,
+  opts?: { revisedByAgent?: string; revisedByUser?: string; reason?: string },
+) {
+  // Fetch current content before it gets overwritten
+  const { data: post } = await supabase
+    .from('posts')
+    .select('content')
+    .eq('id', postId)
+    .single()
+
+  if (!post?.content) return
+
+  // Use a database-level subquery for atomic version numbering to avoid race conditions.
+  // Supabase JS client doesn't support subquery inserts, so we use rpc-style raw SQL.
+  const { error } = await supabase.rpc('insert_post_revision', {
+    p_post_id: postId,
+    p_content: post.content,
+    p_revised_by_agent: opts?.revisedByAgent ?? null,
+    p_revised_by_user: opts?.revisedByUser ?? null,
+    p_revision_reason: opts?.reason ?? null,
+  })
+
+  // Silently ignore — revision snapshots are best-effort
+  if (error) {
+    console.error('[snapshotRevision] Failed to insert revision:', error.message)
+  }
 }
 
 async function transitionPostStatus(
@@ -108,17 +139,34 @@ export async function addPostComment(
   } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { error } = await supabase.from('post_comments').insert({
-    post_id: postId,
-    author_type: 'user',
-    author_id: user.id,
-    body,
-    selected_text: selectedText ?? null,
-    selection_start: selectionStart ?? null,
-    selection_end: selectionEnd ?? null,
-  })
+  const { data: comment, error } = await supabase
+    .from('post_comments')
+    .insert({
+      post_id: postId,
+      author_type: 'user',
+      author_id: user.id,
+      body,
+      selected_text: selectedText ?? null,
+      selection_start: selectionStart ?? null,
+      selection_end: selectionEnd ?? null,
+    })
+    .select('id')
+    .single()
 
   if (error) throw new Error(error.message)
+
+  // Auto-create a Strategist review task in Paperclip (best-effort)
+  const post = await getPostWithUser(supabase, postId)
+  const postTitle =
+    post?.content?.slice(0, 80) ?? `Post ${postId.slice(0, 8)}`
+
+  await createStrategyReviewTask({
+    postId,
+    postTitle,
+    commentId: comment.id,
+    commentBody: body,
+    selectedText: selectedText ?? null,
+  })
 
   revalidatePath(`/post/${postId}`)
 }
@@ -236,6 +284,9 @@ export async function publishPost(postId: string, linkedinPostUrn?: string) {
 export async function updatePostContent(postId: string, content: string) {
   const supabase = await createClient()
 
+  // Snapshot current content as a revision before overwriting
+  await snapshotRevision(supabase, postId, { reason: 'Content updated' })
+
   const { error } = await supabase
     .from('posts')
     .update({ content, updated_at: new Date().toISOString() })
@@ -251,6 +302,44 @@ export async function reviseDraft(postId: string) {
   await transitionPostStatus(postId, 'draft', 'client', {
     notes: 'Returned to draft for revision',
   })
+}
+
+// ---------------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------------
+
+export async function deletePost(postId: string) {
+  const supabase = await createClient()
+
+  // Verify post exists and is deletable (draft or rejected only)
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('id, status')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  if (post.status !== 'draft' && post.status !== 'rejected') {
+    throw new Error('Only draft or rejected posts can be deleted')
+  }
+
+  // Delete associated data first (comments, review events, revisions)
+  await supabase.from('post_comments').delete().eq('post_id', postId)
+  await supabase.from('review_events').delete().eq('post_id', postId)
+  await supabase.from('post_revisions').delete().eq('post_id', postId)
+
+  // Delete the post itself
+  const { error: deleteError } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+
+  if (deleteError) throw new Error(deleteError.message)
+
+  revalidatePath('/dashboard')
 }
 
 // ---------------------------------------------------------------------------

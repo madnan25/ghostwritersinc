@@ -60,13 +60,26 @@ export function usePostsRealtimeSync(
   setPosts: React.Dispatch<React.SetStateAction<Post[]>>
 ) {
   const onInsert = useCallback(
-    (post: Post) => setPosts((prev) => [post, ...prev]),
+    (post: Post) =>
+      setPosts((prev) => {
+        // Deduplicate: if a post with the same ID already exists, replace it
+        if (prev.some((p) => p.id === post.id)) {
+          return prev.map((p) => (p.id === post.id ? post : p))
+        }
+        return [post, ...prev]
+      }),
     [setPosts]
   )
 
   const onUpdate = useCallback(
     (post: Post) =>
-      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p))),
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? { ...post, ...('revision_count' in p ? { revision_count: (p as Post & { revision_count: number }).revision_count } : {}) }
+            : p
+        )
+      ),
     [setPosts]
   )
 
