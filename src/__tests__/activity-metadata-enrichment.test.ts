@@ -40,7 +40,8 @@ function chainProxy(terminalResult: unknown): unknown {
   return new Proxy(() => terminalResult, handler);
 }
 
-const POST_ROW = { id: "post-1", status: "draft", organization_id: "org-1", user_id: "user-1" };
+const POST_ID = "00000000-0000-4000-a000-000000000001";
+const POST_ROW = { id: POST_ID, status: "draft", organization_id: "org-1", user_id: "user-1" };
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
@@ -63,7 +64,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "post_comments") {
         return {
           insert: vi.fn(() => chainProxy({
-            data: { id: "comment-1", post_id: "post-1", body: "test comment" },
+            data: { id: "comment-1", post_id: POST_ID, body: "test comment" },
             error: null,
           })),
         };
@@ -183,13 +184,13 @@ describe("Activity metadata enrichment (LIN-170)", () => {
     it("PATCH /api/drafts/[id] stores provider_run_id in metadata", async () => {
       const { PATCH } = await import("@/app/api/drafts/[id]/route");
 
-      const req = makeAgentRequest("http://localhost/api/drafts/post-1", {
+      const req = makeAgentRequest(`http://localhost/api/drafts/${POST_ID}`, {
         method: "PATCH",
         body: { content: "Updated content" },
         headers: { "x-paperclip-run-id": "run-def-456" },
       });
 
-      await PATCH(req, { params: Promise.resolve({ id: "post-1" }) });
+      await PATCH(req, { params: Promise.resolve({ id: POST_ID }) });
       await new Promise((r) => setTimeout(r, 50));
 
       expect(activityInsertSpy).toHaveBeenCalledWith(
@@ -205,12 +206,12 @@ describe("Activity metadata enrichment (LIN-170)", () => {
     it("POST /api/drafts/[id]/comments stores provider_run_id in metadata", async () => {
       const { POST } = await import("@/app/api/drafts/[id]/comments/route");
 
-      const req = makeAgentRequest("http://localhost/api/drafts/post-1/comments", {
+      const req = makeAgentRequest(`http://localhost/api/drafts/${POST_ID}/comments`, {
         body: { body: "Great draft!" },
         headers: { "x-paperclip-run-id": "run-ghi-789" },
       });
 
-      await POST(req, { params: Promise.resolve({ id: "post-1" }) });
+      await POST(req, { params: Promise.resolve({ id: POST_ID }) });
       await new Promise((r) => setTimeout(r, 50));
 
       expect(activityInsertSpy).toHaveBeenCalledWith(
@@ -226,12 +227,12 @@ describe("Activity metadata enrichment (LIN-170)", () => {
     it("POST /api/drafts/[id]/review stores provider_run_id in metadata", async () => {
       const { POST } = await import("@/app/api/drafts/[id]/review/route");
 
-      const req = makeAgentRequest("http://localhost/api/drafts/post-1/review", {
+      const req = makeAgentRequest(`http://localhost/api/drafts/${POST_ID}/review`, {
         body: { action: "approved" },
         headers: { "x-paperclip-run-id": "run-jkl-012" },
       });
 
-      await POST(req, { params: Promise.resolve({ id: "post-1" }) });
+      await POST(req, { params: Promise.resolve({ id: POST_ID }) });
       await new Promise((r) => setTimeout(r, 50));
 
       expect(activityInsertSpy).toHaveBeenCalledWith(
@@ -292,12 +293,12 @@ describe("Activity metadata enrichment (LIN-170)", () => {
     it("POST /api/drafts/[id]/review without header has no provider_run_id", async () => {
       const { POST } = await import("@/app/api/drafts/[id]/review/route");
 
-      const req = makeAgentRequest("http://localhost/api/drafts/post-1/review", {
+      const req = makeAgentRequest(`http://localhost/api/drafts/${POST_ID}/review`, {
         body: { action: "approved" },
         // No x-paperclip-run-id header
       });
 
-      await POST(req, { params: Promise.resolve({ id: "post-1" }) });
+      await POST(req, { params: Promise.resolve({ id: POST_ID }) });
       await new Promise((r) => setTimeout(r, 50));
 
       const insertedRow = activityInsertSpy.mock.calls[0][0];
@@ -318,12 +319,12 @@ describe("Activity metadata enrichment (LIN-170)", () => {
 
       const { POST } = await import("@/app/api/drafts/[id]/review/route");
 
-      const req = makeAgentRequest("http://localhost/api/drafts/post-1/review", {
+      const req = makeAgentRequest(`http://localhost/api/drafts/${POST_ID}/review`, {
         body: { action: "approved" },
         headers: { "x-paperclip-run-id": "run-workflow-error" },
       });
 
-      const res = await POST(req, { params: Promise.resolve({ id: "post-1" }) });
+      const res = await POST(req, { params: Promise.resolve({ id: POST_ID }) });
       await new Promise((r) => setTimeout(r, 50));
 
       // Response should be 409 (WorkflowError)
