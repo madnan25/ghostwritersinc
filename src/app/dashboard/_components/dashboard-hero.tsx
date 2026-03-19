@@ -37,7 +37,10 @@ export function DashboardHero({ metrics, narrative }: DashboardHeroProps) {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)] lg:items-end">
           <div className="max-w-4xl">
             <p className="premium-kicker">Editorial System</p>
-            <h1 className="mt-4 max-w-none text-[clamp(2.35rem,4.6vw,3.55rem)] font-semibold tracking-[-0.06em] leading-[1.02] text-foreground">
+            <h1
+              className="mt-4 max-w-none text-[clamp(2.35rem,4.6vw,3.55rem)] font-semibold tracking-[-0.045em] leading-[1.02] text-foreground"
+              style={{ wordSpacing: "0.08em" }}
+            >
               <span className="block whitespace-normal lg:whitespace-nowrap">
                 Content at the speed of thought.
               </span>

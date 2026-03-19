@@ -29,6 +29,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists org_onboarded_provision_pillars on organizations;
 create trigger org_onboarded_provision_pillars
   after update on organizations
   for each row execute function provision_default_pillars();

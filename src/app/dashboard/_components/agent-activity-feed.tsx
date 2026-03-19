@@ -1,11 +1,13 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { Activity, FileEdit, MessageSquare, RefreshCw, FilePlus } from 'lucide-react'
 import { m, type Variants } from 'framer-motion'
 import { useAgentActivityFeed } from '@/hooks/use-agent-activity-feed'
 import type { AgentActionType } from '@/lib/types'
 
 type AgentDirectory = Record<string, { name: string; job_title: string | null }>
+const DEFAULT_VISIBLE_COUNT = 3
 
 function relativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -81,7 +83,13 @@ function getPostTitle(metadata: Record<string, unknown>): string | null {
 }
 
 export function AgentActivityFeed({ agentDirectory }: { agentDirectory: AgentDirectory }) {
-  const entries = useAgentActivityFeed(15)
+  const entries = useAgentActivityFeed(24, 48)
+  const [expanded, setExpanded] = useState(false)
+  const visibleEntries = useMemo(
+    () => (expanded ? entries : entries.slice(0, DEFAULT_VISIBLE_COUNT)),
+    [entries, expanded],
+  )
+  const hiddenCount = Math.max(entries.length - DEFAULT_VISIBLE_COUNT, 0)
 
   return (
     <section className="mt-10 sm:mt-12">
@@ -93,7 +101,7 @@ export function AgentActivityFeed({ agentDirectory }: { agentDirectory: AgentDir
             Agent Activity
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-7 text-foreground/66">
-            Recent actions from your commissioned agents across the editorial pipeline.
+            Recent actions from your commissioned agents across the last 48 hours.
           </p>
           </div>
           <div className="dashboard-rail flex items-center gap-3 self-start rounded-full px-4 py-2 text-sm text-foreground/70 sm:self-auto">
@@ -111,52 +119,68 @@ export function AgentActivityFeed({ agentDirectory }: { agentDirectory: AgentDir
             <p className="mt-1 text-xs text-foreground/40">Actions will appear here in real time.</p>
           </div>
         ) : (
-          <m.ul
-            variants={listVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid gap-3"
-          >
-            {entries.map((entry) => {
-              const agent = getAgentDisplay(entry.agent_id, agentDirectory)
-              const postTitle = getPostTitle(entry.metadata)
+          <div className="space-y-3">
+            <div className={expanded ? 'max-h-[30rem] overflow-y-auto pr-1' : ''}>
+              <m.ul
+                variants={listVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-3"
+              >
+                {visibleEntries.map((entry) => {
+                  const agent = getAgentDisplay(entry.agent_id, agentDirectory)
+                  const postTitle = getPostTitle(entry.metadata)
 
-              return (
-                <m.li
-                  key={entry.id}
-                  variants={itemVariants}
-                  className="dashboard-rail flex items-start gap-4 rounded-[20px] px-4 py-4 sm:px-5"
-                >
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    {ACTION_ICONS[entry.action_type]}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {ACTION_LABELS[entry.action_type]}
-                        </p>
-                        <p className="mt-1 truncate text-sm text-foreground/74">
-                          Agent: {agent.name}
-                          <span className="text-foreground/46"> · {agent.detail}</span>
+                  return (
+                    <m.li
+                      key={entry.id}
+                      variants={itemVariants}
+                      className="dashboard-rail flex items-start gap-4 rounded-[20px] px-4 py-4 sm:px-5"
+                    >
+                      <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        {ACTION_ICONS[entry.action_type]}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              {ACTION_LABELS[entry.action_type]}
+                            </p>
+                            <p className="mt-1 truncate text-sm text-foreground/74">
+                              Agent: {agent.name}
+                              <span className="text-foreground/46"> · {agent.detail}</span>
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-foreground/40">
+                            {relativeTime(entry.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs leading-6 text-foreground/56">
+                          {postTitle ? (
+                            <em className="not-italic text-foreground/70">&ldquo;{postTitle}&rdquo;</em>
+                          ) : (
+                            getActionDetail(entry.action_type)
+                          )}
                         </p>
                       </div>
-                      <span className="shrink-0 text-xs text-foreground/40">
-                        {relativeTime(entry.created_at)}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-xs leading-6 text-foreground/56">
-                      {postTitle ? (
-                        <em className="not-italic text-foreground/70">&ldquo;{postTitle}&rdquo;</em>
-                      ) : (
-                        getActionDetail(entry.action_type)
-                      )}
-                    </p>
-                  </div>
-                </m.li>
-              )
-            })}
-          </m.ul>
+                    </m.li>
+                  )
+                })}
+              </m.ul>
+            </div>
+
+            {hiddenCount > 0 ? (
+              <div className="flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((value) => !value)}
+                  className="dashboard-rail inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-foreground/72 transition-colors hover:text-foreground"
+                >
+                  {expanded ? 'Show fewer' : `Unlock ${hiddenCount} more`}
+                </button>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </section>

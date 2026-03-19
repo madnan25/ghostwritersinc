@@ -58,6 +58,9 @@ export function HiringRequestSection({
       if (membersList.length > 0) setUserId(membersList[0].id)
       setRequests(Array.isArray(requestsData) ? requestsData : [])
       setLoading(false)
+    }).catch(() => {
+      setError("Failed to load data.")
+      setLoading(false)
     })
   }, [])
 

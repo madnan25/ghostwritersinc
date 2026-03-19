@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePostsRealtimeSync } from '@/hooks/use-posts-realtime'
 import { AlertTriangle } from 'lucide-react'
 import { m, AnimatePresence, type Variants } from 'framer-motion'
@@ -35,6 +35,12 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
   const [posts, setPosts] = useState(initialPosts)
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
+
+  // Sync with server revalidation — when initialPosts change (e.g. after a server action
+  // calls revalidatePath), merge server data as the source of truth
+  useEffect(() => {
+    setPosts(initialPosts)
+  }, [initialPosts])
 
   // Keep posts in sync with realtime changes (cast: realtime updates don't carry revision_count, defaults to 0)
   usePostsRealtimeSync(setPosts as React.Dispatch<React.SetStateAction<Post[]>>)

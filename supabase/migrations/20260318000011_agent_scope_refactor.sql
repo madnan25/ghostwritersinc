@@ -35,7 +35,7 @@ drop policy if exists "Org owners can delete invitations" on public.user_invitat
 create policy "Org admins can view invitations"
   on public.user_invitations for select
   using (
-    organization_id = auth.user_organization_id()
+    organization_id = (select organization_id from public.users where id = auth.uid())
     and exists (
       select 1 from public.users
       where users.id = auth.uid()
@@ -47,7 +47,7 @@ create policy "Org admins can view invitations"
 create policy "Org admins can create invitations"
   on public.user_invitations for insert
   with check (
-    organization_id = auth.user_organization_id()
+    organization_id = (select organization_id from public.users where id = auth.uid())
     and exists (
       select 1 from public.users
       where users.id = auth.uid()
@@ -59,7 +59,7 @@ create policy "Org admins can create invitations"
 create policy "Org admins can delete invitations"
   on public.user_invitations for delete
   using (
-    organization_id = auth.user_organization_id()
+    organization_id = (select organization_id from public.users where id = auth.uid())
     and exists (
       select 1 from public.users
       where users.id = auth.uid()

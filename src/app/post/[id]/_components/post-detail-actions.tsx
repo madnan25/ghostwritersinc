@@ -10,6 +10,7 @@ import {
 } from '@/app/actions/posts'
 import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
+  canDeletePost,
   canEditPost,
   canRejectPost,
   getApproveActionLabel,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/post-actions'
 import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
 import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
+import { DeletePostDialog } from '@/app/dashboard/_components/delete-post-dialog'
 
 interface PostDetailActionsProps {
   postId: string
@@ -75,6 +77,7 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
             {isPending ? 'Submitting…' : 'Submit for Review'}
           </Button>
           <EditPostDialog postId={postId} initialContent={content} />
+          <DeletePostDialog postId={postId} onDeleted={() => router.push('/dashboard')} />
         </div>
       )
     }
@@ -115,6 +118,17 @@ export function PostDetailActions({ postId, status, content }: PostDetailActions
           {copyToast && (
             <p className="text-xs text-emerald-400">Post copied to clipboard!</p>
           )}
+        </div>
+      )
+    }
+
+    if (canDeletePost(status)) {
+      return (
+        <div className={wrapClass}>
+          <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
+            {status.replace('_', ' ')}
+          </div>
+          <DeletePostDialog postId={postId} onDeleted={() => router.push('/dashboard')} />
         </div>
       )
     }

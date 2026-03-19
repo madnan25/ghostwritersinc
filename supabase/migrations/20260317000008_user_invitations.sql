@@ -35,11 +35,11 @@ create index idx_user_invitations_org on public.user_invitations (organization_i
 alter table public.user_invitations enable row level security;
 
 -- Owners can view invitations in their org
+drop policy if exists "Org owners can view invitations" on public.user_invitations;
 create policy "Org owners can view invitations"
   on public.user_invitations for select
   using (
-    organization_id = auth.user_organization_id()
-    and exists (
+    exists (
       select 1 from public.users
       where users.id = auth.uid()
         and users.organization_id = public.user_invitations.organization_id
@@ -48,11 +48,11 @@ create policy "Org owners can view invitations"
   );
 
 -- Owners can create invitations in their org
+drop policy if exists "Org owners can create invitations" on public.user_invitations;
 create policy "Org owners can create invitations"
   on public.user_invitations for insert
   with check (
-    organization_id = auth.user_organization_id()
-    and exists (
+    exists (
       select 1 from public.users
       where users.id = auth.uid()
         and users.organization_id = public.user_invitations.organization_id
@@ -61,11 +61,11 @@ create policy "Org owners can create invitations"
   );
 
 -- Owners can delete invitations in their org
+drop policy if exists "Org owners can delete invitations" on public.user_invitations;
 create policy "Org owners can delete invitations"
   on public.user_invitations for delete
   using (
-    organization_id = auth.user_organization_id()
-    and exists (
+    exists (
       select 1 from public.users
       where users.id = auth.uid()
         and users.organization_id = public.user_invitations.organization_id

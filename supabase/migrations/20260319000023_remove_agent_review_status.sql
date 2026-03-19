@@ -16,8 +16,14 @@ create type post_status as enum (
 );
 
 -- 3. Alter column to use the new enum (cast via text)
+-- Drop default and partial index first — both reference the old enum type
+alter table posts alter column status drop default;
+drop index if exists idx_posts_scheduled;
 alter table posts
   alter column status type post_status using status::text::post_status;
+alter table posts alter column status set default 'draft'::post_status;
+-- Recreate the partial index with the new enum type
+create index idx_posts_scheduled on posts (scheduled_publish_at) where status = 'scheduled';
 
 -- 4. Drop the old enum
 drop type post_status_old;

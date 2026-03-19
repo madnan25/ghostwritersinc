@@ -102,6 +102,8 @@ export const AGENT_PERMISSION_PRESETS: Record<string, string[]> = {
   strategist: [
     "drafts:read",
     "comments:read",
+    "reviews:read",
+    "reviews:write",
     "pillars:read",
     "pillars:write",
     "strategy:read",

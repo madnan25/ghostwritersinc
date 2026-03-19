@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { approvePost, submitForAgentReview } from '@/app/actions/posts'
 import {
+  canDeletePost,
   canEditPost,
   canRejectPost,
   getApproveActionLabel,
@@ -12,6 +13,7 @@ import {
 import { RejectDialog } from './reject-dialog'
 import { EditPostDialog } from './edit-post-dialog'
 import { ScheduleDialog } from './schedule-dialog'
+import { DeletePostDialog } from './delete-post-dialog'
 
 interface PostCardActionsProps {
   postId: string
@@ -46,6 +48,7 @@ export function PostCardActions({ postId, status, content, suggestedPublishAt }:
           {isPending ? 'Submitting…' : 'Submit for Review'}
         </Button>
         <EditPostDialog postId={postId} initialContent={content} />
+        <DeletePostDialog postId={postId} />
       </div>
     )
   }
@@ -55,6 +58,14 @@ export function PostCardActions({ postId, status, content, suggestedPublishAt }:
       <div className="flex w-full items-center gap-2">
         <ScheduleDialog postId={postId} suggestedPublishAt={suggestedPublishAt} />
         {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} />}
+      </div>
+    )
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className="flex w-full items-center gap-2">
+        <DeletePostDialog postId={postId} />
       </div>
     )
   }

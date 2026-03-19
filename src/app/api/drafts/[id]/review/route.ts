@@ -81,8 +81,7 @@ export async function POST(
   let targetStatus: PostStatus
 
   if (parsed.data.action === 'approved') {
-    // Agent approval moves to pending_review (client queue)
-    targetStatus = 'pending_review'
+    targetStatus = 'approved'
   } else {
     targetStatus = 'rejected'
   }

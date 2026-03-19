@@ -13,3 +13,7 @@ export function canEditPost(status: string): boolean {
 export function canRejectPost(status: string): boolean {
   return isReviewQueueStatus(status);
 }
+
+export function canDeletePost(status: string): boolean {
+  return ["draft", "rejected"].includes(status);
+}

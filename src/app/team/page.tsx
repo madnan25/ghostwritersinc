@@ -65,6 +65,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 
 interface AgentCardProps {
   name: string
+  jobTitle: string | null
   provider: string
   assignedUser: string | null
   permissions: string[]
@@ -81,6 +82,7 @@ function formatPermission(permission: string): string {
 
 function AgentCard({
   name,
+  jobTitle,
   provider,
   assignedUser,
   permissions,
@@ -91,6 +93,7 @@ function AgentCard({
   const meta = AGENT_META[name.toLowerCase()] ?? DEFAULT_META
   const isActive = status === 'active'
   const capabilityLabels = permissions.length > 0 ? permissions.map(formatPermission) : meta.capabilities
+  const roleLabel = jobTitle?.trim() || meta.role
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-6 gap-5">
@@ -118,7 +121,7 @@ function AgentCard({
               {provider}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{meta.role}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{roleLabel}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {assignedUser ? `Attached to ${assignedUser}` : 'No assigned user'}
           </p>
@@ -237,6 +240,7 @@ export default async function TeamPage() {
             <AgentCard
               key={agent.id}
               name={agent.name}
+              jobTitle={agent.job_title}
               provider={agent.provider}
               assignedUser={agent.assigned_user_name}
               permissions={agent.permissions ?? []}
