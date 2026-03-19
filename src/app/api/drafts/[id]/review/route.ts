@@ -96,13 +96,8 @@ export async function POST(
       agentName: auth.agentName,
       notes: parsed.data.notes ?? null,
       rejectionReason: parsed.data.rejection_reason ?? null,
+      isAgentReview: true,
     })
-
-    // Agent approvals keep the post at pending_review — only human
-    // approvePost() moves it to approved (two-stage gate).
-    if (parsed.data.action === 'approved') {
-      updateFields.status = 'pending_review'
-    }
 
     // Update post
     let mutation = supabase

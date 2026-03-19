@@ -40,6 +40,8 @@ export interface TransitionInput {
   agentName: string
   notes?: string | null
   rejectionReason?: string | null
+  /** When true, an agent "approve" keeps the post at pending_review (two-stage gate). */
+  isAgentReview?: boolean
 }
 
 /**
@@ -50,7 +52,7 @@ export function validateTransition(input: TransitionInput): {
   reviewAction: ReviewAction
   updateFields: Record<string, unknown>
 } {
-  const { from, to, notes, rejectionReason } = input
+  const { from, to, notes, rejectionReason, isAgentReview } = input
 
   if (!isValidTransition(from, to)) {
     throw new WorkflowError(
@@ -70,8 +72,13 @@ export function validateTransition(input: TransitionInput): {
     to === 'rejected' ? 'rejected' :
     'approved'
 
+  // Agent approvals keep the post at pending_review — only human
+  // approvePost() moves it to approved (two-stage gate).
+  const effectiveStatus: PostStatus =
+    isAgentReview && to === 'approved' ? 'pending_review' : to
+
   const updateFields: Record<string, unknown> = {
-    status: to,
+    status: effectiveStatus,
     updated_at: new Date().toISOString(),
   }
 
