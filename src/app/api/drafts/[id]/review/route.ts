@@ -13,7 +13,7 @@ import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 import { isValidUuid } from '@/lib/validation'
 import type { PostStatus } from '@/lib/types'
-import { validateTransition, WorkflowError } from '@/lib/workflow'
+import { validateTransition, WorkflowError, REVISION_CAP } from '@/lib/workflow'
 
 const ReviewSchema = z.object({
   action: z.enum(['approved', 'rejected']),
@@ -65,7 +65,7 @@ export async function POST(
   // Fetch the post
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status, created_by_agent')
+    .select('organization_id, user_id, status, created_by_agent, revision_count, brief_id')
     .eq('id', id)
     .single()
 
@@ -114,6 +114,20 @@ export async function POST(
       reviewed_by_agent: auth.agentName,
     }
 
+    // On rejection: increment revision_count and store revision notes
+    if (parsed.data.action === 'rejected') {
+      const newRevisionCount = (post.revision_count ?? 0) + 1
+      postUpdate.revision_count = newRevisionCount
+
+      // Auto-reject (park) when revision cap exceeded
+      if (newRevisionCount >= REVISION_CAP) {
+        postUpdate.status = 'rejected'
+        postUpdate.rejection_reason =
+          `Auto-rejected: revision cap (${REVISION_CAP}) reached. ` +
+          (parsed.data.rejection_reason ?? '')
+      }
+    }
+
     if (parsed.data.action === 'approved' && parsed.data.suggestedPublishDate !== undefined) {
       postUpdate.suggested_publish_at = parsed.data.suggestedPublishDate
     }
@@ -133,6 +147,26 @@ export async function POST(
     if (updateError) {
       console.error('[drafts] DB error updating review:', updateError)
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+
+    // Update linked brief status if present
+    if (post.brief_id) {
+      if (parsed.data.action === 'approved') {
+        // Brief moves to done when post is approved
+        await supabase
+          .from('briefs')
+          .update({ status: 'done' })
+          .eq('id', post.brief_id)
+      } else if (parsed.data.action === 'rejected') {
+        // Brief moves to revision_requested when post is rejected
+        await supabase
+          .from('briefs')
+          .update({
+            status: 'revision_requested',
+            revision_notes: parsed.data.rejection_reason ?? parsed.data.notes ?? null,
+          })
+          .eq('id', post.brief_id)
+      }
     }
 
     // Create review event

@@ -21,6 +21,7 @@ const CreateDraftSchema = z.object({
   pillar: z.string().nullable().optional(),
   pillar_id: z.string().uuid().nullable().optional(),
   brief_ref: z.string().max(512).nullable().optional(),
+  brief_id: z.string().uuid().nullable().optional(),
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
 })
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
       pillar: parsed.data.pillar ?? null,
       pillar_id: parsed.data.pillar_id ?? null,
       brief_ref: parsed.data.brief_ref ?? null,
+      brief_id: parsed.data.brief_id ?? null,
       suggested_publish_at: parsed.data.suggested_publish_at ?? null,
       media_urls: parsed.data.media_urls ?? [],
       status: 'pending_review',
