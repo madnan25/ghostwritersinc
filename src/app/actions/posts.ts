@@ -48,10 +48,10 @@ async function transitionPostStatus(
 ) {
   const supabase = await createClient()
 
-  // Fetch current post to get its status
+  // Fetch current post to get its status + version info for snapshotting
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status')
+    .select('status, content, content_version')
     .eq('id', postId)
     .single()
 
@@ -70,6 +70,15 @@ async function transitionPostStatus(
     notes: opts?.notes ?? null,
     rejectionReason: opts?.rejectionReason ?? null,
   })
+
+  // Snapshot content into post_revisions on pending_review transitions
+  if (to === 'pending_review') {
+    const version = post.content_version ?? 1
+    await supabase.from('post_revisions').upsert(
+      { post_id: postId, version, content: post.content },
+      { onConflict: 'post_id,version' }
+    )
+  }
 
   // Update the post status
   const { error: updateError } = await supabase
@@ -108,6 +117,13 @@ export async function addPostComment(
   } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  // Fetch current content_version to stamp on the comment
+  const { data: post } = await supabase
+    .from('posts')
+    .select('content_version')
+    .eq('id', postId)
+    .single()
+
   const { error } = await supabase.from('post_comments').insert({
     post_id: postId,
     author_type: 'user',
@@ -116,6 +132,7 @@ export async function addPostComment(
     selected_text: selectedText ?? null,
     selection_start: selectionStart ?? null,
     selection_end: selectionEnd ?? null,
+    content_version: post?.content_version ?? 1,
   })
 
   if (error) throw new Error(error.message)

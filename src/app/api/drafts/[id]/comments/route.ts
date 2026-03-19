@@ -114,7 +114,7 @@ export async function POST(
   const supabase = createAdminClient()
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id')
+    .select('organization_id, user_id, content_version')
     .eq('id', id)
     .single()
 
@@ -133,6 +133,7 @@ export async function POST(
       selected_text: parsed.data.selected_text ?? null,
       selection_start: parsed.data.selection_start ?? null,
       selection_end: parsed.data.selection_end ?? null,
+      content_version: post.content_version ?? 1,
     })
     .select('*')
     .single()
