@@ -115,6 +115,24 @@ export async function processDuePosts(): Promise<{
 
       if (!linkedinResponse.ok) {
         const errorBody = await linkedinResponse.text()
+
+        // LinkedIn 422 with DUPLICATE_POST means the content is already live
+        if (linkedinResponse.status === 422 && errorBody.includes('DUPLICATE_POST')) {
+          // Extract the existing share URN from the error message
+          const urnMatch = errorBody.match(/urn:li:share:\d+/)
+          await supabase
+            .from('posts')
+            .update({
+              status: 'published',
+              published_at: new Date().toISOString(),
+              linkedin_post_urn: urnMatch?.[0] ?? null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', post.id)
+          published++
+          continue
+        }
+
         await markPublishFailed(supabase, post, `LinkedIn API error: ${linkedinResponse.status} ${errorBody}`)
         failed++
         continue
