@@ -81,8 +81,7 @@ export async function POST(
   let targetStatus: PostStatus
 
   if (parsed.data.action === 'approved') {
-    // Agent approval moves to pending_review (client queue)
-    targetStatus = 'pending_review'
+    targetStatus = 'approved'
   } else {
     targetStatus = 'rejected'
   }
@@ -98,6 +97,12 @@ export async function POST(
       notes: parsed.data.notes ?? null,
       rejectionReason: parsed.data.rejection_reason ?? null,
     })
+
+    // Agent approvals keep the post at pending_review — only human
+    // approvePost() moves it to approved (two-stage gate).
+    if (parsed.data.action === 'approved') {
+      updateFields.status = 'pending_review'
+    }
 
     // Update post
     let mutation = supabase
@@ -155,7 +160,11 @@ export async function POST(
     agentId: auth.agentId,
     postId: id,
     actionType: 'review_submitted',
-    metadata: { action: parsed.data.action, from_status: currentStatus, to_status: targetStatus },
+    metadata: {
+      action: parsed.data.action,
+      from_status: currentStatus,
+      to_status: parsed.data.action === 'approved' ? 'pending_review' : targetStatus,
+    },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
