@@ -148,6 +148,8 @@ export async function storeTokens(
 
 /**
  * Get a valid access token for a user, auto-refreshing if needed.
+ * Checks the new `linkedin_tokens` table first, then falls back
+ * to the legacy `users.settings` encrypted token.
  * Returns null if user is not connected or refresh fails.
  */
 export async function getValidAccessToken(
@@ -164,7 +166,10 @@ export async function getValidAccessToken(
     .is('disconnected_at', null)
     .maybeSingle()
 
-  if (!tokenRow) return null
+  if (!tokenRow) {
+    // Fall back to legacy users.settings storage
+    return getLegacyAccessToken(supabase, userId)
+  }
 
   const now = new Date()
   const expiresAt = new Date(tokenRow.expires_at)
@@ -228,6 +233,44 @@ export async function disconnectLinkedIn(
     })
     .eq('user_id', userId)
     .eq('organization_id', organizationId)
+}
+
+/**
+ * Read the LinkedIn access token from the legacy users.settings JSONB column.
+ * Used as fallback when no row exists in linkedin_tokens.
+ */
+async function getLegacyAccessToken(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<string | null> {
+  const { data: user } = await supabase
+    .from('users')
+    .select('settings')
+    .eq('id', userId)
+    .single()
+
+  if (!user) return null
+
+  const settings = (user.settings ?? {}) as Record<string, unknown>
+  const encryptedToken = settings.linkedin_access_token_encrypted as string | undefined
+  const expiresAt = settings.linkedin_token_expires_at as string | undefined
+
+  if (!encryptedToken) return null
+
+  // Check expiry (with 5-minute buffer)
+  if (expiresAt) {
+    const expiry = new Date(expiresAt)
+    if (expiry.getTime() - Date.now() < 5 * 60 * 1000) return null
+  }
+
+  try {
+    // Legacy tokens use TOKEN_ENCRYPTION_KEY via src/lib/crypto.ts
+    const { decrypt } = await import('@/lib/crypto')
+    return decrypt(encryptedToken)
+  } catch (err) {
+    console.error('[linkedin-tokens] Legacy token decrypt failed:', err)
+    return null
+  }
 }
 
 /**

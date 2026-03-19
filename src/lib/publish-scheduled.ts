@@ -62,6 +62,9 @@ export async function processDuePosts(): Promise<{
         continue
       }
 
+      // Get LinkedIn member ID — check new table first, then legacy users table
+      let linkedinMemberId: string | null = null
+
       const { data: tokenRow } = await supabase
         .from('linkedin_tokens')
         .select('linkedin_member_id')
@@ -70,7 +73,19 @@ export async function processDuePosts(): Promise<{
         .is('disconnected_at', null)
         .maybeSingle()
 
-      if (!tokenRow?.linkedin_member_id) {
+      linkedinMemberId = tokenRow?.linkedin_member_id ?? null
+
+      if (!linkedinMemberId) {
+        // Fall back to legacy users.linkedin_id
+        const { data: user } = await supabase
+          .from('users')
+          .select('linkedin_id')
+          .eq('id', post.user_id)
+          .single()
+        linkedinMemberId = user?.linkedin_id ?? null
+      }
+
+      if (!linkedinMemberId) {
         await markPublishFailed(supabase, post, 'LinkedIn member ID not found. Please reconnect LinkedIn.')
         failed++
         continue
@@ -84,7 +99,7 @@ export async function processDuePosts(): Promise<{
           'X-Restli-Protocol-Version': '2.0.0',
         },
         body: JSON.stringify({
-          author: `urn:li:person:${tokenRow.linkedin_member_id}`,
+          author: `urn:li:person:${linkedinMemberId}`,
           lifecycleState: 'PUBLISHED',
           specificContent: {
             'com.linkedin.ugc.ShareContent': {
