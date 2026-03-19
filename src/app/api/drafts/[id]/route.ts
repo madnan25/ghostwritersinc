@@ -107,7 +107,7 @@ export async function PATCH(
   // Verify the post belongs to the agent's organization
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status')
+    .select('organization_id, user_id, status, content, content_version')
     .eq('id', id)
     .single()
 

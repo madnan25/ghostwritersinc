@@ -9,7 +9,7 @@ import type { PostStatus, ReviewAction } from './types'
 const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   draft: ['pending_review'],
   pending_review: ['approved', 'rejected'],
-  approved: ['scheduled', 'published'],
+  approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft', 'pending_review'],
   scheduled: ['published'],
   published: [],
@@ -71,6 +71,7 @@ export function validateTransition(input: TransitionInput): {
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
     (from === 'rejected' && to === 'pending_review') ? 'revised' :
+    (from === 'approved' && to === 'pending_review') ? 'escalated' :
     'approved'
 
   // Agent approvals keep the post at pending_review — only human

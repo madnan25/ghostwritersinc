@@ -117,10 +117,10 @@ export async function addPostComment(
   } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  // Fetch current content_version to stamp on the comment
+  // Fetch current post state to stamp content_version and check for auto-revert
   const { data: post } = await supabase
     .from('posts')
-    .select('content_version')
+    .select('status, content_version, user_id, organization_id, content')
     .eq('id', postId)
     .single()
 
@@ -136,6 +136,24 @@ export async function addPostComment(
   })
 
   if (error) throw new Error(error.message)
+
+  // Auto-revert approved posts to pending_review when a user comments (LIN-225)
+  if (post?.status === 'approved') {
+    await transitionPostStatus(postId, 'pending_review', 'user', {
+      notes: 'Reverted from approved — user commented',
+    })
+
+    if (post.user_id) {
+      await tryCreateNotification(supabase, {
+        organization_id: post.organization_id,
+        user_id: post.user_id,
+        type: 'post_reverted',
+        title: 'Post reverted for review',
+        body: 'Your comment triggered a re-review of this post.',
+        post_id: postId,
+      })
+    }
+  }
 
   revalidatePath(`/post/${postId}`)
 }
