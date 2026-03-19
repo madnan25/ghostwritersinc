@@ -139,9 +139,6 @@ export function PostCard({ post, pillar, featured = false }: PostCardProps) {
                   <User className="size-3.5 shrink-0" />
                   <span>
                     Reviewed by <span className="font-medium text-foreground/88">{post.reviewed_by_agent}</span>
-                    {post.review_notes && (
-                      <span className="ml-1 italic text-foreground/56">&middot; &ldquo;{post.review_notes}&rdquo;</span>
-                    )}
                   </span>
                 </div>
               )}

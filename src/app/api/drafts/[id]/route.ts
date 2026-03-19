@@ -120,7 +120,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  if (!['draft', 'agent_review', 'pending_review', 'rejected'].includes(existing.status)) {
+  if (!['draft', 'pending_review', 'rejected'].includes(existing.status)) {
     return NextResponse.json(
       { error: `Cannot update post in "${existing.status}" status` },
       { status: 409 }
