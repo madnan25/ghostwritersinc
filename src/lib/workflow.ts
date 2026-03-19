@@ -9,7 +9,7 @@ import type { PostStatus, ReviewAction } from './types'
 const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   draft: ['pending_review'],
   pending_review: ['approved', 'rejected'],
-  approved: ['scheduled', 'published'],
+  approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft'],
   scheduled: ['published', 'approved'],
   published: [],
@@ -68,6 +68,7 @@ export function validateTransition(input: TransitionInput): {
 
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
+    (from === 'approved' && to === 'pending_review') ? 'escalated' :
     'approved'
 
   const updateFields: Record<string, unknown> = {

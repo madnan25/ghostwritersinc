@@ -168,6 +168,30 @@ export async function addPostComment(
     selectedText: selectedText ?? null,
   })
 
+  // Auto-revert approved posts to pending_review when a user comments (LIN-225)
+  if (post) {
+    const { data: currentPost } = await supabase
+      .from('posts')
+      .select('status')
+      .eq('id', postId)
+      .single()
+
+    if (currentPost?.status === 'approved') {
+      await transitionPostStatus(postId, 'pending_review', 'user', {
+        notes: 'Reverted from approved — user commented',
+      })
+
+      await tryCreateNotification(supabase, {
+        organization_id: post.organization_id,
+        user_id: post.user_id,
+        type: 'post_reverted',
+        title: 'Post reverted for review',
+        body: 'Your comment triggered a re-review of this post.',
+        post_id: postId,
+      })
+    }
+  }
+
   revalidatePath(`/post/${postId}`)
 }
 
