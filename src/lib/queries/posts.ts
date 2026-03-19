@@ -53,12 +53,26 @@ export async function getPostReviewEvents(postId: string): Promise<ReviewEvent[]
   return data ?? []
 }
 
-export async function getPostComments(postId: string): Promise<PostComment[]> {
+export async function getPostComments(
+  postId: string,
+  /** When provided, only comments for this content version are returned */
+  contentVersion?: number,
+): Promise<PostComment[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('post_comments')
     .select('*')
     .eq('post_id', postId)
+
+  if (contentVersion != null) {
+    if (contentVersion === 1) {
+      query = query.or('content_version.eq.1,content_version.is.null')
+    } else {
+      query = query.eq('content_version', contentVersion)
+    }
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: true })
 
   if (error) {
