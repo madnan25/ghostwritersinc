@@ -84,9 +84,13 @@ export function validateTransition(input: TransitionInput): {
 
   if (to === 'rejected') {
     updateFields.rejection_reason = rejectionReason
-    updateFields.delete_scheduled_at = new Date(
-      Date.now() + 24 * 60 * 60 * 1000
-    ).toISOString()
+    // Only user rejections schedule deletion — agent rejections flag
+    // quality issues and should not auto-delete.
+    if (!isAgentReview) {
+      updateFields.delete_scheduled_at = new Date(
+        Date.now() + 24 * 60 * 60 * 1000
+      ).toISOString()
+    }
   }
 
   if (to === 'draft' && from === 'rejected') {
