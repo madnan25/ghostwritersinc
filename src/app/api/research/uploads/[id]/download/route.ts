@@ -10,6 +10,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
 import { isValidUuid } from '@/lib/validation'
 
+/** Sanitize a filename for safe use in Content-Disposition headers */
+function sanitizeFilename(filename: string): string {
+  return filename.replace(/[\r\n"\\]/g, '_').replace(/[^\x20-\x7E]/g, '_')
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,6 +38,7 @@ export async function GET(
   }
 
   const admin = createAdminClient()
+
   const { data, error } = await admin
     .from('research_uploads')
     .select('*')
@@ -40,7 +46,7 @@ export async function GET(
     .maybeSingle()
 
   if (error) {
-    console.error('[research/uploads] DB error:', error)
+    console.error('[research/download] DB error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
@@ -48,5 +54,32 @@ export async function GET(
     return NextResponse.json({ error: 'Research document not found' }, { status: 404 })
   }
 
-  return NextResponse.json(data)
+  if (!data.storage_path) {
+    return NextResponse.json({ error: 'No file associated with this record' }, { status: 404 })
+  }
+
+  const { data: fileData, error: downloadError } = await admin.storage
+    .from('research')
+    .download(data.storage_path)
+
+  if (downloadError || !fileData) {
+    console.error('[research/download] Storage error:', downloadError)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  // Update last_accessed_at
+  await admin
+    .from('research_uploads')
+    .update({ last_accessed_at: new Date().toISOString() })
+    .eq('id', id)
+
+  const content = await fileData.text()
+
+  return new NextResponse(content, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': `inline; filename="${sanitizeFilename(data.filename)}"`,
+    },
+  })
 }
