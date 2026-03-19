@@ -232,6 +232,8 @@ export async function disconnectLinkedIn(
 
 /**
  * Get connection status for a user (without exposing tokens).
+ * Checks the new `linkedin_tokens` table first, then falls back to the
+ * legacy `users.settings` JSONB storage for backward compatibility.
  */
 export async function getConnectionStatus(
   userId: string,
@@ -244,6 +246,7 @@ export async function getConnectionStatus(
 } | null> {
   const supabase = createAdminClient()
 
+  // Check new linkedin_tokens table first
   const { data } = await supabase
     .from('linkedin_tokens')
     .select('linkedin_member_id, connected_at, expires_at, disconnected_at')
@@ -251,12 +254,33 @@ export async function getConnectionStatus(
     .eq('organization_id', organizationId)
     .maybeSingle()
 
-  if (!data) return null
+  if (data) {
+    return {
+      connected: !data.disconnected_at,
+      linkedinMemberId: data.linkedin_member_id,
+      connectedAt: data.connected_at,
+      expiresAt: data.expires_at,
+    }
+  }
+
+  // Fall back to legacy users.settings storage
+  const { data: user } = await supabase
+    .from('users')
+    .select('linkedin_id, settings')
+    .eq('id', userId)
+    .single()
+
+  if (!user) return null
+
+  const settings = (user.settings ?? {}) as Record<string, unknown>
+  const hasLegacyToken = !!(user.linkedin_id && settings.linkedin_access_token_encrypted)
+
+  if (!hasLegacyToken) return null
 
   return {
-    connected: !data.disconnected_at,
-    linkedinMemberId: data.linkedin_member_id,
-    connectedAt: data.connected_at,
-    expiresAt: data.expires_at,
+    connected: true,
+    linkedinMemberId: user.linkedin_id,
+    connectedAt: (settings.linkedin_token_updated_at as string) ?? null,
+    expiresAt: (settings.linkedin_token_expires_at as string) ?? null,
   }
 }
