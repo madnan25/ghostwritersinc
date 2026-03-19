@@ -107,7 +107,7 @@ export const AGENT_PERMISSION_PRESETS: Record<string, string[]> = {
     "strategy:read",
     "strategy:write",
   ],
-  researcher: ["research:read", "research:write", "strategy:read", "drafts:read"],
+  researcher: ["research:read", "research:write", "strategy:read"],
 };
 
 export const DEFAULT_AGENT_PERMISSIONS: Record<AgentType, string[]> = {

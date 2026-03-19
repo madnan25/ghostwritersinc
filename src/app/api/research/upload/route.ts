@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { authenticateAgent, hasAgentPermission, isAgentContext } from '@/lib/agent-auth'
+import { authenticateAgent, getAgentRateLimitKey, hasAgentPermission, isAgentContext } from '@/lib/agent-auth'
+import { rateLimit } from '@/lib/rate-limit'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_TYPES = ['text/plain', 'application/zip']
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
   if (request.headers.get('authorization')?.startsWith('Bearer ')) {
     const auth = await authenticateAgent(request)
     if (!isAgentContext(auth)) return auth
+
+    const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+    if (limited) return limited
 
     if (!hasAgentPermission(auth.permissions, 'research:write')) {
       return NextResponse.json(

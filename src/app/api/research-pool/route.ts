@@ -5,10 +5,17 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
+import {
+  buildMatchableText,
+  computeRelevanceScore,
+  matchPillar,
+} from '@/lib/research-scoring'
+import type { ContentPillar } from '@/lib/types'
 
 const CreateResearchPoolSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -17,6 +24,7 @@ const CreateResearchPoolSchema = z.object({
   pillar_id: z.string().uuid().nullable().optional(),
   relevance_score: z.number().min(0).max(1).nullable().optional(),
   raw_content: z.string().nullable().optional(),
+  auto_score: z.boolean().optional().default(true),
 })
 
 /** POST /api/research-pool — create a new research pool item */
@@ -50,6 +58,54 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient()
+
+  let pillarId = parsed.data.pillar_id ?? null
+  let relevanceScore = parsed.data.relevance_score ?? null
+
+  // Auto-score and auto-match pillars when not explicitly provided
+  if (parsed.data.auto_score) {
+    // Fetch org pillars for matching
+    const { data: pillars } = await supabase
+      .from('content_pillars')
+      .select('*')
+      .eq('organization_id', auth.organizationId)
+      .order('sort_order', { ascending: true })
+
+    const orgPillars = (pillars ?? []) as ContentPillar[]
+    const matchableText = buildMatchableText(parsed.data)
+
+    // Auto-match pillar if not provided
+    let pillarFitScore = 0
+    if (!pillarId && orgPillars.length > 0) {
+      const match = matchPillar(matchableText, orgPillars)
+      if (match) {
+        pillarId = match.pillar.id
+        pillarFitScore = match.score
+      }
+    } else if (pillarId) {
+      // Score fit against the explicitly provided pillar
+      const targetPillar = orgPillars.find((p) => p.id === pillarId)
+      if (targetPillar) {
+        const { scorePillarFit } = await import('@/lib/research-scoring')
+        pillarFitScore = scorePillarFit(matchableText, targetPillar)
+      }
+    }
+
+    // Auto-score relevance if not provided
+    if (relevanceScore === null) {
+      relevanceScore = computeRelevanceScore({
+        title: parsed.data.title,
+        raw_content: parsed.data.raw_content,
+        source_url: parsed.data.source_url,
+        source_type: parsed.data.source_type,
+        created_at: new Date().toISOString(),
+        pillar_fit_score: pillarFitScore,
+      })
+      // Round to 2 decimal places
+      relevanceScore = Math.round(relevanceScore * 100) / 100
+    }
+  }
+
   const { data, error } = await supabase
     .from('research_pool')
     .insert({
@@ -57,8 +113,8 @@ export async function POST(request: NextRequest) {
       title: parsed.data.title,
       source_url: parsed.data.source_url ?? null,
       source_type: parsed.data.source_type,
-      pillar_id: parsed.data.pillar_id ?? null,
-      relevance_score: parsed.data.relevance_score ?? null,
+      pillar_id: pillarId,
+      relevance_score: relevanceScore,
       raw_content: parsed.data.raw_content ?? null,
       created_by_agent_id: auth.agentId,
     })
@@ -76,7 +132,12 @@ export async function POST(request: NextRequest) {
     agentId: auth.agentId,
     postId: null,
     actionType: 'draft_created',
-    metadata: { entity: 'research_pool', item_id: data.id },
+    metadata: {
+      entity: 'research_pool',
+      item_id: data.id,
+      auto_scored: parsed.data.auto_score,
+      auto_matched_pillar: !parsed.data.pillar_id && !!pillarId,
+    },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
@@ -101,13 +162,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const pillarId = searchParams.get('pillar_id')
+  const minScore = searchParams.get('min_score')
+  const sortBy = searchParams.get('sort_by') // 'relevance_score' | 'created_at' (default)
 
   const supabase = createAdminClient()
   let query = supabase
     .from('research_pool')
     .select('*')
     .eq('organization_id', auth.organizationId)
-    .order('created_at', { ascending: false })
+
+  // Non-shared agents can only see their own items
+  if (!isSharedOrgAgentContext(auth)) {
+    query = query.eq('created_by_agent_id', auth.agentId)
+  }
 
   if (status) {
     const validStatuses = ['new', 'consumed']
@@ -122,6 +189,24 @@ export async function GET(request: NextRequest) {
 
   if (pillarId) {
     query = query.eq('pillar_id', pillarId)
+  }
+
+  if (minScore) {
+    const threshold = parseFloat(minScore)
+    if (isNaN(threshold) || threshold < 0 || threshold > 1) {
+      return NextResponse.json(
+        { error: 'min_score must be a number between 0 and 1' },
+        { status: 400 }
+      )
+    }
+    query = query.gte('relevance_score', threshold)
+  }
+
+  // Sort by relevance_score desc or created_at desc
+  if (sortBy === 'relevance_score') {
+    query = query.order('relevance_score', { ascending: false, nullsFirst: false })
+  } else {
+    query = query.order('created_at', { ascending: false })
   }
 
   const { data, error } = await query

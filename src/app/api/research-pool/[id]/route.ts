@@ -6,6 +6,7 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -98,11 +99,16 @@ export async function PATCH(
   // Verify the item exists and belongs to the agent's org
   const { data: existing } = await supabase
     .from('research_pool')
-    .select('organization_id')
+    .select('organization_id, created_by_agent_id')
     .eq('id', id)
     .maybeSingle()
 
   if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // Non-shared agents can only modify their own items
+  if (!isSharedOrgAgentContext(auth) && existing.created_by_agent_id !== auth.agentId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
@@ -144,11 +150,16 @@ export async function DELETE(
 
   const { data: existing } = await supabase
     .from('research_pool')
-    .select('organization_id')
+    .select('organization_id, created_by_agent_id')
     .eq('id', id)
     .maybeSingle()
 
   if (!existing || !canAccessAgentOrgRecord(auth, existing)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // Non-shared agents can only delete their own items
+  if (!isSharedOrgAgentContext(auth) && existing.created_by_agent_id !== auth.agentId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
