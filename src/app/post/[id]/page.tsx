@@ -2,11 +2,12 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
-import { getPostById, getPostReviewEvents, getPostComments } from '@/lib/queries/posts'
+import type { Post } from '@/lib/types'
+import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
-import { CommentablePostContent } from './_components/commentable-post-content'
+import { PostContentWithVersions } from './_components/post-content-with-versions'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
 
@@ -17,10 +18,11 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments] = await Promise.all([
+  const [post, reviewEvents, comments, revisions] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
+    getPostRevisions(id),
   ])
 
   if (!post) notFound()
@@ -73,7 +75,13 @@ export default async function PostPage({ params }: PostPageProps) {
                 — select text to leave an inline comment
               </span>
             </h2>
-            <CommentablePostContent postId={post.id} content={post.content} comments={comments} />
+            <PostContentWithVersions
+              postId={post.id}
+              content={post.content}
+              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+              comments={comments}
+              revisions={revisions}
+            />
           </div>
 
           {/* Comment thread + overall comment form */}
