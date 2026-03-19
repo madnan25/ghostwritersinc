@@ -11,7 +11,7 @@ const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   pending_review: ['approved', 'rejected'],
   approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft', 'pending_review'],
-  scheduled: ['published'],
+  scheduled: ['published', 'approved'],
   published: [],
 }
 

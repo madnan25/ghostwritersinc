@@ -52,11 +52,6 @@ export default async function PostPage({ params }: PostPageProps) {
           {/* Header */}
           <div className="dashboard-frame flex flex-wrap items-start justify-between gap-4 p-6 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
-              {post.pillar && (
-                <span className="rounded-full border border-border/60 bg-muted/45 px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  {post.pillar}
-                </span>
-              )}
               <span
                 className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
               >
@@ -64,7 +59,7 @@ export default async function PostPage({ params }: PostPageProps) {
               </span>
             </div>
             {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
-            <PostDetailActions postId={post.id} status={post.status} content={post.content} />
+            <PostDetailActions postId={post.id} status={post.status} content={post.content} scheduledPublishAt={post.scheduled_publish_at} />
           </div>
 
           {/* Post content with inline commenting */}
@@ -106,13 +101,23 @@ export default async function PostPage({ params }: PostPageProps) {
 
           {/* Metadata */}
           <div className="dashboard-rail grid grid-cols-1 gap-4 p-6 text-sm sm:grid-cols-2">
-            <div className="flex items-start gap-2">
-              <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div>
-                <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Suggested publish</div>
-                <div className="mt-0.5 font-medium">{formatPostDate(post.suggested_publish_at)}</div>
+            {post.status === 'scheduled' && post.scheduled_publish_at ? (
+              <div className="flex items-start gap-2">
+                <Calendar className="mt-0.5 size-4 shrink-0 text-sky-400" />
+                <div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-sky-400/80">Scheduled for</div>
+                  <div className="mt-0.5 font-medium text-sky-300">{formatPostDate(post.scheduled_publish_at)}</div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">Suggested publish</div>
+                  <div className="mt-0.5 font-medium">{formatPostDate(post.suggested_publish_at)}</div>
+                </div>
+              </div>
+            )}
             {post.brief_ref && (
               <div className="flex items-start gap-2">
                 <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
