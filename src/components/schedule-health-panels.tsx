@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronDown, Target } from 'lucide-react'
 import type { RotationWarning } from '@/lib/post-display'
 
@@ -131,12 +131,27 @@ function ScheduledMixList({ warnings }: { warnings: RotationWarning[] }) {
 }
 
 export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
-  const months = [...new Set(warnings.map(getWarningMonth).filter(Boolean))]
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
+  const months = useMemo(
+    () => [...new Set(warnings.map(getWarningMonth).filter(Boolean))],
+    [warnings],
+  )
+  const currentMonthLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    [],
+  )
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (months.includes(currentMonthLabel)) return currentMonthLabel
+    return months[0] ?? currentMonthLabel
+  })
 
-  const filtered = selectedMonth
-    ? warnings.filter((w) => getWarningMonth(w) === selectedMonth)
-    : warnings
+  useEffect(() => {
+    if (months.length === 0) return
+    if (months.includes(selectedMonth)) return
+    setSelectedMonth(months.includes(currentMonthLabel) ? currentMonthLabel : months[0])
+  }, [currentMonthLabel, months, selectedMonth])
+
+  const filtered = warnings.filter((w) => getWarningMonth(w) === selectedMonth)
 
   const suggestedWarnings = filtered.filter((warning) => warning.source === 'suggested')
   const scheduledWarnings = filtered.filter((warning) => warning.source === 'scheduled')
@@ -145,12 +160,11 @@ export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
     <section className="space-y-3">
       {months.length > 1 && (
         <select
-          value={selectedMonth ?? ''}
-          onChange={(e) => setSelectedMonth(e.target.value || null)}
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
           className="appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pr-7 text-xs font-medium text-foreground/70 outline-none transition-colors hover:border-white/20 hover:text-foreground focus:border-white/25"
           style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'rgba(255,255,255,0.4)\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'m6 9 6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
         >
-          <option value="">All months</option>
           {months.map((month) => (
             <option key={month} value={month}>{month}</option>
           ))}
