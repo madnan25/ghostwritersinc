@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
   const intelThreshold = config?.intel_score_threshold ?? 0.7
   const defaultHour = config?.default_publish_hour ?? 9
   const wildcardCount = config?.wildcard_count ?? 0
+  const postingDays: number[] = config?.posting_days ?? [1, 2, 3, 4, 5]
 
   // 2. Count posts this month
   const { data: posts, error: postsErr } = await supabase
@@ -179,7 +180,8 @@ export async function POST(request: NextRequest) {
       return d >= monthStart && d < monthEnd
     })
     .map((p) => p.suggested_publish_at as string)
-  const emptyDays = findEmptyDays(now.getFullYear(), now.getMonth(), scheduledDates)
+  const emptyDays = findEmptyDays(now.getFullYear(), now.getMonth(), scheduledDates, postingDays)
+  const insufficientSlots = !unscheduled && briefsToCreate > emptyDays.length
 
   // 8. Pick research items per pillar and create briefs
   const createdBriefs: Array<Record<string, unknown>> = []
@@ -343,6 +345,7 @@ export async function POST(request: NextRequest) {
     monthly_target: monthlyTarget,
     gap,
     unscheduled,
+    insufficient_slots: insufficientSlots || undefined,
     distribution,
     wildcard_briefs: effectiveWildcardCount,
     briefs_created: createdBriefs.length,

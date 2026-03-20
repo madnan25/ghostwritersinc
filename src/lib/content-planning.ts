@@ -19,20 +19,26 @@ export function computeCalendarGap(
   return Math.max(0, monthlyTarget - existingPostCount)
 }
 
-/** Days in a given month that have no scheduled posts (ISO date strings). */
+/**
+ * Days in a given month that have no scheduled posts and fall on an allowed
+ * day-of-week (0=Sun, 1=Mon, …, 6=Sat). Defaults to weekdays only [1,2,3,4,5].
+ */
 export function findEmptyDays(
   year: number,
   month: number,
   scheduledDates: string[],
+  postingDays: number[] = [1, 2, 3, 4, 5],
 ): string[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const occupiedDays = new Set(
     scheduledDates.map((d) => new Date(d).getDate()),
   )
+  const allowedDows = new Set(postingDays)
   const emptyDays: string[] = []
   for (let day = 1; day <= daysInMonth; day++) {
-    if (!occupiedDays.has(day)) {
-      emptyDays.push(new Date(year, month, day).toISOString().split('T')[0])
+    const date = new Date(year, month, day)
+    if (!occupiedDays.has(day) && allowedDows.has(date.getDay())) {
+      emptyDays.push(date.toISOString().split('T')[0])
     }
   }
   return emptyDays

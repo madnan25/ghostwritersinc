@@ -156,32 +156,42 @@ describe('Sprint 3: Calendar gap calculation', () => {
   })
 
   describe('findEmptyDays', () => {
-    it('returns all days for a month with no posts', () => {
-      // March 2026 has 31 days
+    it('returns all weekdays for a month with no posts (default posting days)', () => {
+      // March 2026: Mon 1 = no (Sun), so weekdays are Mon 2 – Fri 6, 9–13, 16–20, 23–27, 30–31 = 22
       const emptyDays = findEmptyDays(2026, 2, [])
+      expect(emptyDays).toHaveLength(22) // 22 weekdays in March 2026
+      // Verify known weekday dates are included and known weekend dates are excluded
+      // Use same date construction as findEmptyDays for timezone safety
+      const knownMonday = new Date(2026, 2, 2).toISOString().split('T')[0]
+      const knownSunday = new Date(2026, 2, 1).toISOString().split('T')[0]
+      const knownSaturday = new Date(2026, 2, 7).toISOString().split('T')[0]
+      expect(emptyDays).toContain(knownMonday)
+      expect(emptyDays).not.toContain(knownSunday)
+      expect(emptyDays).not.toContain(knownSaturday)
+    })
+
+    it('returns all 31 days when posting_days covers every day of the week', () => {
+      const emptyDays = findEmptyDays(2026, 2, [], [0, 1, 2, 3, 4, 5, 6])
       expect(emptyDays).toHaveLength(31)
     })
 
-    it('excludes days with scheduled posts', () => {
-      // Use dates constructed the same way findEmptyDays does (local Date constructor)
+    it('excludes days with scheduled posts (within allowed posting days)', () => {
+      // March 5 = Thu (weekday), March 10 = Tue (weekday), March 15 = Sun (weekend — excluded anyway)
       const scheduled = [
         new Date(2026, 2, 5, 9, 0, 0).toISOString(),
         new Date(2026, 2, 10, 9, 0, 0).toISOString(),
-        new Date(2026, 2, 15, 9, 0, 0).toISOString(),
       ]
       const emptyDays = findEmptyDays(2026, 2, scheduled)
-      expect(emptyDays).toHaveLength(28) // 31 - 3
+      // 22 weekdays minus the 2 scheduled weekdays = 20
+      expect(emptyDays).toHaveLength(20)
 
-      // Verify the scheduled days are excluded
       const day5 = new Date(2026, 2, 5).toISOString().split('T')[0]
       const day10 = new Date(2026, 2, 10).toISOString().split('T')[0]
-      const day15 = new Date(2026, 2, 15).toISOString().split('T')[0]
       expect(emptyDays).not.toContain(day5)
       expect(emptyDays).not.toContain(day10)
-      expect(emptyDays).not.toContain(day15)
     })
 
-    it('returns 0 empty days when every day is filled (28-day Feb)', () => {
+    it('returns 0 empty days when every allowed day is filled (28-day Feb)', () => {
       // Feb 2026 is 28 days (non-leap)
       const allDays = Array.from({ length: 28 }, (_, i) =>
         new Date(2026, 1, i + 1).toISOString(),
@@ -191,13 +201,14 @@ describe('Sprint 3: Calendar gap calculation', () => {
     })
 
     it('handles multiple posts on the same day (no double-count)', () => {
+      // March 5 = Thu (weekday), March 10 = Tue (weekday)
       const scheduled = [
         '2026-03-05T08:00:00Z',
         '2026-03-05T14:00:00Z',
         '2026-03-10T09:00:00Z',
       ]
       const emptyDays = findEmptyDays(2026, 2, scheduled)
-      expect(emptyDays).toHaveLength(29) // 31 - 2 unique days
+      expect(emptyDays).toHaveLength(20) // 22 weekdays - 2 unique occupied weekdays
     })
   })
 })
@@ -744,13 +755,14 @@ describe('Sprint 3: Edge cases', () => {
     expect(fullPillar.weight_pct).toBe(100)
   })
 
-  it('empty calendar month scenario: all slots available for planning', () => {
+  it('empty calendar month scenario: weekday slots available for planning', () => {
     const gap = computeCalendarGap(0, 20)
     expect(gap).toBe(20)
 
+    // Default posting days (weekdays only) — March 2026 has 22 weekdays
     const emptyDays = findEmptyDays(2026, 2, [])
-    expect(emptyDays.length).toBe(31)
-    // Even with 20 posts needed, we have 31 available days
+    expect(emptyDays.length).toBe(22)
+    // With 20 posts needed and 22 weekday slots, there are enough days
     expect(emptyDays.length).toBeGreaterThanOrEqual(gap)
   })
 })
