@@ -247,7 +247,7 @@ export async function getActiveSeriesWithPendingBriefs(
 
   for (const series of seriesList) {
     const briefs = await getSeriesBriefsWithPosts(supabase, series.id, organizationId)
-    const hasPending = briefs.some((b) => b.status === 'pending')
+    const hasPending = briefs.some((b) => b.status === 'pending' || b.status === 'pending_strategist')
     if (hasPending) {
       results.push({
         series_id: series.id,

@@ -65,6 +65,13 @@ export async function POST(
     return NextResponse.json({ error: 'Series not found' }, { status: 404 })
   }
 
+  if (series.status !== 'completed') {
+    return NextResponse.json(
+      { error: 'Debrief can only be generated for completed series' },
+      { status: 422 },
+    )
+  }
+
   // Generate the debrief
   const debrief = await generateSeriesDebrief(supabase, seriesId, auth.organizationId)
 
