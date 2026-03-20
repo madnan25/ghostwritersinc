@@ -14,6 +14,7 @@ import {
   BookOpen,
   Settings,
   X,
+  ClipboardList,
 } from 'lucide-react'
 
 const PRIMARY_TABS = [
@@ -24,6 +25,7 @@ const PRIMARY_TABS = [
 ]
 
 const MORE_ITEMS = [
+  { href: '/briefs', label: 'Briefs', icon: ClipboardList },
   { href: '/team', label: 'Team', icon: Users },
   { href: '/research', label: 'Research', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },

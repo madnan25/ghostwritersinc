@@ -4,6 +4,11 @@ export type RotationWarning = {
   pillar_id: string;
   pillar_name: string;
   run_length: number;
+  source?: "suggested" | "scheduled";
+  scope?: "week" | "month";
+  period_label?: string;
+  target_pct?: number;
+  actual_pct?: number;
   suggestion: string;
 };
 
@@ -32,50 +37,151 @@ export function formatPostDate(dateStr: string | null): string {
   }).format(new Date(dateStr));
 }
 
+export function getCalendarDate(post: Pick<Post, "scheduled_publish_at" | "suggested_publish_at">): string | null {
+  return post.scheduled_publish_at ?? post.suggested_publish_at;
+}
+
+export function startOfCalendarWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+function formatWeekLabel(weekStart: Date): string {
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  return `${weekStart.toLocaleDateString("en-US", opts)} - ${weekEnd.toLocaleDateString("en-US", { ...opts, year: "numeric" })}`;
+}
+
+function formatMonthLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 export function computeRotationWarnings(
-  posts: Post[],
-  pillars: ContentPillar[]
+  posts: Pick<Post, "id" | "pillar_id" | "suggested_publish_at" | "scheduled_publish_at">[],
+  pillars: ContentPillar[],
+  referenceDate: Date = new Date(),
 ): RotationWarning[] {
-  const ordered = posts
-    .filter((post) => post.pillar_id && post.suggested_publish_at)
+  const pillarMap = new Map(pillars.map((pillar) => [pillar.id, pillar]));
+  const earliestRelevantDate = startOfCalendarWeek(referenceDate);
+  const suggestedQueue = posts
+    .map((post) => ({
+      ...post,
+      calendar_date: post.suggested_publish_at,
+    }))
+    .filter(
+      (post): post is Pick<Post, "id" | "pillar_id" | "suggested_publish_at" | "scheduled_publish_at"> & { calendar_date: string } =>
+        !!post.calendar_date &&
+        !post.scheduled_publish_at &&
+        !!post.pillar_id &&
+        pillarMap.has(post.pillar_id) &&
+        new Date(post.calendar_date) >= earliestRelevantDate
+    )
     .sort(
       (a, b) =>
-        new Date(a.suggested_publish_at!).getTime() -
-        new Date(b.suggested_publish_at!).getTime()
+        new Date(a.calendar_date).getTime() -
+        new Date(b.calendar_date).getTime()
+    );
+
+  const scheduled = posts
+    .map((post) => ({
+      ...post,
+      calendar_date: post.scheduled_publish_at,
+    }))
+    .filter(
+      (post): post is Pick<Post, "id" | "pillar_id" | "suggested_publish_at" | "scheduled_publish_at"> & { calendar_date: string } =>
+        !!post.calendar_date &&
+        !!post.pillar_id &&
+        pillarMap.has(post.pillar_id) &&
+        new Date(post.calendar_date) >= earliestRelevantDate
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.calendar_date).getTime() -
+        new Date(b.calendar_date).getTime()
     );
 
   const warnings: RotationWarning[] = [];
-  let currentPillar: string | null = null;
-  let runPosts: string[] = [];
 
-  for (const post of ordered) {
-    if (post.pillar_id === currentPillar && currentPillar !== null) {
-      runPosts.push(post.id);
-      continue;
-    }
+  const postsByWeekAndPillar = new Map<string, { pillarId: string; pillarName: string; weekStart: Date; count: number }>();
+  for (const post of suggestedQueue) {
+    const pillarId = post.pillar_id!;
+    const pillar = pillarMap.get(pillarId);
+    if (!pillar) continue;
 
-    if (runPosts.length > 2 && currentPillar) {
-      const pillar = pillars.find((candidate) => candidate.id === currentPillar);
-      warnings.push({
-        pillar_id: currentPillar,
-        pillar_name: pillar?.name ?? "Unknown",
-        run_length: runPosts.length,
-        suggestion: `${runPosts.length} consecutive "${pillar?.name ?? "Unknown"}" posts queued. Mix in other pillars for better variety.`,
+    const weekStart = startOfCalendarWeek(new Date(post.calendar_date));
+    const key = `${pillarId}:${weekStart.toISOString()}`;
+    const existing = postsByWeekAndPillar.get(key);
+
+    if (existing) {
+      existing.count += 1;
+    } else {
+      postsByWeekAndPillar.set(key, {
+        pillarId,
+        pillarName: pillar.name,
+        weekStart,
+        count: 1,
       });
     }
-
-    currentPillar = post.pillar_id;
-    runPosts = [post.id];
   }
 
-  if (runPosts.length > 2 && currentPillar) {
-    const pillar = pillars.find((candidate) => candidate.id === currentPillar);
+  for (const entry of [...postsByWeekAndPillar.values()].sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())) {
+    if (entry.count < 3) continue;
+
+    const periodLabel = formatWeekLabel(entry.weekStart);
     warnings.push({
-      pillar_id: currentPillar,
-      pillar_name: pillar?.name ?? "Unknown",
-      run_length: runPosts.length,
-      suggestion: `${runPosts.length} consecutive "${pillar?.name ?? "Unknown"}" posts queued. Mix in other pillars for better variety.`,
+      pillar_id: entry.pillarId,
+      pillar_name: entry.pillarName,
+      run_length: entry.count,
+      source: "suggested",
+      scope: "week",
+      period_label: periodLabel,
+      suggestion: `${entry.pillarName} is crowded in the suggested queue for ${periodLabel} with ${entry.count} posts.`,
     });
+  }
+
+  type ScheduledPost = Pick<Post, "id" | "pillar_id" | "suggested_publish_at" | "scheduled_publish_at"> & { calendar_date: string };
+  const postsByMonth = new Map<string, Array<ScheduledPost>>();
+  for (const post of scheduled) {
+    const date = new Date(post.calendar_date);
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+    if (!postsByMonth.has(monthKey)) postsByMonth.set(monthKey, []);
+    postsByMonth.get(monthKey)!.push(post);
+  }
+
+  for (const [, monthPosts] of [...postsByMonth.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const totalAssigned = monthPosts.length;
+    if (totalAssigned === 0) continue;
+
+    const sampleDate = new Date(monthPosts[0].calendar_date);
+    const periodLabel = formatMonthLabel(sampleDate);
+    const countByPillar = new Map<string, number>();
+    for (const post of monthPosts) {
+      countByPillar.set(post.pillar_id!, (countByPillar.get(post.pillar_id!) ?? 0) + 1);
+    }
+
+    for (const [pillarId, count] of countByPillar.entries()) {
+      const pillar = pillarMap.get(pillarId);
+      if (!pillar) continue;
+
+      const actualPct = Math.round((count / totalAssigned) * 100);
+      if ((count / totalAssigned) <= (pillar.weight_pct / 100)) continue;
+
+      warnings.push({
+        pillar_id: pillarId,
+        pillar_name: pillar.name,
+        run_length: count,
+        source: "scheduled",
+        scope: "month",
+        period_label: periodLabel,
+        target_pct: pillar.weight_pct,
+        actual_pct: actualPct,
+        suggestion: `${pillar.name} is overweight in ${periodLabel}: ${actualPct}% of scheduled posts vs a ${pillar.weight_pct}% target.`,
+      });
+    }
   }
 
   return warnings;

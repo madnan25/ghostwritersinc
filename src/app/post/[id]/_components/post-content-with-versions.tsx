@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { GitCompare, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { PostComment, PostRevision } from '@/lib/types'
+import type { PostComment, PostRevision, PostStatus } from '@/lib/types'
+import { requestRevision } from '@/app/actions/posts'
 import { VersionSwitcher } from './version-switcher'
 import { CommentablePostContent } from './commentable-post-content'
 import { RevisionDiff } from './revision-diff'
@@ -16,15 +18,19 @@ interface Props {
   postId: string
   content: string
   currentVersion: number
+  status: PostStatus
   comments: PostComment[]
   revisions: PostRevision[]
 }
 
-export function PostContentWithVersions({ postId, content, currentVersion, comments, revisions }: Props) {
+export function PostContentWithVersions({ postId, content, currentVersion, status, comments, revisions }: Props) {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [diffMode, setDiffMode] = useState(false)
-  const [revisionMode, setRevisionMode] = useState(false)
+  const [revisionMode, setRevisionMode] = useState(status === 'revision')
   const [annotations, setAnnotations] = useState<FlaggedAnnotation[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const versionContent =
     selectedVersion != null
@@ -40,15 +46,47 @@ export function PostContentWithVersions({ postId, content, currentVersion, comme
     ? `v${selectedVersion}`
     : `v${revisions[0]?.version ?? ''}`
   const diffNewLabel = `v${currentVersion} (current)`
+  const canRequestRevision = status === 'pending_review'
+  const canUseRevisionTools = status === 'revision'
+
+  // Sync revisionMode when post status changes externally (e.g. after approval/rejection)
+  useEffect(() => {
+    if (status === 'revision') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRevisionMode(true)
+      return
+    }
+    setRevisionMode(false)
+    setAnnotations([])
+  }, [status])
 
   function handleToggleRevisionMode() {
+    if (canRequestRevision) {
+      setError(null)
+      setDiffMode(false)
+      setSelectedVersion(null)
+      setAnnotations([])
+
+      startTransition(async () => {
+        try {
+          await requestRevision(postId)
+          router.refresh()
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to request revision.')
+        }
+      })
+      return
+    }
+
     if (revisionMode) {
       setRevisionMode(false)
       setAnnotations([])
     } else {
       setRevisionMode(true)
+      setError(null)
       setDiffMode(false)
       setSelectedVersion(null)
+      setAnnotations([])
     }
   }
 
@@ -62,39 +100,40 @@ export function PostContentWithVersions({ postId, content, currentVersion, comme
 
   return (
     <>
-      {(revisions.length > 0 || true) && (
-        <div className="mb-5 rounded-[20px] border border-border/60 bg-background/40 p-2 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.5)]">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              {revisions.length > 0 && (
-                <VersionSwitcher
-                  revisions={revisions}
-                  currentVersion={currentVersion}
-                  selectedVersion={selectedVersion}
-                  onSelect={(v) => { setSelectedVersion(v); setDiffMode(false); setRevisionMode(false); setAnnotations([]) }}
-                />
-              )}
-              {canShowDiff && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleToggleDiff}
-                  className={`border-border/70 bg-background/70 shadow-none ${
-                    diffMode
-                      ? 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/14'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <GitCompare className="size-3.5" />
-                  {diffMode ? 'Hide diff' : 'View diff'}
-                </Button>
-              )}
+      <div className="mb-5 rounded-[20px] border border-border/60 bg-background/40 p-2 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.5)]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {revisions.length > 0 && (
+              <VersionSwitcher
+                revisions={revisions}
+                currentVersion={currentVersion}
+                selectedVersion={selectedVersion}
+                onSelect={(v) => { setSelectedVersion(v); setDiffMode(false); setRevisionMode(false); setAnnotations([]) }}
+              />
+            )}
+            {canShowDiff && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleToggleDiff}
+                className={`border-border/70 bg-background/70 shadow-none ${
+                  diffMode
+                    ? 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/14'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <GitCompare className="size-3.5" />
+                {diffMode ? 'Hide diff' : 'View diff'}
+              </Button>
+            )}
+            {(canRequestRevision || canUseRevisionTools) && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleToggleRevisionMode}
+                disabled={isPending}
                 className={`border-border/70 bg-background/70 shadow-none ${
                   revisionMode
                     ? 'border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/14'
@@ -102,15 +141,24 @@ export function PostContentWithVersions({ postId, content, currentVersion, comme
                 }`}
               >
                 <Flag className="size-3.5" />
-                {revisionMode ? 'Cancel revision' : 'Request revision'}
+                {isPending
+                  ? 'Moving to revision…'
+                  : canRequestRevision
+                    ? 'Set to Revision'
+                    : revisionMode
+                      ? 'Hide revision tools'
+                      : 'Open revision tools'}
               </Button>
-            </div>
-            <div className="px-2 text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground/80">
-              {selectedVersion != null ? `Viewing v${selectedVersion}` : `Current v${currentVersion}`}
-            </div>
+            )}
+          </div>
+          <div className="px-2 text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground/80">
+            {selectedVersion != null ? `Viewing v${selectedVersion}` : `Current v${currentVersion}`}
           </div>
         </div>
-      )}
+        {error && (
+          <p className="px-2 pt-2 text-xs text-destructive">{error}</p>
+        )}
+      </div>
 
       {diffMode ? (
         <RevisionDiff
@@ -119,7 +167,7 @@ export function PostContentWithVersions({ postId, content, currentVersion, comme
           oldLabel={diffOldLabel}
           newLabel={diffNewLabel}
         />
-      ) : revisionMode ? (
+      ) : canUseRevisionTools && revisionMode ? (
         <>
           <AnnotatablePostContent
             content={content}

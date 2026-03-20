@@ -347,6 +347,67 @@ export async function getCalendarPosts(): Promise<CalendarPosts> {
   }
 }
 
+export interface BriefWithContext extends Brief {
+  pillar_name: string | null
+  pillar_color: string | null
+  linked_post_count: number
+}
+
+export async function getBriefs(status?: string): Promise<BriefWithContext[]> {
+  const supabase = await createClient()
+
+  let query = supabase
+    .from('briefs')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (status) {
+    query = query.eq('status', status)
+  }
+
+  const { data: briefs, error } = await query
+
+  if (error) {
+    logQueryError('briefs list', error)
+    return []
+  }
+
+  if (!briefs || briefs.length === 0) return []
+
+  const pillarIds = Array.from(
+    new Set(briefs.map((b) => b.pillar_id).filter((id): id is string => !!id)),
+  )
+  const briefIds = briefs.map((b) => b.id)
+
+  const [{ data: pillars }, { data: postCounts }] = await Promise.all([
+    pillarIds.length > 0
+      ? supabase.from('content_pillars').select('id, name, color').in('id', pillarIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; color: string }> }),
+    supabase.from('posts').select('brief_id').in('brief_id', briefIds),
+  ])
+
+  const pillarById = new Map(
+    ((pillars ?? []) as Array<{ id: string; name: string; color: string }>).map((p) => [p.id, p]),
+  )
+
+  const postCountByBriefId = new Map<string, number>()
+  for (const post of postCounts ?? []) {
+    if (post.brief_id) {
+      postCountByBriefId.set(post.brief_id, (postCountByBriefId.get(post.brief_id) ?? 0) + 1)
+    }
+  }
+
+  return briefs.map((brief) => {
+    const pillar = brief.pillar_id ? pillarById.get(brief.pillar_id) : null
+    return {
+      ...brief,
+      pillar_name: pillar?.name ?? null,
+      pillar_color: pillar?.color ?? null,
+      linked_post_count: postCountByBriefId.get(brief.id) ?? 0,
+    }
+  })
+}
+
 export async function getBriefById(id: string): Promise<Brief | null> {
   const supabase = await createClient()
   const { data, error } = await supabase

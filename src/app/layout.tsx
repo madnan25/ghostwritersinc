@@ -62,6 +62,7 @@ export default function RootLayout({
                     {[
                       { href: "/dashboard", label: "Dashboard" },
                       { href: "/calendar", label: "Calendar" },
+                      { href: "/briefs", label: "Briefs" },
                       { href: "/insights", label: "Insights" },
                       { href: "/team", label: "Team" },
                       { href: "/strategy", label: "Strategy" },
