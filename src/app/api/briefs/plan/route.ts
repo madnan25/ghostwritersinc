@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   const { data: pillars, error: pillarsErr } = await supabase
     .from('content_pillars')
     .select('id, name, weight_pct')
-    .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
     .order('sort_order')
 
   if (pillarsErr) {

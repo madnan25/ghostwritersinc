@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
 
   // Auto-score and auto-match pillars when not explicitly provided
   if (parsed.data.auto_score) {
-    // Fetch org pillars for matching
+    // Fetch user pillars for matching
     const { data: pillars } = await supabase
       .from('content_pillars')
       .select('*')
-      .eq('organization_id', auth.organizationId)
+      .eq('user_id', auth.userId)
       .order('sort_order', { ascending: true })
 
     const orgPillars = (pillars ?? []) as ContentPillar[]
@@ -164,6 +164,7 @@ export async function GET(request: NextRequest) {
   const pillarId = searchParams.get('pillar_id')
   const minScore = searchParams.get('min_score')
   const sortBy = searchParams.get('sort_by') // 'relevance_score' | 'created_at' (default)
+  const includeScoutContext = searchParams.get('include_scout_context') === 'true'
 
   const supabase = createAdminClient()
   let query = supabase
@@ -214,6 +215,23 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error('[research-pool] DB error listing items:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  // Optionally include scout_context for Scout heartbeat consumption
+  if (includeScoutContext && hasAgentPermission(auth.permissions, 'strategy:read')) {
+    const { data: config } = await supabase
+      .from('strategy_config')
+      .select('scout_context')
+      .eq('user_id', auth.userId)
+      .eq('organization_id', auth.organizationId)
+      .maybeSingle()
+
+    const scoutContext = config?.scout_context ?? null
+
+    return NextResponse.json({
+      items: data,
+      scout_context: scoutContext,
+    })
   }
 
   return NextResponse.json(data)
