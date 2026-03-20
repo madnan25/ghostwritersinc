@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import type { ContentPillar, Post } from '@/lib/types'
-import { getStalenessState, STALENESS_CONFIG } from '@/lib/staleness'
+import { getStalenessState, getStalenessTooltip, STALENESS_CONFIG } from '@/lib/staleness'
 
 type ViewMode = 'month' | 'week'
 
@@ -60,12 +60,17 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
   const isHumanRequested = post.source === 'human_request'
   const staleness = getStalenessState(post)
   const stalenessConfig = staleness ? STALENESS_CONFIG[staleness] : null
+  const isArchived = !!post.archived_at
+  const stalenessTooltip = getStalenessTooltip(post)
+  const tooltipText = stalenessTooltip
+    ? `${stalenessTooltip}\n${post.content.slice(0, 100)}`
+    : post.content.slice(0, 100)
 
   return (
     <Link href={`/post/${post.id}`}>
       <div
-        className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)}`}
-        title={post.content}
+        className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)} ${isArchived ? 'opacity-40' : ''}`}
+        title={tooltipText}
         style={pillarColor ? { borderLeftColor: pillarColor, borderLeftWidth: 3 } : undefined}
       >
         {isHumanRequested && (
@@ -74,11 +79,12 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
           </span>
         )}
         {time && <span className="mr-1 opacity-70">{time}</span>}
-        <span className="flex-1 truncate">{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</span>
+        <span className={`flex-1 truncate ${isArchived ? 'line-through' : ''}`}>
+          {post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}
+        </span>
         {stalenessConfig && (
           <span
             className={`ml-auto shrink-0 inline-block size-1.5 rounded-full ${stalenessConfig.dotClass}`}
-            title={stalenessConfig.label}
           />
         )}
       </div>
@@ -403,8 +409,13 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'week' : 'month',
   )
   const [anchor, setAnchor] = useState(() => new Date())
+  const [showArchived, setShowArchived] = useState(false)
 
   const pillarMap = new Map(pillars.map((p) => [p.id, p]))
+
+  const visiblePosts = showArchived ? posts : posts.filter((p) => !p.archived_at)
+  const visibleUnscheduled = showArchived ? unscheduledPosts : unscheduledPosts.filter((p) => !p.archived_at)
+  const archivedCount = posts.filter((p) => !!p.archived_at).length + unscheduledPosts.filter((p) => !!p.archived_at).length
 
   function navigate(dir: -1 | 1) {
     setAnchor((prev) => {
@@ -423,7 +434,7 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
   return (
     <div>
       {pillars.length > 0 && (
-        <PillarDistributionBar posts={posts} pillars={pillars} anchor={anchor} />
+        <PillarDistributionBar posts={visiblePosts} pillars={pillars} anchor={anchor} />
       )}
       <div className="rounded-xl border border-border bg-card">
         {/* Toolbar */}
@@ -452,29 +463,44 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
             </button>
           </div>
 
-          {/* View toggle */}
-          <div className="flex rounded-xl border border-border p-0.5">
-            {(['month', 'week'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 text-xs font-medium capitalize transition-colors active:scale-95 ${
-                  view === v
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {v}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            {/* Archived toggle */}
+            {archivedCount > 0 && (
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground select-none">
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="size-3.5 accent-primary"
+                />
+                Show archived ({archivedCount})
+              </label>
+            )}
+
+            {/* View toggle */}
+            <div className="flex rounded-xl border border-border p-0.5">
+              {(['month', 'week'] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 text-xs font-medium capitalize transition-colors active:scale-95 ${
+                    view === v
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Calendar body */}
         {view === 'month' ? (
-          <MonthView posts={posts} anchor={anchor} pillarMap={pillarMap} />
+          <MonthView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} />
         ) : (
-          <WeekView posts={posts} anchor={anchor} pillarMap={pillarMap} />
+          <WeekView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} />
         )}
 
         {/* Legend */}
@@ -527,7 +553,7 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
         </div>
       </div>
 
-      <UnscheduledSection posts={unscheduledPosts} pillarMap={pillarMap} />
+      <UnscheduledSection posts={visibleUnscheduled} pillarMap={pillarMap} />
     </div>
   )
 }

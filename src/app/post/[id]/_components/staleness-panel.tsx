@@ -1,11 +1,16 @@
 'use client'
 
 import { useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Clock, Archive, RotateCcw, CheckCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getStalenessState, STALENESS_CONFIG } from '@/lib/staleness'
+import { getStalenessState, getStalenessTooltip, STALENESS_CONFIG } from '@/lib/staleness'
 import type { Post } from '@/lib/types'
+import {
+  archivePost,
+  restorePost,
+  markPostStillValid,
+  requestPostUpdate,
+} from '@/app/actions/posts'
 
 interface StalenessPanelProps {
   post: Pick<Post, 'id' | 'freshness_type' | 'expiry_date' | 'archived_at' | 'status'>
@@ -16,37 +21,33 @@ interface StalenessPanelProps {
  *
  * Displays:
  * - Staleness badge (fresh / aging / flagged / archived)
- * - Expiry date for time_sensitive and date_locked posts
- * - Action buttons: Still Valid, Archive, Restore (context-aware)
+ * - Expiry date + days until/past expiry for time_sensitive and date_locked posts
+ * - Action buttons: Still Valid, Request Update, Archive, Restore (context-aware)
  */
 export function StalenessPanel({ post }: StalenessPanelProps) {
   const staleness = getStalenessState(post)
   const [isPending, startTransition] = useTransition()
-  const router = useRouter()
 
   // Don't render panel for evergreen posts with no expiry and no archive
   if (staleness === null) return null
 
   const config = STALENESS_CONFIG[staleness]
-
-  async function callAction(path: string) {
-    const res = await fetch(`/api/posts/${post.id}/${path}`, { method: 'POST' })
-    if (!res.ok) {
-      console.error(`[staleness-panel] ${path} failed:`, await res.text())
-    }
-    router.refresh()
-  }
+  const tooltip = getStalenessTooltip(post)
 
   function handleStillValid() {
-    startTransition(() => callAction('still-valid'))
+    startTransition(async () => { await markPostStillValid(post.id) })
+  }
+
+  function handleRequestUpdate() {
+    startTransition(async () => { await requestPostUpdate(post.id) })
   }
 
   function handleArchive() {
-    startTransition(() => callAction('archive'))
+    startTransition(async () => { await archivePost(post.id) })
   }
 
   function handleRestore() {
-    startTransition(() => callAction('restore'))
+    startTransition(async () => { await restorePost(post.id) })
   }
 
   const isPublished = post.status === 'published'
@@ -77,14 +78,8 @@ export function StalenessPanel({ post }: StalenessPanelProps) {
                 {config.label}
               </span>
             </div>
-            {post.expiry_date && (
-              <div className="mt-1 text-xs text-muted-foreground">
-                {staleness === 'archived'
-                  ? `Archived · was set to expire ${new Date(post.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                  : staleness === 'flagged'
-                    ? `Expired ${new Date(post.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                    : `Expires ${new Date(post.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-              </div>
+            {tooltip && (
+              <div className="mt-1 text-xs text-muted-foreground">{tooltip}</div>
             )}
             {staleness === 'archived' && !post.expiry_date && (
               <div className="mt-1 text-xs text-muted-foreground">This post has been archived</div>
@@ -124,12 +119,12 @@ export function StalenessPanel({ post }: StalenessPanelProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => router.push(`/post/${post.id}?action=request-update`)}
+                    onClick={handleRequestUpdate}
                     disabled={isPending}
                     className="gap-1.5"
                   >
                     <RefreshCw className="size-3.5" />
-                    Request Update
+                    {isPending ? 'Requesting…' : 'Request Update'}
                   </Button>
                 )}
                 <Button

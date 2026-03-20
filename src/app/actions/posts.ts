@@ -1042,6 +1042,119 @@ export async function submitTargetedRevision(
 }
 
 // ---------------------------------------------------------------------------
+// Staleness actions (LIN-510)
+// ---------------------------------------------------------------------------
+
+export async function archivePost(postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/calendar')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function restorePost(postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ archived_at: null })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/calendar')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function markPostStillValid(postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select('freshness_type')
+    .eq('id', postId)
+    .single()
+
+  if (!post || post.freshness_type !== 'time_sensitive') {
+    return // no-op for non-time_sensitive posts
+  }
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ expiry_date: null })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/post/${postId}`)
+  revalidatePath('/calendar')
+}
+
+export async function requestPostUpdate(postId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, organization_id, user_id, content')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) throw new Error('Post not found')
+
+  // For non-published posts, send back to draft for a content refresh
+  if (['approved', 'scheduled', 'revision', 'pending_review'].includes(post.status)) {
+    const { error } = await supabase
+      .from('posts')
+      .update({
+        status: 'draft',
+        scheduled_publish_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', postId)
+
+    if (error) throw new Error(error.message)
+
+    await supabase.from('review_events').insert({
+      post_id: postId,
+      agent_name: 'client',
+      action: 'revised' as const,
+      notes: 'Update requested due to content staleness',
+    })
+  }
+
+  // Always create a notification for the content team
+  if (post.user_id) {
+    await tryCreateNotification(supabase, {
+      organization_id: post.organization_id,
+      user_id: post.user_id,
+      type: 'update_requested',
+      title: 'Content update requested',
+      body: 'A post was flagged for update due to staleness.',
+      post_id: postId,
+    })
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/calendar')
+  revalidatePath(`/post/${postId}`)
+}
+
+// ---------------------------------------------------------------------------
 // Performance logging (LIN-473)
 // ---------------------------------------------------------------------------
 
