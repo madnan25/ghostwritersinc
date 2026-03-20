@@ -1,11 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ChevronDown, X } from 'lucide-react'
 import { usePostsRealtimeSync } from '@/hooks/use-posts-realtime'
 import { cn } from '@/lib/utils'
 import type { ContentPillar, Post } from '@/lib/types'
 import {
+  filterPostsByPillars,
+  getPillarFilterOptions,
   groupPostsByPipelineColumn,
   PIPELINE_COLUMN_DEFS,
   type PipelineColumnId,
@@ -25,10 +27,113 @@ function EmptyColumn() {
   )
 }
 
+interface PillarDropdownProps {
+  pillarOptions: ReturnType<typeof getPillarFilterOptions>
+  selectedPillarIds: Set<string>
+  onToggle: (id: string) => void
+  onClear: () => void
+}
+
+function PillarDropdown({ pillarOptions, selectedPillarIds, onToggle, onClear }: PillarDropdownProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const selectedCount = selectedPillarIds.size
+  const label = selectedCount > 0 ? `${selectedCount} pillar${selectedCount > 1 ? 's' : ''}` : 'Filter by pillar'
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
+          selectedCount > 0
+            ? 'border-primary/40 bg-primary/10 text-primary'
+            : 'border-border/40 bg-background/50 text-foreground/60 hover:border-border/60 hover:text-foreground/80',
+        )}
+      >
+        <span>{label}</span>
+        {selectedCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClear() }}
+            className="ml-0.5 rounded-full text-primary/70 hover:text-primary"
+            aria-label="Clear pillar filter"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+        <ChevronDown className={cn('size-3 text-foreground/50 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-20 mt-1.5 min-w-[180px] rounded-xl border border-border/40 bg-card p-1.5 shadow-xl">
+          {pillarOptions.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-foreground/50">No pillars</p>
+          ) : (
+            <>
+              {pillarOptions.map((pillar) => {
+                const active = selectedPillarIds.has(pillar.id)
+                return (
+                  <button
+                    key={pillar.id}
+                    type="button"
+                    onClick={() => onToggle(pillar.id)}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition-colors',
+                      active
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-foreground/70 hover:bg-foreground/5 hover:text-foreground',
+                    )}
+                  >
+                    <span
+                      className="inline-block size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: pillar.color }}
+                    />
+                    <span className="flex-1 truncate">{pillar.name}</span>
+                    <span className="text-foreground/40">{pillar.count}</span>
+                    {active && <span className="size-1.5 rounded-full bg-primary" />}
+                  </button>
+                )
+              })}
+              {selectedCount > 0 && (
+                <>
+                  <div className="my-1 border-t border-border/30" />
+                  <button
+                    type="button"
+                    onClick={() => { onClear(); setOpen(false) }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs text-foreground/56 transition-colors hover:bg-foreground/5 hover:text-foreground"
+                  >
+                    <X className="size-3" />
+                    Clear filter
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwimlaneProps) {
   const [posts, setPosts] = useState(initialPosts)
   const [alertDismissed, setAlertDismissed] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
+  const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
 
   usePostsRealtimeSync(setPosts)
 
@@ -37,12 +142,22 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
     [pillars],
   )
 
+  const pillarOptions = useMemo(
+    () => getPillarFilterOptions(pillars, posts, 'all'),
+    [pillars, posts],
+  )
+
   const alertPosts = useMemo(
     () => posts.filter((p) => p.status === 'rejected' || p.status === 'publish_failed'),
     [posts],
   )
 
-  const columnGroups = useMemo(() => groupPostsByPipelineColumn(posts), [posts])
+  const filteredPosts = useMemo(
+    () => filterPostsByPillars(posts, selectedPillarIds),
+    [posts, selectedPillarIds],
+  )
+
+  const columnGroups = useMemo(() => groupPostsByPipelineColumn(filteredPosts), [filteredPosts])
 
   const rejectedCount = alertPosts.filter((p) => p.status === 'rejected').length
   const failedCount = alertPosts.filter((p) => p.status === 'publish_failed').length
@@ -55,6 +170,18 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
 
   function getColumnPosts(id: PipelineColumnId) {
     return columnGroups[id]
+  }
+
+  function togglePillar(id: string) {
+    setSelectedPillarIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
   }
 
   return (
@@ -76,6 +203,23 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
           >
             <X className="size-4" />
           </button>
+        </div>
+      )}
+
+      {/* Pillar filter dropdown */}
+      {pillarOptions.length > 0 && (
+        <div className="flex items-center gap-3">
+          <PillarDropdown
+            pillarOptions={pillarOptions}
+            selectedPillarIds={selectedPillarIds}
+            onToggle={togglePillar}
+            onClear={() => setSelectedPillarIds(new Set())}
+          />
+          {selectedPillarIds.size > 0 && (
+            <span className="text-xs text-foreground/50">
+              {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       )}
 

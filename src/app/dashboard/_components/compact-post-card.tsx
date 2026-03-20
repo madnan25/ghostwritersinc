@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
@@ -57,9 +60,23 @@ function formatShortDate(dateStr: string | null | undefined): string {
   )
 }
 
+function isStale(post: Post): boolean {
+  if (post.status === 'published' || post.status === 'scheduled') return false
+  const ref = post.suggested_publish_at
+  if (!ref) return false
+  return new Date(ref) < new Date()
+}
+
 export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactPostCardProps) {
+  const router = useRouter()
+  const [hovered, setHovered] = useState(false)
+  const [tapped, setTapped] = useState(false)
+
+  const isExpanded = hovered || tapped
+
   const title = getPostTitle(post.content)
   const preview = getPostPreview(post.content)
+  const stale = isStale(post)
 
   const subBadgeKey =
     post.status === 'pending_review' && post.reviewed_by_agent
@@ -77,10 +94,38 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
         ? post.published_at
         : post.suggested_publish_at
 
+  const hasExpandedContent =
+    preview || post.created_by_agent || post.reviewed_by_agent || post.brief_ref || stale
+
+  function handleLinkClick(e: React.MouseEvent) {
+    if (!window.matchMedia('(hover: none)').matches) return
+    if (!tapped) {
+      e.preventDefault()
+      e.stopPropagation()
+      setTapped(true)
+    }
+    // If already tapped, let the link navigate normally
+  }
+
+  function handleCardClick(e: React.MouseEvent) {
+    if (!window.matchMedia('(hover: none)').matches) return
+    const target = e.target as HTMLElement
+    if (target.closest('a') || target.closest('button')) return
+    if (!tapped) {
+      setTapped(true)
+    } else {
+      router.push(`/post/${post.id}`)
+    }
+  }
+
   return (
-    <div
-      className="group editorial-card relative flex flex-col gap-3 p-3.5"
+    <motion.div
+      layout="size"
+      className="editorial-card relative flex flex-col gap-3 p-3.5"
       style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}14` } : undefined}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={handleCardClick}
     >
       {/* Sub-badge (only in In Review column) */}
       {subBadge && (
@@ -95,8 +140,8 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
       )}
 
       {/* Title */}
-      <Link href={`/post/${post.id}`} className="block">
-        <h4 className="line-clamp-1 text-sm font-semibold tracking-[-0.02em] text-foreground transition-colors group-hover:text-primary/92">
+      <Link href={`/post/${post.id}`} className="block" onClick={handleLinkClick}>
+        <h4 className="line-clamp-1 text-sm font-semibold tracking-[-0.02em] text-foreground transition-colors hover:text-primary/92">
           {title}
         </h4>
       </Link>
@@ -121,45 +166,59 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
         )}
       </div>
 
-      {/* Hover reveal: preview + agent attribution */}
-      <div className="grid grid-rows-[0fr] transition-all duration-200 group-hover:grid-rows-[1fr]">
-        <div className="overflow-hidden">
-          <div className="space-y-2 pb-1 pt-0.5">
-            {preview && (
-              <p className="line-clamp-2 text-[0.74rem] leading-5 text-foreground/56">
-                {preview}
-              </p>
-            )}
-            {(post.created_by_agent || post.reviewed_by_agent || post.brief_ref) && (
-              <div className="space-y-1">
-                {post.created_by_agent && (
-                  <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                    <Bot className="size-2.5 shrink-0" />
-                    <span className="truncate">{post.created_by_agent}</span>
-                  </div>
-                )}
-                {post.reviewed_by_agent && (
-                  <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                    <User className="size-2.5 shrink-0" />
-                    <span className="truncate">{post.reviewed_by_agent}</span>
-                  </div>
-                )}
-                {post.brief_ref && (
-                  <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                    <FileText className="size-2.5 shrink-0" />
-                    <span className="truncate">{post.brief_ref}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Progressive disclosure: expanded metadata */}
+      <AnimatePresence initial={false}>
+        {isExpanded && hasExpandedContent && (
+          <motion.div
+            key="expanded"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2 pb-1 pt-0.5">
+              {stale && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-orange-400/30 bg-orange-500/8 px-2 py-0.5 text-[0.64rem] font-medium text-orange-300/80">
+                  Overdue
+                </span>
+              )}
+              {preview && (
+                <p className="line-clamp-2 text-[0.74rem] leading-5 text-foreground/56">
+                  {preview}
+                </p>
+              )}
+              {(post.created_by_agent || post.reviewed_by_agent || post.brief_ref) && (
+                <div className="space-y-1">
+                  {post.created_by_agent && (
+                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
+                      <Bot className="size-2.5 shrink-0" />
+                      <span className="truncate">{post.created_by_agent}</span>
+                    </div>
+                  )}
+                  {post.reviewed_by_agent && (
+                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
+                      <User className="size-2.5 shrink-0" />
+                      <span className="truncate">{post.reviewed_by_agent}</span>
+                    </div>
+                  )}
+                  {post.brief_ref && (
+                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
+                      <FileText className="size-2.5 shrink-0" />
+                      <span className="truncate">{post.brief_ref}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Actions */}
-      <div className="editorial-rule pt-0">
+      <div className="editorial-rule pt-0" onClick={(e) => e.stopPropagation()}>
         <PostCardActions postId={post.id} status={post.status} content={post.content} compact />
       </div>
-    </div>
+    </motion.div>
   )
 }
