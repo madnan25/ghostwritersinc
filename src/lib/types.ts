@@ -296,7 +296,7 @@ export interface ResearchPoolItem {
   updated_at: string
 }
 
-export type BriefStatus = 'pending' | 'pending_strategist' | 'in_review' | 'revision_requested' | 'done'
+export type BriefStatus = 'pending' | 'pending_strategist' | 'in_review' | 'revision_requested' | 'done' | 'cancelled'
 
 export type BriefSource = 'ai_generated' | 'human_request' | 'series_generated'
 

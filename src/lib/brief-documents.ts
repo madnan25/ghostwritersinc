@@ -6,6 +6,7 @@ const BRIEF_STATUS_LABELS: Record<BriefStatus, string> = {
   in_review: 'In Review',
   revision_requested: 'Revision Requested',
   done: 'Done',
+  cancelled: 'Cancelled',
 }
 
 export function getBriefVersionLabel(version: number): string {

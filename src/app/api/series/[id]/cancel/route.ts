@@ -90,7 +90,7 @@ export async function POST(
   // Cancel remaining non-done brief stubs
   const { error: briefsError } = await supabase
     .from('briefs')
-    .update({ status: 'done' })
+    .update({ status: 'cancelled' })
     .eq('series_id', id)
     .eq('organization_id', organizationId)
     .in('status', ['pending_strategist', 'pending', 'in_review', 'revision_requested'])
