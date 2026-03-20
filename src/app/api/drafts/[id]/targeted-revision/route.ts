@@ -189,6 +189,17 @@ export async function POST(
     .single()
 
   if (insertError || !revision) {
+    // DB trigger fires when the cap is hit concurrently — surface it as 409 not 500
+    if (insertError?.code === 'P0001' && insertError?.message === 'max_targeted_revisions_exceeded') {
+      return NextResponse.json(
+        {
+          error: `Maximum targeted revisions (${MAX_TARGETED_REVISIONS}) reached for this draft. Consider requesting a full rewrite instead.`,
+          code: 'MAX_TARGETED_REVISIONS_EXCEEDED',
+          targeted_revision_count: MAX_TARGETED_REVISIONS,
+        },
+        { status: 409 }
+      )
+    }
     console.error('[targeted-revision] DB error inserting revision:', insertError)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
