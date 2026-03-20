@@ -195,8 +195,11 @@ async function handleUserPut(request: NextRequest) {
         user_id: user.id,
         organization_id: dbUser.organization_id,
         scout_context: parsed.data.scout_context?.trim() ?? null,
+        monthly_post_target: 4,
+        intel_score_threshold: 0.5,
+        default_publish_hour: 9,
       },
-      { onConflict: 'user_id,organization_id' }
+      { onConflict: 'user_id,organization_id', ignoreDuplicates: false }
     )
     .select('scout_context')
     .single()

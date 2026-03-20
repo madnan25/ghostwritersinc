@@ -760,7 +760,7 @@ describe('Sprint 3: Edge cases', () => {
 // ===========================================================================
 
 describe('Sprint 3: Brief creation schema validation', () => {
-  const { z } = require('zod')
+  const { z } = require('zod') // eslint-disable-line @typescript-eslint/no-require-imports
 
   const CreateBriefSchema = z.object({
     pillar_id: z.string().uuid().nullable().optional(),
