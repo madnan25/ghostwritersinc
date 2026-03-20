@@ -146,6 +146,24 @@ export const statusTokens = [
   },
 ] as const;
 
+export const formControls = [
+  {
+    name: "Compact Dropdown Select",
+    className:
+      "appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pr-7 text-xs font-medium text-foreground/70 outline-none transition-colors hover:border-white/20 hover:text-foreground focus:border-white/25",
+    chevronStyle: {
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.5)' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "right 8px center",
+    },
+    notes:
+      "Native <select> with custom styling. Use for compact filter selectors on dashboard panels — month filters, category filters, and similar inline controls.",
+    usage:
+      "Preferred over heavier dropdown menus when the option set is small and the control sits inside a panel header or toolbar.",
+    sampleOptions: ["This month", "Last month", "Last 3 months"],
+  },
+] as const;
+
 export const designPrinciples = [
   "Primary emphasis comes from contrast, glow, and density instead of dramatic motion.",
   "Glass surfaces should stack from `dashboard-frame` to `dashboard-rail` to `editorial-card` as detail increases.",

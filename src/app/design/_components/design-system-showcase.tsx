@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   buttonGuidelines,
   designPrinciples,
+  formControls,
   foundationTokens,
   statusTokens,
   surfacePatterns,
@@ -132,6 +133,39 @@ export function DesignSystemShowcase() {
               <div className="mt-4">
                 <span className={token.className}>{token.label}</span>
               </div>
+            </div>
+          ))}
+        </div>
+      </DesignSection>
+
+      <DesignSection
+        kicker="Form Controls"
+        title="Input Patterns"
+        description="Standardized form controls for filters, selectors, and compact inputs used across dashboard panels."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          {formControls.map((control) => (
+            <div key={control.name} className="dashboard-rail p-5">
+              <p className="editorial-meta">{control.name}</p>
+              <div className="mt-4">
+                <select
+                  className={control.className}
+                  style={control.chevronStyle}
+                  defaultValue={control.sampleOptions[0]}
+                >
+                  {control.sampleOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-foreground/68">
+                {control.notes}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-foreground/50">
+                {control.usage}
+              </p>
             </div>
           ))}
         </div>
