@@ -81,6 +81,12 @@ export async function PATCH(
     updateFields.confidence = parsed.data.confidence
   }
   if (parsed.data.status !== undefined) {
+    if (existing.status === 'dismissed' && parsed.data.status === 'confirmed') {
+      return NextResponse.json(
+        { error: 'Cannot confirm a dismissed observation — user has explicitly rejected it' },
+        { status: 422 }
+      )
+    }
     updateFields.status = parsed.data.status
     if (parsed.data.status === 'confirmed') {
       updateFields.confirmed_at = new Date().toISOString()
