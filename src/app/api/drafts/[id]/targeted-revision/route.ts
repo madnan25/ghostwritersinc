@@ -209,7 +209,7 @@ export async function POST(
 
     if (statusError) {
       console.error('[targeted-revision] DB error transitioning status:', statusError)
-      // Non-fatal: revision record is created; status update failure is logged
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
   }
 
