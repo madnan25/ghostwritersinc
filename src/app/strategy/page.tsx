@@ -7,8 +7,9 @@ import { ScoutInstructionsCard } from './_components/scout-instructions-card'
 import { PillarWeightSliders } from './_components/pillar-weight-sliders'
 import { PostingDaysToggle } from './_components/posting-days-toggle'
 import { WhatsWorkingCard } from './_components/whats-working-card'
+import { VoiceLearningCard } from './_components/voice-learning-card'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
-import { getScoutContext, getStrategyConfig } from '@/app/actions/strategy'
+import { getScoutContext, getStrategyConfig, getVoiceObservationsData } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
 import type { WhatsWorkingSummary } from '@/lib/performance-analysis'
 import { getCalendarDate } from '@/lib/post-display'
@@ -51,13 +52,14 @@ function getPostsThisMonth(posts: Post[]): number {
 export default async function StrategyPage() {
   // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig, strategyConfig] = await Promise.all([
+  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig, strategyConfig, voiceData] = await Promise.all([
     supabase.auth.getUser(),
     getPillars(),
     getAllPosts(),
     getScoutContext(),
     getPillarWeightsConfig(),
     getStrategyConfig(),
+    getVoiceObservationsData(),
   ])
 
   // Get org membership (needed for org name + scoping queries)
@@ -149,6 +151,15 @@ export default async function StrategyPage() {
       <div className="mb-10">
         <h2 className="mb-4 text-lg font-semibold">Performance Insights</h2>
         <WhatsWorkingCard summary={whatsWorking} updatedAt={whatsWorkingUpdatedAt} />
+      </div>
+
+      {/* Voice Learning */}
+      <div className="mb-10">
+        <h2 className="mb-4 text-lg font-semibold">Voice Learning</h2>
+        <VoiceLearningCard
+          observations={voiceData.observations}
+          diffCount={voiceData.diffCount}
+        />
       </div>
 
       {pillars.length === 0 ? (

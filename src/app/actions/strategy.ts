@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { VoiceObservation } from "@/lib/types";
 
 export type StrategyConfig = {
   monthly_post_target: number;
@@ -219,6 +220,128 @@ export async function updatePostingDays(postingDays: number[]) {
 
   if (error) throw new Error(error.message)
 
+  revalidatePath('/strategy')
+}
+
+// ---------------------------------------------------------------------------
+// Voice Learning — observation actions (LIN-503)
+// ---------------------------------------------------------------------------
+
+export interface VoiceObservationsData {
+  observations: VoiceObservation[]
+  diffCount: number
+}
+
+export async function getVoiceObservationsData(): Promise<VoiceObservationsData> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { observations: [], diffCount: 0 }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) return { observations: [], diffCount: 0 }
+
+  const [{ data: observations }, { count: diffCount }] = await Promise.all([
+    supabase
+      .from('voice_observations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('organization_id', profile.organization_id)
+      .in('status', ['pending', 'confirmed'])
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('post_diffs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('organization_id', profile.organization_id),
+  ])
+
+  return {
+    observations: (observations as VoiceObservation[] | null) ?? [],
+    diffCount: diffCount ?? 0,
+  }
+}
+
+export async function confirmObservation(id: string): Promise<void> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  const { error } = await supabase
+    .from('voice_observations')
+    .update({ status: 'confirmed', confirmed_at: new Date().toISOString(), dismissed_at: null })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('organization_id', profile.organization_id)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/strategy')
+}
+
+export async function dismissObservation(id: string): Promise<void> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  const { error } = await supabase
+    .from('voice_observations')
+    .update({ status: 'dismissed', dismissed_at: new Date().toISOString(), confirmed_at: null })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('organization_id', profile.organization_id)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/strategy')
+}
+
+export async function editObservation(id: string, observation: string): Promise<void> {
+  const text = observation.trim()
+  if (!text || text.length > 2000) throw new Error('Invalid observation text')
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  const { error } = await supabase
+    .from('voice_observations')
+    .update({ observation: text })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('organization_id', profile.organization_id)
+
+  if (error) throw new Error(error.message)
   revalidatePath('/strategy')
 }
 
