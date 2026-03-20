@@ -63,7 +63,7 @@ export async function POST(
   // Verify the writing profile belongs to this agent's user/org
   const { data: profile } = await supabase
     .from('user_writing_profiles')
-    .select('id, user_id, organization_id, learned_preferences')
+    .select('id, user_id, organization_id')
     .eq('id', id)
     .eq('user_id', auth.userId)
     .eq('organization_id', auth.organizationId)
@@ -93,22 +93,9 @@ export async function POST(
     )
   }
 
-  // Build the updated learned_preferences array
-  const existing: unknown[] = Array.isArray(profile.learned_preferences)
-    ? profile.learned_preferences
-    : []
-
-  // Idempotent: skip if this observation is already in the list
-  const alreadyApplied = existing.some(
-    (entry) =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      (entry as Record<string, unknown>).observation_id === observation.id
-  )
-  if (alreadyApplied) {
-    return NextResponse.json({ ok: true, profile_id: id, already_applied: true })
-  }
-
+  // Atomically append the new preference entry using a single UPDATE with JSONB concat.
+  // The RPC's NOT (@>) predicate also handles idempotency: if this observation_id is
+  // already in learned_preferences the UPDATE matches 0 rows (returns empty set).
   const newEntry = {
     observation_id: observation.id,
     observation: observation.observation,
@@ -117,20 +104,21 @@ export async function POST(
     applied_at: new Date().toISOString(),
   }
 
-  const { data: updatedProfile, error } = await supabase
-    .from('user_writing_profiles')
-    .update({
-      learned_preferences: [...existing, newEntry],
-    })
-    .eq('id', id)
-    .eq('organization_id', auth.organizationId)
-    .select()
-    .single()
+  const { data: rows, error } = await supabase.rpc('append_learned_preference', {
+    p_profile_id: id,
+    p_org_id: auth.organizationId,
+    p_entry: newEntry,
+  })
 
   if (error) {
     console.error('[writing-profiles/apply-observation] DB error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
-  return NextResponse.json(updatedProfile)
+  // 0 rows means observation_id was already present — idempotent no-op
+  if (!rows || rows.length === 0) {
+    return NextResponse.json({ ok: true, profile_id: id, already_applied: true })
+  }
+
+  return NextResponse.json(rows[0])
 }
