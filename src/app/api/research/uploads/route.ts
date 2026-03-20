@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateAgent(request)
     if (!isAgentContext(auth)) return auth
 
-    const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+    const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-uploads-read'), { maxRequests: 60 })
     if (limited) return limited
 
     if (!hasAgentPermission(auth.permissions, 'research:read')) {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 20 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-uploads-write'), { maxRequests: 20 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'research:write')) {

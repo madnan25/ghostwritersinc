@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 5 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'briefs-enrich-write'), { maxRequests: 5 })
   if (limited) return limited
 
   if (

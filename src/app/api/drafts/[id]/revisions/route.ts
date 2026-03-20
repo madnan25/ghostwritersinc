@@ -12,7 +12,7 @@ export async function GET(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'drafts-revisions-read'), { maxRequests: 60 })
   if (limited) return limited
 
   const { id } = await params

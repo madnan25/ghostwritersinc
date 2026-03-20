@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const auth = await authenticateAgent(request)
     if (!isAgentContext(auth)) return auth
 
-    const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+    const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-upload-write'), { maxRequests: 10 })
     if (limited) return limited
 
     if (!hasAgentPermission(auth.permissions, 'research:write')) {

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'pillars-read'), { maxRequests: 60 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'pillars:read')) {
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'pillars-write'), { maxRequests: 10 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'pillars:write')) {

@@ -30,7 +30,7 @@ export async function PATCH(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'pillars-write'), { maxRequests: 10 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'pillars:write')) {
@@ -137,7 +137,7 @@ export async function DELETE(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'pillars-write'), { maxRequests: 10 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'pillars:write')) {

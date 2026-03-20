@@ -29,7 +29,7 @@ export async function GET(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-pool-read'), { maxRequests: 60 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'research:read')) {
@@ -67,7 +67,7 @@ export async function PATCH(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-pool-write'), { maxRequests: 10 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'research:write')) {
@@ -135,7 +135,7 @@ export async function DELETE(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 10 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'research-pool-write'), { maxRequests: 10 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'research:write')) {

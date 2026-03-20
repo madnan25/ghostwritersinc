@@ -27,7 +27,7 @@ export async function GET(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'read'), { maxRequests: 60 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'drafts-comments-read'), { maxRequests: 60 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'comments:read')) {
@@ -99,7 +99,7 @@ export async function POST(
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), { maxRequests: 30 })
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'drafts-comments-write'), { maxRequests: 30 })
   if (limited) return limited
 
   if (!hasAgentPermission(auth.permissions, 'comments:write')) {
