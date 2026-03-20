@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   if (!pillarId && parsed.data.pillar) {
     const normalized = await normalizePillarInput(
       parsed.data.pillar,
-      auth.organizationId,
+      auth.userId,
       supabase,
     )
     if (normalized) {

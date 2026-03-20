@@ -9,10 +9,12 @@ import {
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
+import { getLatestBriefVersion } from '@/lib/brief-versioning'
+import { normalizePillarInput } from '@/lib/pillar-normalization'
 import { rateLimit } from '@/lib/rate-limit'
 
 const VALID_POST_STATUSES = [
-  'draft', 'pending_review', 'approved', 'rejected', 'scheduled', 'published', 'publish_failed',
+  'draft', 'pending_review', 'approved', 'rejected', 'revision', 'scheduled', 'published', 'publish_failed',
 ] as const
 
 const CreateDraftSchema = z.object({
@@ -20,6 +22,7 @@ const CreateDraftSchema = z.object({
   content_type: z.enum(['text', 'image', 'document']).default('text'),
   pillar: z.string().nullable().optional(),
   pillar_id: z.string().uuid().nullable().optional(),
+  brief_id: z.string().uuid().nullable().optional(),
   brief_ref: z.string().max(512).nullable().optional(),
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
@@ -72,6 +75,66 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Dedup guard: if brief_id is provided, reject if an active post already exists
+  // for that brief. Agents should PATCH existing drafts for revisions, not POST new ones.
+  const briefId = parsed.data.brief_id ?? null
+  if (briefId) {
+    const { data: existing } = await supabase
+      .from('posts')
+      .select('id, status, content_version')
+      .eq('brief_id', briefId)
+      .eq('organization_id', auth.organizationId)
+      .not('status', 'in', '("rejected")')
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: `A post already exists for brief ${briefId} (post ${existing.id}, status: ${existing.status}, v${existing.content_version ?? 1}). Use PATCH /api/drafts/${existing.id} to revise it instead of creating a duplicate.`,
+          existing_post_id: existing.id,
+          existing_status: existing.status,
+        },
+        { status: 409 }
+      )
+    }
+  }
+
+  const latestBriefVersion = await getLatestBriefVersion(
+    supabase,
+    briefId,
+  )
+
+  // Resolve pillar_id: explicit > brief inheritance > text normalization
+  let resolvedPillarId = parsed.data.pillar_id ?? null
+  let pillarMappingStatus: 'auto' | 'manual' | 'needs_review' = resolvedPillarId ? 'manual' : 'auto'
+
+  if (!resolvedPillarId && briefId) {
+    const { data: brief } = await supabase
+      .from('briefs')
+      .select('pillar_id')
+      .eq('id', briefId)
+      .maybeSingle()
+    if (brief?.pillar_id) {
+      resolvedPillarId = brief.pillar_id
+      pillarMappingStatus = 'auto'
+    }
+  }
+
+  if (!resolvedPillarId && parsed.data.pillar) {
+    const normalized = await normalizePillarInput(
+      parsed.data.pillar,
+      auth.userId,
+      supabase,
+    )
+    if (normalized) {
+      resolvedPillarId = normalized.pillarId
+      pillarMappingStatus = normalized.mappingStatus
+    } else {
+      pillarMappingStatus = 'needs_review'
+    }
+  }
+
   const { data: post, error } = await supabase
     .from('posts')
     .insert({
@@ -80,7 +143,10 @@ export async function POST(request: NextRequest) {
       content: parsed.data.content,
       content_type: parsed.data.content_type,
       pillar: parsed.data.pillar ?? null,
-      pillar_id: parsed.data.pillar_id ?? null,
+      pillar_id: resolvedPillarId,
+      pillar_mapping_status: pillarMappingStatus,
+      brief_id: parsed.data.brief_id ?? null,
+      brief_version_id: latestBriefVersion?.id ?? null,
       brief_ref: parsed.data.brief_ref ?? null,
       suggested_publish_at: parsed.data.suggested_publish_at ?? null,
       media_urls: parsed.data.media_urls ?? [],

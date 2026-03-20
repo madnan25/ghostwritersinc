@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       let briefMappingStatus: 'auto' | 'needs_review' = 'auto'
 
       if (!item.pillar_id) {
-        const normalized = await normalizePillarInput(item.title, auth.organizationId, supabase)
+        const normalized = await normalizePillarInput(item.title, auth.userId, supabase)
         if (normalized) {
           briefPillarId = normalized.pillarId
         } else {

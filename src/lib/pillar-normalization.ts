@@ -22,27 +22,27 @@ export type NormalizationResult = {
 }
 
 /**
- * Normalize a free-form pillar string to a pillar_id for the given org.
+ * Normalize a free-form pillar string to a pillar_id for the given user.
  *
- * @param input         Raw pillar value (slug, name, alias, etc.)
- * @param organizationId  Org scope — pillars are org-specific
- * @param supabase      Admin Supabase client
+ * @param input    Raw pillar value (slug, name, alias, etc.)
+ * @param userId   User scope — pillars are user-specific (since LIN-181)
+ * @param supabase Admin Supabase client
  * @returns NormalizationResult or null if no match found
  */
 export async function normalizePillarInput(
   input: string | null | undefined,
-  organizationId: string,
+  userId: string,
   supabase: SupabaseClient,
 ): Promise<NormalizationResult | null> {
   if (!input || !input.trim()) return null
 
   const clean = input.trim()
 
-  // Fetch all pillars for this org once
+  // Fetch all pillars for this user (pillars are user-scoped since LIN-181)
   const { data: pillars, error } = await supabase
     .from('content_pillars')
     .select('id, name, slug')
-    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
 
   if (error || !pillars || pillars.length === 0) return null
 

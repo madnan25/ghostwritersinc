@@ -10,6 +10,9 @@ import {
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAgentActivity } from '@/lib/agent-activity'
+import { buildVersionedContentUpdate } from '@/lib/post-versioning'
+import { getLatestBriefVersion } from '@/lib/brief-versioning'
+import { normalizePillarInput } from '@/lib/pillar-normalization'
 import { rateLimit } from '@/lib/rate-limit'
 import { isValidUuid } from '@/lib/validation'
 
@@ -108,7 +111,7 @@ export async function PATCH(
   // Verify the post belongs to the agent's organization
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status, content, content_version')
+    .select('organization_id, user_id, status, content, content_version, brief_id, brief_version_id, pillar_id')
     .eq('id', id)
     .single()
 
@@ -120,39 +123,64 @@ export async function PATCH(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  if (!['draft', 'pending_review', 'rejected'].includes(existing.status)) {
+  if (!['draft', 'pending_review', 'rejected', 'revision'].includes(existing.status)) {
     return NextResponse.json(
       { error: `Cannot update post in "${existing.status}" status` },
       { status: 409 }
     )
   }
 
-  // Snapshot previous content into post_revisions before overwriting
-  if (parsed.data.content && existing.content && parsed.data.content !== existing.content) {
-    // Get the next version number
-    const { data: lastRevision } = await supabase
-      .from('post_revisions')
-      .select('version')
-      .eq('post_id', id)
-      .order('version', { ascending: false })
-      .limit(1)
-      .single()
-
-    const nextVersion = (lastRevision?.version ?? 0) + 1
-
-    await supabase.from('post_revisions').insert({
-      post_id: id,
-      version: nextVersion,
-      content: existing.content,
-      revised_by_agent: auth.agentName,
-      revision_reason: parsed.data.revision_reason ?? null,
-    })
+  // Normalize pillar text → pillar_id when pillar text is updated without explicit pillar_id
+  const { revision_reason, ...updateData } = parsed.data
+  if (updateData.pillar && !updateData.pillar_id && !existing.pillar_id) {
+    const normalized = await normalizePillarInput(
+      updateData.pillar,
+      auth.userId,
+      supabase,
+    )
+    if (normalized) {
+      updateData.pillar_id = normalized.pillarId
+      ;(updateData as Record<string, unknown>).pillar_mapping_status = normalized.mappingStatus
+    } else {
+      ;(updateData as Record<string, unknown>).pillar_mapping_status = 'needs_review'
+    }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { revision_reason, ...updateData } = parsed.data
+  const contentChanged =
+    typeof parsed.data.content === 'string' &&
+    parsed.data.content.length > 0 &&
+    parsed.data.content !== existing.content
+  const currentVersion = (existing as Record<string, unknown>).content_version as number ?? 1
+  const versionPlan = contentChanged
+    ? buildVersionedContentUpdate({
+        status: existing.status,
+        currentVersion,
+      })
+    : null
+  const latestBriefVersion =
+    contentChanged && existing.brief_id
+      ? await getLatestBriefVersion(supabase, existing.brief_id)
+      : null
+
+  // Snapshot the previous canonical content before promoting the new one.
+  if (contentChanged && existing.content) {
+    await supabase.from('post_revisions').upsert(
+      {
+        post_id: id,
+        version: currentVersion,
+        content: existing.content,
+        revised_by_agent: auth.agentName,
+        revision_reason: parsed.data.revision_reason ?? null,
+        brief_version_id: existing.brief_version_id ?? null,
+      },
+      { onConflict: 'post_id,version' },
+    )
+  }
+
   const updateFields = {
     ...updateData,
+    ...(versionPlan?.updateFields ?? {}),
+    ...(contentChanged ? { brief_version_id: latestBriefVersion?.id ?? existing.brief_version_id ?? null } : {}),
     updated_at: new Date().toISOString(),
   }
 
@@ -187,58 +215,27 @@ export async function PATCH(
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
-  // Auto-resubmit: if the agent updated content on a rejected post, transition
-  // to pending_review so the Strategist can re-review the revised draft.
-  if (existing.status === 'rejected' && parsed.data.content) {
-    const currentVersion = (post as Record<string, unknown>).content_version as number ?? 1
-    const newVersion = currentVersion + 1
-
-    // Snapshot the previous content (before the agent's update)
-    await supabase.from('post_revisions').insert({
+  if (contentChanged && versionPlan && existing.status !== 'draft') {
+    await supabase.from('review_events').insert({
       post_id: id,
-      version: currentVersion,
-      content: existing.content,
+      agent_id: auth.agentId,
+      agent_name: auth.agentName,
+      action: 'revised',
+      notes: `Agent revised and resubmitted (v${versionPlan.nextVersion})`,
     })
 
-    // Transition rejected → pending_review, clear rejection fields, bump version
-    const { error: transitionError } = await supabase
-      .from('posts')
-      .update({
-        status: 'pending_review',
-        content_version: newVersion,
-        rejection_reason: null,
-        delete_scheduled_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-
-    if (!transitionError) {
-      // Record the revision event
-      await supabase.from('review_events').insert({
-        post_id: id,
-        agent_name: auth.agentId,
-        action: 'revised',
-        notes: `Agent revised and resubmitted (v${newVersion})`,
-      })
-
-      logAgentActivity({
-        organizationId: auth.organizationId,
-        agentId: auth.agentId,
-        postId: id,
-        actionType: 'status_changed',
-        metadata: { from: 'rejected', to: 'pending_review', content_version: newVersion },
-        providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
-      })
-
-      // Re-fetch for the response
-      const { data: updated } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (updated) return NextResponse.json(updated)
-    }
+    logAgentActivity({
+      organizationId: auth.organizationId,
+      agentId: auth.agentId,
+      postId: id,
+      actionType: 'status_changed',
+      metadata: {
+        from: existing.status,
+        to: 'pending_review',
+        content_version: versionPlan.nextVersion,
+      },
+      providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
+    })
   }
 
   return NextResponse.json(post)
