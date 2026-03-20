@@ -1,6 +1,15 @@
 import type { CSSProperties } from "react";
 
-export const foundationTokens = [
+type FoundationToken = {
+  name: string;
+  cssVar: string;
+  textVar: string;
+  usage: string;
+  previewKind?: string;
+  previewStyle?: CSSProperties;
+};
+
+export const foundationTokens: FoundationToken[] = [
   {
     name: "Base Background",
     cssVar: "--background",
@@ -17,7 +26,7 @@ export const foundationTokens = [
       backgroundColor: "oklch(0.125 0.01 150)",
       backgroundImage:
         "radial-gradient(ellipse 118% 62% at 50% -8%, oklch(0.36 0.05 140 / 26%) 0%, transparent 56%), radial-gradient(ellipse 44% 32% at 100% 0%, oklch(0.96 0.03 110 / 10%) 0%, transparent 42%), radial-gradient(ellipse 38% 26% at 0% 18%, oklch(0.32 0.03 150 / 11%) 0%, transparent 55%), linear-gradient(180deg, oklch(0.18 0.012 150) 0%, oklch(0.105 0.008 150) 100%)",
-    } as CSSProperties,
+    },
   },
   {
     name: "Card",

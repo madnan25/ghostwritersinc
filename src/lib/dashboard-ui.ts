@@ -229,3 +229,53 @@ export function getDashboardNarrative(metrics: DashboardMetrics): string {
 
   return `${metrics.totalPosts} posts are currently in motion. You are caught up and ready to optimize quality over speed.`;
 }
+
+// ---------------------------------------------------------------------------
+// Pipeline swimlane
+// ---------------------------------------------------------------------------
+
+export type PipelineColumnId = "drafts" | "in_review" | "approved" | "scheduled" | "published";
+
+export type PipelineColumnDef = {
+  id: PipelineColumnId;
+  label: string;
+};
+
+export const PIPELINE_COLUMN_DEFS: PipelineColumnDef[] = [
+  { id: "drafts", label: "Drafts & Revisions" },
+  { id: "in_review", label: "In Review" },
+  { id: "approved", label: "Approved" },
+  { id: "scheduled", label: "Scheduled" },
+  { id: "published", label: "Published" },
+];
+
+export function getPostPipelineColumn(post: Post): PipelineColumnId | null {
+  if (post.status === "draft" || post.status === "revision") return "drafts";
+  if (post.status === "pending_review") return "in_review";
+  if (post.status === "approved") return "approved";
+  if (post.status === "scheduled") return "scheduled";
+  if (post.status === "published") {
+    const publishedAt = post.published_at;
+    if (!publishedAt) return null;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return new Date(publishedAt).getTime() > sevenDaysAgo ? "published" : null;
+  }
+  return null; // rejected, publish_failed → alert bar
+}
+
+export function groupPostsByPipelineColumn(posts: Post[]): Record<PipelineColumnId, Post[]> {
+  const groups: Record<PipelineColumnId, Post[]> = {
+    drafts: [],
+    in_review: [],
+    approved: [],
+    scheduled: [],
+    published: [],
+  };
+
+  for (const post of posts) {
+    const col = getPostPipelineColumn(post);
+    if (col) groups[col].push(post);
+  }
+
+  return groups;
+}

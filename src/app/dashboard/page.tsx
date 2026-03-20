@@ -4,7 +4,7 @@ import { getDashboardMetrics, getDashboardNarrative } from '@/lib/dashboard-ui'
 import { processDuePosts } from '@/lib/publish-scheduled'
 import { ScheduleHealthPanels } from '@/components/schedule-health-panels'
 import { DashboardHero } from './_components/dashboard-hero'
-import { PostGrid } from './_components/post-grid'
+import { DashboardViewContainer } from './_components/dashboard-view-container'
 import { AgentActivityFeed } from './_components/agent-activity-feed'
 
 export default async function DashboardPage() {
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 
       <ScheduleHealthPanels warnings={rotationWarnings} />
 
-      <PostGrid posts={posts} pillars={pillars} />
+      <DashboardViewContainer posts={posts} pillars={pillars} />
 
       <AgentActivityFeed />
     </div>
