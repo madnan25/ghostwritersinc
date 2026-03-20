@@ -1,6 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { logQueryError } from '@/lib/queries/errors'
-import type { Brief, ContentPillar, Post, PostComment, PostRevision, PostStatus, ReviewEvent } from '@/lib/types'
+import type {
+  Brief,
+  BriefVersionWithContext,
+  ContentPillar,
+  Post,
+  PostComment,
+  PostRevision,
+  PostStatus,
+  ReviewEvent,
+} from '@/lib/types'
 
 function getLinkedInDisplayNameFromSettings(settings: unknown): string | null {
   if (!settings || typeof settings !== 'object') return null
@@ -199,11 +208,12 @@ export async function getAllPosts(): Promise<Post[]> {
 
   const STATUS_ORDER: Record<string, number> = {
     pending_review: 0,
-    draft: 1,
-    approved: 2,
-    scheduled: 3,
-    published: 4,
-    rejected: 5,
+    revision: 1,
+    draft: 2,
+    approved: 3,
+    scheduled: 4,
+    published: 5,
+    rejected: 6,
   }
 
   return (data ?? []).sort((a, b) => {
@@ -278,11 +288,12 @@ export async function getAllPostsWithRevisions(): Promise<PostWithRevisionCount[
   const STATUS_ORDER: Record<string, number> = {
     pending_review: 0,
     agent_review: 1,
-    draft: 2,
-    approved: 3,
-    scheduled: 4,
-    published: 5,
-    rejected: 6,
+    revision: 2,
+    draft: 3,
+    approved: 4,
+    scheduled: 5,
+    published: 6,
+    rejected: 7,
   }
 
   return allPosts
@@ -349,6 +360,101 @@ export async function getBriefById(id: string): Promise<Brief | null> {
     return null
   }
   return data
+}
+
+export async function getBriefVersionsForPost(
+  postId: string,
+  briefId: string | null,
+  currentPostVersion: number,
+  currentBriefVersionId?: string | null,
+): Promise<BriefVersionWithContext[]> {
+  if (!briefId) return []
+
+  const supabase = await createClient()
+  const { data: versions, error } = await supabase
+    .from('brief_versions')
+    .select('*')
+    .eq('brief_id', briefId)
+    .order('version', { ascending: false })
+
+  if (error) {
+    logQueryError(`brief versions for brief ${briefId}`, error)
+    return []
+  }
+
+  const briefVersions = versions ?? []
+  if (briefVersions.length === 0) return []
+
+  const assignedAgentIds = Array.from(
+    new Set(
+      briefVersions
+        .map((version) => version.assigned_agent_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    ),
+  )
+  const researchIds = Array.from(
+    new Set(
+      briefVersions.flatMap((version) => version.research_refs ?? []),
+    ),
+  )
+
+  const [{ data: agents }, { data: researchItems }, { data: postRevisions }] = await Promise.all([
+    assignedAgentIds.length > 0
+      ? supabase.from('agents').select('id, name').in('id', assignedAgentIds)
+      : Promise.resolve({ data: [], error: null as unknown }),
+    researchIds.length > 0
+      ? supabase.from('research_pool').select('id, title, source_type').in('id', researchIds)
+      : Promise.resolve({ data: [], error: null as unknown }),
+    supabase
+      .from('post_revisions')
+      .select('version, brief_version_id')
+      .eq('post_id', postId),
+  ])
+
+  const agentNameById = new Map(
+    ((agents ?? []) as Array<{ id: string; name: string | null }>).map((agent) => [
+      agent.id,
+      agent.name ?? null,
+    ]),
+  )
+  const researchById = new Map(
+    ((researchItems ?? []) as Array<{ id: string; title: string; source_type: string }>).map((item) => [
+      item.id,
+      item,
+    ]),
+  )
+  const linkedVersionsByBriefVersionId = new Map<string, number[]>()
+  for (const revision of (postRevisions ?? []) as Array<{ version: number; brief_version_id: string | null }>) {
+    if (!revision.brief_version_id) continue
+    const existing = linkedVersionsByBriefVersionId.get(revision.brief_version_id) ?? []
+    existing.push(revision.version)
+    linkedVersionsByBriefVersionId.set(revision.brief_version_id, existing)
+  }
+
+  if (currentBriefVersionId) {
+    const currentPostVersions = linkedVersionsByBriefVersionId.get(currentBriefVersionId) ?? []
+    linkedVersionsByBriefVersionId.set(
+      currentBriefVersionId,
+      Array.from(new Set([...currentPostVersions, currentPostVersion])),
+    )
+  }
+
+  return briefVersions.map((version) => ({
+    ...version,
+    assigned_agent_name: version.assigned_agent_id
+      ? agentNameById.get(version.assigned_agent_id) ?? null
+      : null,
+    research_items: (version.research_refs ?? [])
+      .map((id: string) => researchById.get(id))
+      .filter(
+        (item: { id: string; title: string; source_type: string } | undefined): item is {
+          id: string
+          title: string
+          source_type: string
+        } => Boolean(item),
+      ),
+    linked_post_versions: linkedVersionsByBriefVersionId.get(version.id) ?? [],
+  }))
 }
 
 export async function getPillars(): Promise<ContentPillar[]> {

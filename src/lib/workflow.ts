@@ -8,9 +8,10 @@ import type { PostStatus, ReviewAction } from './types'
  */
 const ALLOWED_TRANSITIONS: Record<PostStatus, PostStatus[]> = {
   draft: ['pending_review'],
-  pending_review: ['approved', 'rejected'],
+  pending_review: ['approved', 'rejected', 'revision'],
   approved: ['scheduled', 'published', 'pending_review'],
   rejected: ['draft', 'pending_review'],
+  revision: ['pending_review'],
   scheduled: ['published', 'approved', 'publish_failed', 'pending_review'],
   published: [],
   publish_failed: ['scheduled', 'draft', 'pending_review'],
@@ -65,7 +66,7 @@ export function validateTransition(input: TransitionInput): {
     )
   }
 
-  if (to === 'rejected' && !rejectionReason) {
+  if ((to === 'rejected' || to === 'revision') && !rejectionReason) {
     throw new WorkflowError(
       'Rejection requires a reason',
       'REJECTION_REASON_REQUIRED'
@@ -74,7 +75,9 @@ export function validateTransition(input: TransitionInput): {
 
   const reviewAction: ReviewAction =
     to === 'rejected' ? 'rejected' :
+    to === 'revision' ? 'revised' :
     (from === 'rejected' && to === 'pending_review') ? 'revised' :
+    (from === 'revision' && to === 'pending_review') ? 'revised' :
     (to === 'pending_review') ? 'escalated' :
     'approved'
 
@@ -88,11 +91,11 @@ export function validateTransition(input: TransitionInput): {
     updated_at: new Date().toISOString(),
   }
 
-  if (to === 'rejected') {
-    updateFields.rejection_reason = rejectionReason
+  if (to === 'rejected' || to === 'revision') {
+    updateFields.rejection_reason = rejectionReason ?? null
     // Only user rejections schedule deletion — agent rejections flag
     // quality issues and should not auto-delete.
-    if (!isAgentReview) {
+    if (to === 'rejected' && !isAgentReview) {
       updateFields.delete_scheduled_at = new Date(
         Date.now() + 24 * 60 * 60 * 1000
       ).toISOString()
@@ -106,7 +109,7 @@ export function validateTransition(input: TransitionInput): {
 
   // Clear reviewed_by_agent when a post re-enters pending_review
   // so the agent will pick it up for a fresh review cycle.
-  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'draft' || from === 'scheduled' || from === 'publish_failed')) {
+  if (to === 'pending_review' && (from === 'approved' || from === 'rejected' || from === 'revision' || from === 'draft' || from === 'scheduled' || from === 'publish_failed')) {
     updateFields.reviewed_by_agent = null
   }
 

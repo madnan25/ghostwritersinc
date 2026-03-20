@@ -65,7 +65,7 @@ export async function POST(
   // Fetch the post
   const { data: post } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status, created_by_agent')
+    .select('organization_id, user_id, status, created_by_agent, reviewed_by_agent')
     .eq('id', id)
     .single()
 
@@ -85,6 +85,17 @@ export async function POST(
     )
   }
 
+  // Defense-in-depth: prevent duplicate reviews by the same agent.
+  // reviewed_by_agent is cleared when content changes or a post re-enters
+  // pending_review, so this only blocks true duplicates — not re-reviews
+  // after content updates.
+  if (post.reviewed_by_agent === auth.agentName) {
+    return NextResponse.json(
+      { error: 'Post already reviewed by this agent — no content changes since last review' },
+      { status: 409 }
+    )
+  }
+
   // Determine target status based on action
   const currentStatus = post.status as PostStatus
   let targetStatus: PostStatus
@@ -92,7 +103,7 @@ export async function POST(
   if (parsed.data.action === 'approved') {
     targetStatus = 'approved'
   } else {
-    targetStatus = 'rejected'
+    targetStatus = 'revision'
   }
 
   // Validate the transition
