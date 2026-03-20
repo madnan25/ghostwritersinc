@@ -5,9 +5,10 @@ import { ContentMixChart } from './_components/content-mix-chart'
 import { RotationTimeline } from './_components/rotation-timeline'
 import { ScoutInstructionsCard } from './_components/scout-instructions-card'
 import { PillarWeightSliders } from './_components/pillar-weight-sliders'
+import { PostingDaysToggle } from './_components/posting-days-toggle'
 import { WhatsWorkingCard } from './_components/whats-working-card'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
-import { getScoutContext } from '@/app/actions/strategy'
+import { getScoutContext, getStrategyConfig } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
 import type { WhatsWorkingSummary } from '@/lib/performance-analysis'
 import { getCalendarDate } from '@/lib/post-display'
@@ -50,12 +51,13 @@ function getPostsThisMonth(posts: Post[]): number {
 export default async function StrategyPage() {
   // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig] = await Promise.all([
+  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig, strategyConfig] = await Promise.all([
     supabase.auth.getUser(),
     getPillars(),
     getAllPosts(),
     getScoutContext(),
     getPillarWeightsConfig(),
+    getStrategyConfig(),
   ])
 
   // Fetch "What's Working" summary (non-blocking — returns null if no data)
@@ -183,7 +185,10 @@ export default async function StrategyPage() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <ContentMixChart pillars={pillars} posts={posts} />
               </div>
-              <PillarWeightSliders pillars={pillars} savedConfig={pillarWeightsConfig} />
+              <div className="flex flex-col gap-4">
+                <PillarWeightSliders pillars={pillars} savedConfig={pillarWeightsConfig} />
+                <PostingDaysToggle initialDays={strategyConfig?.posting_days ?? [1, 2, 3, 4, 5]} />
+              </div>
             </div>
           </section>
 

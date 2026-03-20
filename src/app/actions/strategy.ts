@@ -183,6 +183,46 @@ export async function saveScoutContext(context: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Posting days update (LIN-487)
+// ---------------------------------------------------------------------------
+
+export async function updatePostingDays(postingDays: number[]) {
+  if (!Array.isArray(postingDays) || postingDays.length === 0) {
+    throw new Error('At least one posting day must be selected')
+  }
+  const valid = postingDays.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+  if (!valid) throw new Error('Invalid posting days — must be integers 0–6')
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  const { error } = await supabase
+    .from('strategy_config')
+    .upsert(
+      {
+        user_id: user.id,
+        organization_id: profile.organization_id,
+        posting_days: postingDays.sort((a, b) => a - b),
+      },
+      { onConflict: 'user_id,organization_id' },
+    )
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/strategy')
+}
+
+// ---------------------------------------------------------------------------
 // Pillar weight updates (LIN-473)
 // ---------------------------------------------------------------------------
 
