@@ -26,7 +26,10 @@ const UpdateDraftSchema = z.object({
   media_urls: z.array(z.string().url()).nullable().optional(),
   revision_reason: z.string().nullable().optional(),
   freshness_type: z.enum(['evergreen', 'time_sensitive', 'date_locked']).nullable().optional(),
-  expiry_date: z.string().datetime({ offset: true }).nullable().optional(),
+  expiry_date: z.string().datetime({ offset: true })
+    .refine(d => new Date(d) > new Date(), { message: 'expiry_date must be in the future' })
+    .nullable()
+    .optional(),
 })
 
 /** GET /api/drafts/:id — fetch a single draft */
