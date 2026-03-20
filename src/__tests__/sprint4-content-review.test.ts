@@ -778,13 +778,13 @@ describe('Sprint 4: Review event action determination', () => {
     expect(result.reviewAction).toBe('escalated')
   })
 
-  it('approved action for other valid transitions (not special-cased)', () => {
+  it('escalated action for draft → pending_review', () => {
     const result = validateTransition({
       postId: 'p1',
       from: 'draft',
       to: 'pending_review',
       agentName: 'scribe',
     })
-    expect(result.reviewAction).toBe('approved')
+    expect(result.reviewAction).toBe('escalated')
   })
 })

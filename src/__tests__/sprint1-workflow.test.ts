@@ -32,8 +32,8 @@ describe('Sprint 1: workflow transitions', () => {
       expect(isValidTransition('publish_failed', 'approved')).toBe(false)
     })
 
-    it('disallows publish_failed → pending_review', () => {
-      expect(isValidTransition('publish_failed', 'pending_review')).toBe(false)
+    it('allows publish_failed → pending_review', () => {
+      expect(isValidTransition('publish_failed', 'pending_review')).toBe(true)
     })
 
     it('disallows draft → publish_failed', () => {
@@ -51,9 +51,9 @@ describe('Sprint 1: workflow transitions', () => {
       expect(allowed).toContain('approved')
     })
 
-    it('returns scheduled and draft as allowed from publish_failed', () => {
+    it('returns scheduled, draft, and pending_review as allowed from publish_failed', () => {
       const allowed = getAllowedNextStatuses('publish_failed')
-      expect(allowed).toEqual(['scheduled', 'draft'])
+      expect(allowed).toEqual(['scheduled', 'draft', 'pending_review'])
     })
   })
 

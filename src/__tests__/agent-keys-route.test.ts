@@ -114,7 +114,7 @@ describe("agent key admin route", () => {
     mockAgentInsert.mockReturnValue({
       select: vi.fn(() => ({
         single: vi.fn(async () => ({
-          data: { id: "agent-1", agent_type: "scribe" },
+          data: { id: "agent-1", agent_type: "scribe", name: "Scribe" },
           error: null,
         })),
       })),
@@ -199,7 +199,7 @@ describe("agent key admin route", () => {
       agent_id: "agent-1",
       organization_id: "org-1",
       user_id: "user-1",
-      agent_name: "scribe",
+      agent_name: "Scribe",
       api_key_hash: "hashed-key",
       key_prefix: "gw_agent_testpref",
       permissions: ["drafts:read", "drafts:write", "comments:read", "comments:write"],
