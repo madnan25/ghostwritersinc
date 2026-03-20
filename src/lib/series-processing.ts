@@ -91,11 +91,11 @@ export async function getSeriesBriefsWithPosts(
 export function findNextProcessableBrief(
   seriesBriefs: SeriesBriefWithPost[],
 ): SeriesBriefWithPost | null {
-  const PROCESSED_STATUSES = new Set(['in_review', 'revision_requested', 'done'])
+  const PROCESSED_STATUSES = new Set(['in_review', 'revision_requested', 'done', 'cancelled'])
 
   for (const brief of seriesBriefs) {
     // Skip already-processed briefs
-    if (PROCESSED_STATUSES.has(brief.status) || brief.status === 'done') {
+    if (PROCESSED_STATUSES.has(brief.status)) {
       continue
     }
 
