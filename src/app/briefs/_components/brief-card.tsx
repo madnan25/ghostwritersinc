@@ -1,5 +1,6 @@
+import Link from 'next/link'
 import { CalendarDays, FileText, Layers, Sparkles } from 'lucide-react'
-import type { BriefWithContext } from '@/lib/queries/posts'
+import type { BriefWithContext } from '@/lib/queries/briefs'
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending: {
@@ -46,16 +47,15 @@ interface BriefCardProps {
 export function BriefCard({ brief }: BriefCardProps) {
   const statusCfg = STATUS_CONFIG[brief.status] ?? { label: brief.status, className: 'border-border/60 text-muted-foreground' }
   const priorityCfg = PRIORITY_CONFIG[brief.priority] ?? PRIORITY_CONFIG.normal
+  const href = brief.linked_post_id ? `/post/${brief.linked_post_id}` : null
 
-  return (
+  const inner = (
     <div className="dashboard-frame p-5 transition-shadow hover:shadow-[0_8px_28px_-12px_rgba(0,0,0,0.36)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {/* Badges row */}
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`editorial-chip ${statusCfg.className}`}
-            >
+            <span className={`editorial-chip ${statusCfg.className}`}>
               {statusCfg.label}
             </span>
             {brief.priority === 'urgent' && (
@@ -122,4 +122,14 @@ export function BriefCard({ brief }: BriefCardProps) {
       </div>
     </div>
   )
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {inner}
+      </Link>
+    )
+  }
+
+  return inner
 }

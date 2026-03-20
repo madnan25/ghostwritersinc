@@ -1,7 +1,10 @@
-import { getBriefs } from '@/lib/queries/posts'
+import { Suspense } from 'react'
+import { getBriefs } from '@/lib/queries/briefs'
+import { getPillars } from '@/lib/queries/posts'
 import type { BriefStatus } from '@/lib/types'
 import { BriefCard } from './_components/brief-card'
 import { BriefStatusTabs } from './_components/brief-status-tabs'
+import { BriefFilters } from './_components/brief-filters'
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -11,24 +14,39 @@ const STATUS_FILTERS = [
   { value: 'done', label: 'Done' },
 ] as const
 
+const VALID_STATUSES: Array<BriefStatus | ''> = [
+  '',
+  'pending',
+  'in_review',
+  'revision_requested',
+  'done',
+]
+
 interface BriefsPageProps {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{
+    status?: string
+    pillar_id?: string
+    publish_from?: string
+    publish_to?: string
+  }>
 }
 
 export default async function BriefsPage({ searchParams }: BriefsPageProps) {
-  const { status } = await searchParams
-  const validStatuses: Array<BriefStatus | ''> = [
-    '',
-    'pending',
-    'in_review',
-    'revision_requested',
-    'done',
-  ]
-  const activeStatus = validStatuses.includes((status ?? '') as BriefStatus | '')
+  const { status, pillar_id, publish_from, publish_to } = await searchParams
+
+  const activeStatus = VALID_STATUSES.includes((status ?? '') as BriefStatus | '')
     ? (status ?? '')
     : ''
 
-  const briefs = await getBriefs(activeStatus || undefined)
+  const [briefs, pillars] = await Promise.all([
+    getBriefs({
+      status: activeStatus ? (activeStatus as BriefStatus) : undefined,
+      pillar_id: pillar_id || undefined,
+      publish_at_from: publish_from || undefined,
+      publish_at_to: publish_to || undefined,
+    }),
+    getPillars(),
+  ])
 
   return (
     <div className="container px-4 py-8">
@@ -39,7 +57,17 @@ export default async function BriefsPage({ searchParams }: BriefsPageProps) {
         </p>
       </div>
 
-      <BriefStatusTabs filters={STATUS_FILTERS} activeStatus={activeStatus} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <BriefStatusTabs filters={STATUS_FILTERS} activeStatus={activeStatus} />
+        <Suspense>
+          <BriefFilters
+            pillars={pillars.map((p) => ({ id: p.id, name: p.name, color: p.color }))}
+            activePillarId={pillar_id ?? ''}
+            publishFrom={publish_from ?? ''}
+            publishTo={publish_to ?? ''}
+          />
+        </Suspense>
+      </div>
 
       <div className="mt-6">
         {briefs.length === 0 ? (
