@@ -14,6 +14,7 @@ import {
   findEmptyDays,
   getPostsThisMonth,
 } from '@/lib/content-planning'
+import { normalizePillarInput } from '@/lib/pillar-normalization'
 
 /**
  * POST /api/briefs/plan — Strategist Monday planning endpoint.
@@ -177,11 +178,28 @@ export async function POST(request: NextRequest) {
 
       if (!unscheduled) dayIndex++
 
+      // Resolve the brief's pillar_id: use the research item's pillar, falling
+      // back to the planned distribution pillar. If the item has no pillar_id,
+      // attempt normalization using its title as a hint.
+      let briefPillarId = item.pillar_id ?? pillar.id
+      let briefMappingStatus: 'auto' | 'needs_review' = 'auto'
+
+      if (!item.pillar_id) {
+        const normalized = await normalizePillarInput(item.title, auth.organizationId, supabase)
+        if (normalized) {
+          briefPillarId = normalized.pillarId
+        } else {
+          // Fall back to distribution pillar but flag for review
+          briefMappingStatus = 'needs_review'
+        }
+      }
+
       const { data: brief, error: briefErr } = await supabase
         .from('briefs')
         .insert({
           organization_id: auth.organizationId,
-          pillar_id: item.pillar_id ?? pillar.id,
+          pillar_id: briefPillarId,
+          pillar_mapping_status: briefMappingStatus,
           angle: item.title,
           research_refs: [item.id],
           voice_notes: null,

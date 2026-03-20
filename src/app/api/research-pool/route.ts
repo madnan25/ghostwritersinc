@@ -15,6 +15,7 @@ import {
   computeRelevanceScore,
   matchPillar,
 } from '@/lib/research-scoring'
+import { normalizePillarInput } from '@/lib/pillar-normalization'
 import type { ContentPillar } from '@/lib/types'
 
 const CreateResearchPoolSchema = z.object({
@@ -22,6 +23,7 @@ const CreateResearchPoolSchema = z.object({
   source_url: z.string().url().nullable().optional(),
   source_type: z.string().default('article'),
   pillar_id: z.string().uuid().nullable().optional(),
+  pillar: z.string().nullable().optional(), // free-form string; normalized to pillar_id
   relevance_score: z.number().min(0).max(1).nullable().optional(),
   raw_content: z.string().nullable().optional(),
   auto_score: z.boolean().optional().default(true),
@@ -61,6 +63,22 @@ export async function POST(request: NextRequest) {
 
   let pillarId = parsed.data.pillar_id ?? null
   let relevanceScore = parsed.data.relevance_score ?? null
+  let pillarMappingStatus: 'auto' | 'manual' | 'needs_review' = pillarId ? 'manual' : 'auto'
+
+  // Normalize free-form pillar string → pillar_id when provided
+  if (!pillarId && parsed.data.pillar) {
+    const normalized = await normalizePillarInput(
+      parsed.data.pillar,
+      auth.organizationId,
+      supabase,
+    )
+    if (normalized) {
+      pillarId = normalized.pillarId
+      pillarMappingStatus = normalized.mappingStatus
+    } else {
+      pillarMappingStatus = 'needs_review'
+    }
+  }
 
   // Auto-score and auto-match pillars when not explicitly provided
   if (parsed.data.auto_score) {
@@ -114,6 +132,7 @@ export async function POST(request: NextRequest) {
       source_url: parsed.data.source_url ?? null,
       source_type: parsed.data.source_type,
       pillar_id: pillarId,
+      pillar_mapping_status: pillarMappingStatus,
       relevance_score: relevanceScore,
       raw_content: parsed.data.raw_content ?? null,
       created_by_agent_id: auth.agentId,
