@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
@@ -69,8 +69,24 @@ function isStale(post: Post): boolean {
 
 export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactPostCardProps) {
   const router = useRouter()
+  const cardRef = useRef<HTMLDivElement>(null)
   const [hovered, setHovered] = useState(false)
   const [tapped, setTapped] = useState(false)
+
+  useEffect(() => {
+    if (!tapped) return
+    function handleOutside(e: MouseEvent | TouchEvent) {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setTapped(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [tapped])
 
   const isExpanded = hovered || tapped
 
@@ -120,6 +136,7 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
 
   return (
     <motion.div
+      ref={cardRef}
       layout="size"
       className="editorial-card relative flex flex-col gap-3 p-3.5"
       style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}14` } : undefined}

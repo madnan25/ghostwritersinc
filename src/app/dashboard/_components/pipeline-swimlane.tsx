@@ -66,14 +66,18 @@ function PillarDropdown({ pillarOptions, selectedPillarIds, onToggle, onClear }:
       >
         <span>{label}</span>
         {selectedCount > 0 && (
-          <button
-            type="button"
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => { e.stopPropagation(); onClear() }}
-            className="ml-0.5 rounded-full text-primary/70 hover:text-primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onClear() }
+            }}
+            className="ml-0.5 cursor-pointer rounded-full text-primary/70 hover:text-primary"
             aria-label="Clear pillar filter"
           >
             <X className="size-3" />
-          </button>
+          </span>
         )}
         <ChevronDown className={cn('size-3 text-foreground/50 transition-transform', open && 'rotate-180')} />
       </button>
@@ -184,6 +188,19 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
     })
   }
 
+  function handleTabKeyDown(e: React.KeyboardEvent, idx: number) {
+    const count = PIPELINE_COLUMN_DEFS.length
+    let next: number | null = null
+    if (e.key === 'ArrowRight') { e.preventDefault(); next = (idx + 1) % count }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); next = (idx - 1 + count) % count }
+    else if (e.key === 'Home') { e.preventDefault(); next = 0 }
+    else if (e.key === 'End') { e.preventDefault(); next = count - 1 }
+    if (next !== null) {
+      setActiveTab(next)
+      document.getElementById(`pipeline-tab-${next}`)?.focus()
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Alert bar for rejected/failed posts */}
@@ -225,11 +242,17 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
 
       {/* Mobile: tabbed single-column view */}
       <div className="md:hidden">
-        <div className="flex gap-1 overflow-x-auto pb-2">
+        <div role="tablist" aria-label="Pipeline stages" className="flex gap-1 overflow-x-auto pb-2">
           {PIPELINE_COLUMN_DEFS.map((col, idx) => (
             <button
               key={col.id}
+              id={`pipeline-tab-${idx}`}
+              role="tab"
+              aria-selected={activeTab === idx}
+              aria-controls={`pipeline-panel-${col.id}`}
+              tabIndex={activeTab === idx ? 0 : -1}
               onClick={() => setActiveTab(idx)}
+              onKeyDown={(e) => handleTabKeyDown(e, idx)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
                 activeTab === idx
@@ -252,7 +275,13 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
           ))}
         </div>
 
-        <div className="space-y-2">
+        <div
+          role="tabpanel"
+          id={`pipeline-panel-${PIPELINE_COLUMN_DEFS[activeTab].id}`}
+          aria-labelledby={`pipeline-tab-${activeTab}`}
+          tabIndex={0}
+          className="space-y-2"
+        >
           {getColumnPosts(PIPELINE_COLUMN_DEFS[activeTab].id).length === 0 ? (
             <EmptyColumn />
           ) : (
@@ -273,7 +302,7 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         {PIPELINE_COLUMN_DEFS.map((col) => {
           const colPosts = getColumnPosts(col.id)
           return (
-            <div key={col.id} className="flex w-[260px] shrink-0 flex-col gap-2 xl:w-[280px]">
+            <div key={col.id} aria-label={col.label} className="flex w-[260px] shrink-0 flex-col gap-2 xl:w-[280px]">
               {/* Column header */}
               <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">
