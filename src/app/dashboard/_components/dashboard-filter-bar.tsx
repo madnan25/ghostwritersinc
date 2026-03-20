@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, SlidersHorizontal, X } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import {
   DASHBOARD_STATUS_FILTERS,
   type DashboardStatusFilter,
@@ -94,7 +94,7 @@ export function DashboardFilterBar({
 
       <AnimatePresence initial={false}>
         {filtersOpen && (
-          <motion.div
+          <m.div
             key="filter-body"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -202,7 +202,7 @@ export function DashboardFilterBar({
                 </div>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </section>

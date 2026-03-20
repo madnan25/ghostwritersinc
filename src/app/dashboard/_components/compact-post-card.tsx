@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, m } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
@@ -135,7 +135,7 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
   }
 
   return (
-    <motion.div
+    <m.div
       ref={cardRef}
       layout="size"
       className="editorial-card relative flex flex-col gap-3 p-3.5"
@@ -186,7 +186,7 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
       {/* Progressive disclosure: expanded metadata */}
       <AnimatePresence initial={false}>
         {isExpanded && hasExpandedContent && (
-          <motion.div
+          <m.div
             key="expanded"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -228,7 +228,7 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
                 </div>
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
 
@@ -236,6 +236,6 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
       <div className="editorial-rule pt-0" onClick={(e) => e.stopPropagation()}>
         <PostCardActions postId={post.id} status={post.status} content={post.content} compact />
       </div>
-    </motion.div>
+    </m.div>
   )
 }
