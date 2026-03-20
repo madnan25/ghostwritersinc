@@ -5,6 +5,7 @@ import {
   getAgentRateLimitKey,
   hasAgentPermission,
   isAgentContext,
+  isSharedOrgAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
@@ -56,10 +57,17 @@ export async function POST(
     return NextResponse.json({ archived: true, archived_at: post.archived_at })
   }
 
-  const { data, error } = await supabase
+  let archiveQuery = supabase
     .from('posts')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('organization_id', auth.organizationId)
+
+  if (!isSharedOrgAgentContext(auth)) {
+    archiveQuery = archiveQuery.eq('user_id', auth.userId)
+  }
+
+  const { data, error } = await archiveQuery
     .select('id, archived_at, freshness_type, expiry_date')
     .single()
 
