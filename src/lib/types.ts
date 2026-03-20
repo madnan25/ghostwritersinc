@@ -349,8 +349,11 @@ export interface StrategyConfig {
   monthly_post_target: number
   intel_score_threshold: number
   default_publish_hour: number
+  wildcard_count: number
   voice_notes: string | null
   scout_context: string | null
+  whats_working: Record<string, unknown> | null
+  whats_working_updated_at: string | null
   created_at: string
   updated_at: string
 }

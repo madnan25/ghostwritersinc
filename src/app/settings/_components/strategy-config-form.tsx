@@ -15,6 +15,7 @@ const DEFAULTS: StrategyConfig = {
   intel_score_threshold: 0.7,
   default_publish_hour: 9,
   voice_notes: null,
+  wildcard_count: 0,
 };
 
 export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null }) {
@@ -24,6 +25,7 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
   const [threshold, setThreshold] = useState(saved.intel_score_threshold);
   const [publishHour, setPublishHour] = useState(saved.default_publish_hour);
   const [voiceNotes, setVoiceNotes] = useState(saved.voice_notes ?? "");
+  const [wildcardCount, setWildcardCount] = useState(saved.wildcard_count ?? 0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -32,6 +34,7 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
     threshold: saved.intel_score_threshold,
     publishHour: saved.default_publish_hour,
     voiceNotes: saved.voice_notes ?? "",
+    wildcardCount: saved.wildcard_count ?? 0,
   });
 
   const isDirty = useMemo(() => {
@@ -39,20 +42,22 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
       monthlyTarget !== savedState.monthlyTarget ||
       threshold !== savedState.threshold ||
       publishHour !== savedState.publishHour ||
-      voiceNotes !== savedState.voiceNotes
+      voiceNotes !== savedState.voiceNotes ||
+      wildcardCount !== savedState.wildcardCount
     );
-  }, [monthlyTarget, threshold, publishHour, voiceNotes, savedState]);
+  }, [monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount, savedState]);
 
   function handleSubmit(formData: FormData) {
     formData.set("monthly_post_target", String(monthlyTarget));
     formData.set("intel_score_threshold", String(threshold));
     formData.set("default_publish_hour", String(publishHour));
     formData.set("voice_notes", voiceNotes);
+    formData.set("wildcard_count", String(wildcardCount));
     setError(null);
     startTransition(async () => {
       try {
         await saveStrategyConfig(formData);
-        setSavedState({ monthlyTarget, threshold, publishHour, voiceNotes });
+        setSavedState({ monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to save");
       }
@@ -83,6 +88,38 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
             />
             <p className="text-sm text-foreground/68">posts per month</p>
           </div>
+        </div>
+
+        <div className="editorial-rule" />
+
+        {/* Wildcard posts per month */}
+        <div className="space-y-2">
+          <label
+            htmlFor="wildcard_count"
+            className="premium-kicker text-[0.72rem] tracking-[0.22em]"
+          >
+            Wildcard Posts per Month
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              id="wildcard_count"
+              name="wildcard_count"
+              type="number"
+              min={0}
+              max={monthlyTarget}
+              value={wildcardCount}
+              onChange={(e) =>
+                setWildcardCount(
+                  Math.max(0, Math.min(monthlyTarget, parseInt(e.target.value, 10) || 0)),
+                )
+              }
+              className="w-28 rounded-[22px] border border-input bg-background/72 px-4 py-3 text-sm min-h-[52px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 text-center"
+            />
+            <p className="text-sm text-foreground/68">unassigned (no pillar)</p>
+          </div>
+          <p className="text-xs text-foreground/68">
+            Briefs created without a content pillar, scheduled evenly across the month.
+          </p>
         </div>
 
         <div className="editorial-rule" />

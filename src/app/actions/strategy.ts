@@ -8,6 +8,7 @@ export type StrategyConfig = {
   intel_score_threshold: number;
   default_publish_hour: number;
   voice_notes: string | null;
+  wildcard_count: number;
 };
 
 export async function getStrategyConfig(): Promise<StrategyConfig | null> {
@@ -26,7 +27,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig | null> {
 
   const { data } = await supabase
     .from("strategy_config")
-    .select("monthly_post_target, intel_score_threshold, default_publish_hour, voice_notes")
+    .select("monthly_post_target, intel_score_threshold, default_publish_hour, voice_notes, wildcard_count")
     .eq("user_id", user.id)
     .eq("organization_id", profile.organization_id)
     .maybeSingle();
@@ -52,6 +53,7 @@ export async function saveStrategyConfig(formData: FormData) {
   const intel_score_threshold = parseFloat(formData.get("intel_score_threshold") as string);
   const default_publish_hour = parseInt(formData.get("default_publish_hour") as string, 10);
   const voice_notes = (formData.get("voice_notes") as string) || null;
+  const wildcard_count = parseInt(formData.get("wildcard_count") as string, 10) || 0;
 
   if (
     isNaN(monthly_post_target) ||
@@ -62,7 +64,10 @@ export async function saveStrategyConfig(formData: FormData) {
     intel_score_threshold > 1 ||
     isNaN(default_publish_hour) ||
     default_publish_hour < 0 ||
-    default_publish_hour > 23
+    default_publish_hour > 23 ||
+    wildcard_count < 0 ||
+    wildcard_count > 50 ||
+    wildcard_count > monthly_post_target
   ) {
     throw new Error("Invalid values");
   }
@@ -75,6 +80,7 @@ export async function saveStrategyConfig(formData: FormData) {
       intel_score_threshold,
       default_publish_hour,
       voice_notes,
+      wildcard_count,
     },
     { onConflict: "user_id,organization_id" }
   );

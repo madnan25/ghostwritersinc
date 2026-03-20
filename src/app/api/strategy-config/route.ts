@@ -13,6 +13,7 @@ const UpsertStrategyConfigSchema = z.object({
   monthly_post_target: z.number().int().min(1).max(100).optional(),
   intel_score_threshold: z.number().min(0).max(1).optional(),
   default_publish_hour: z.number().int().min(0).max(23).optional(),
+  wildcard_count: z.number().int().min(0).max(50).optional(),
   voice_notes: z.string().nullable().optional(),
 })
 

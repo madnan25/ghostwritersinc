@@ -129,6 +129,25 @@ export function getPillarBalance(
 }
 
 // ---------------------------------------------------------------------------
+// Wildcard scheduling
+// ---------------------------------------------------------------------------
+
+/**
+ * Pick `count` evenly-spaced days from the available empty days for wildcard
+ * (pillar-free) briefs. Returns ISO date strings (YYYY-MM-DD).
+ *
+ * When count >= emptyDays.length, all empty days are returned.
+ * When count is 0 or emptyDays is empty, returns [].
+ */
+export function distributeWildcards(emptyDays: string[], count: number): string[] {
+  if (count <= 0 || emptyDays.length === 0) return []
+  const n = Math.min(count, emptyDays.length)
+  if (n === 1) return [emptyDays[0]]
+  const step = (emptyDays.length - 1) / (n - 1)
+  return Array.from({ length: n }, (_, i) => emptyDays[Math.round(i * step)])
+}
+
+// ---------------------------------------------------------------------------
 // Research → Brief creation
 // ---------------------------------------------------------------------------
 
