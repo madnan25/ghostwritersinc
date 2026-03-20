@@ -32,6 +32,26 @@ export interface StalenessConfig {
   dotClass: string
 }
 
+/**
+ * Returns a human-readable tooltip string describing a post's freshness/expiry state.
+ * Returns an empty string for evergreen posts or posts with no expiry.
+ */
+export function getStalenessTooltip(post: Pick<Post, 'freshness_type' | 'expiry_date' | 'archived_at'>): string {
+  if (post.archived_at) return 'Archived'
+  if (!post.expiry_date || post.freshness_type === 'evergreen') return ''
+
+  const typeLabel = post.freshness_type === 'time_sensitive' ? 'Time-sensitive' : 'Date-locked'
+  const expiry = new Date(post.expiry_date)
+  const dateStr = expiry.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const daysUntil = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+
+  if (daysUntil < 0) {
+    return `${typeLabel} · Expired ${Math.abs(daysUntil)} day${Math.abs(daysUntil) !== 1 ? 's' : ''} ago (${dateStr})`
+  }
+  if (daysUntil === 0) return `${typeLabel} · Expires today (${dateStr})`
+  return `${typeLabel} · Expires in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} (${dateStr})`
+}
+
 export const STALENESS_CONFIG: Record<Exclude<StalenessState, null>, StalenessConfig> = {
   fresh: {
     label: 'Fresh',
