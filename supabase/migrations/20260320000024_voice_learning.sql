@@ -46,11 +46,11 @@ alter table post_diffs enable row level security;
 
 create policy "Users can view org post diffs"
   on post_diffs for select
-  using (organization_id = auth.user_organization_id());
+  using (organization_id = public.user_organization_id());
 
 create policy "Users can insert org post diffs"
   on post_diffs for insert
-  with check (organization_id = auth.user_organization_id());
+  with check (organization_id = public.user_organization_id());
 
 -- =============================================================================
 -- 4. voice_observation_status enum
@@ -101,15 +101,15 @@ alter table voice_observations enable row level security;
 
 create policy "Users can view org voice observations"
   on voice_observations for select
-  using (organization_id = auth.user_organization_id());
+  using (organization_id = public.user_organization_id());
 
 create policy "Users can insert org voice observations"
   on voice_observations for insert
-  with check (organization_id = auth.user_organization_id());
+  with check (organization_id = public.user_organization_id());
 
 create policy "Users can update org voice observations"
   on voice_observations for update
-  using (organization_id = auth.user_organization_id());
+  using (organization_id = public.user_organization_id());
 
 -- =============================================================================
 -- 7. learned_preferences column on user_writing_profiles

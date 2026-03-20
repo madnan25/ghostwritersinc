@@ -57,15 +57,15 @@ alter table post_performance enable row level security;
 
 create policy "Users can view org post performance"
   on post_performance for select
-  using (organization_id = auth.user_organization_id());
+  using (organization_id = public.user_organization_id());
 
 create policy "Users can insert org post performance"
   on post_performance for insert
-  with check (organization_id = auth.user_organization_id());
+  with check (organization_id = public.user_organization_id());
 
 create policy "Users can update org post performance"
   on post_performance for update
-  using (organization_id = auth.user_organization_id());
+  using (organization_id = public.user_organization_id());
 
 -- =============================================================================
 -- 4. Add pillar_weights columns to strategy_config
