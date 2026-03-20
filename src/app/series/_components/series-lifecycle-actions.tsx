@@ -40,7 +40,7 @@ export function SeriesLifecycleActions({
   }
 
   const canActivate = status === 'planning'
-  const canPause = status === 'active'
+  const canPause = status === 'active' || status === 'planning'
   const canResume = status === 'paused'
   const canCancel = status === 'active' || status === 'paused' || status === 'planning'
   const canComplete = status === 'active' || status === 'paused'
