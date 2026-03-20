@@ -1,51 +1,57 @@
 'use client'
 
-interface DiffLine {
-  type: 'added' | 'removed' | 'unchanged'
+import { useMemo, useState } from 'react'
+
+type TokenType = 'added' | 'removed' | 'unchanged'
+
+interface DiffToken {
+  type: TokenType
   text: string
 }
 
-function computeDiff(oldText: string, newText: string): DiffLine[] {
-  const oldLines = oldText.split('\n')
-  const newLines = newText.split('\n')
+function tokenize(text: string): string[] {
+  // Split on whitespace boundaries, keeping whitespace tokens
+  return text.split(/(\s+)/).filter((t) => t.length > 0)
+}
 
-  // Simple LCS-based line diff
-  const m = oldLines.length
-  const n = newLines.length
+function computeWordDiff(oldText: string, newText: string): DiffToken[] {
+  const a = tokenize(oldText)
+  const b = tokenize(newText)
+  const m = a.length
+  const n = b.length
 
-  // Build LCS table
+  // LCS DP table
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (oldLines[i - 1] === newLines[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1])
-      }
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1])
     }
   }
 
-  // Backtrack to build diff
-  const result: DiffLine[] = []
+  // Backtrack to build token list
+  const tokens: DiffToken[] = []
   let i = m
   let j = n
-
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      result.unshift({ type: 'unchanged', text: oldLines[i - 1] })
+    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
+      tokens.unshift({ type: 'unchanged', text: a[i - 1] })
       i--
       j--
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: 'added', text: newLines[j - 1] })
+      tokens.unshift({ type: 'added', text: b[j - 1] })
       j--
     } else {
-      result.unshift({ type: 'removed', text: oldLines[i - 1] })
+      tokens.unshift({ type: 'removed', text: a[i - 1] })
       i--
     }
   }
 
-  return result
+  return tokens
 }
+
+type ViewMode = 'inline' | 'side-by-side'
 
 interface RevisionDiffProps {
   oldContent: string
@@ -55,47 +61,163 @@ interface RevisionDiffProps {
 }
 
 export function RevisionDiff({ oldContent, newContent, oldLabel, newLabel }: RevisionDiffProps) {
-  const diff = computeDiff(oldContent, newContent)
+  const [viewMode, setViewMode] = useState<ViewMode>('inline')
 
-  const hasChanges = diff.some((l) => l.type !== 'unchanged')
+  const tokens = useMemo(() => computeWordDiff(oldContent, newContent), [oldContent, newContent])
+  const hasChanges = tokens.some((t) => t.type !== 'unchanged')
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-destructive/40 border border-destructive/50" />
-          {oldLabel}
-        </span>
-        <span>→</span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500/30 border border-emerald-500/40" />
-          {newLabel}
-        </span>
+    <div className="flex flex-col gap-3">
+      {/* Header row: legend + view toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm border border-destructive/50 bg-destructive/40" />
+            {oldLabel}
+          </span>
+          <span>→</span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm border border-emerald-500/40 bg-emerald-500/30" />
+            {newLabel}
+          </span>
+        </div>
+
+        <div className="flex overflow-hidden rounded-lg border border-border/60">
+          <button
+            onClick={() => setViewMode('inline')}
+            className={`px-3 py-1 text-xs transition-colors ${
+              viewMode === 'inline'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
+          >
+            Inline
+          </button>
+          <button
+            onClick={() => setViewMode('side-by-side')}
+            className={`border-l border-border/60 px-3 py-1 text-xs transition-colors ${
+              viewMode === 'side-by-side'
+                ? 'bg-primary/15 text-primary'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
+          >
+            Side by side
+          </button>
+        </div>
       </div>
 
       {!hasChanges ? (
-        <p className="text-sm text-muted-foreground italic">No changes between these versions.</p>
+        <p className="text-sm italic text-muted-foreground">No changes between these versions.</p>
+      ) : viewMode === 'inline' ? (
+        <InlineDiff tokens={tokens} />
       ) : (
-        <div className="rounded-lg border border-border bg-muted/10 font-mono text-[0.78rem] leading-relaxed overflow-x-auto">
-          {diff.map((line, i) => (
-            <div
-              key={i}
-              className={`flex px-3 py-0.5 ${
-                line.type === 'added'
-                  ? 'bg-emerald-500/10 text-emerald-300'
-                  : line.type === 'removed'
-                    ? 'bg-destructive/10 text-destructive/80 line-through decoration-destructive/40'
-                    : 'text-muted-foreground'
-              }`}
-            >
-              <span className="mr-3 w-3 shrink-0 select-none opacity-60">
-                {line.type === 'added' ? '+' : line.type === 'removed' ? '−' : ' '}
-              </span>
-              <span className="whitespace-pre-wrap break-words">{line.text || '\u00A0'}</span>
-            </div>
-          ))}
-        </div>
+        <SideBySideDiff tokens={tokens} oldLabel={oldLabel} newLabel={newLabel} />
       )}
+    </div>
+  )
+}
+
+function InlineDiff({ tokens }: { tokens: DiffToken[] }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-4 text-sm leading-relaxed">
+      <p className="whitespace-pre-wrap break-words">
+        {tokens.map((token, i) => {
+          if (token.type === 'unchanged') {
+            return (
+              <span key={i} className="text-muted-foreground">
+                {token.text}
+              </span>
+            )
+          }
+          if (token.type === 'added') {
+            return (
+              <span key={i} className="rounded-[2px] bg-emerald-500/20 text-emerald-300">
+                {token.text}
+              </span>
+            )
+          }
+          // removed
+          return (
+            <span
+              key={i}
+              className="rounded-[2px] bg-destructive/20 text-destructive/80 line-through decoration-destructive/50"
+            >
+              {token.text}
+            </span>
+          )
+        })}
+      </p>
+    </div>
+  )
+}
+
+function SideBySideDiff({
+  tokens,
+  oldLabel,
+  newLabel,
+}: {
+  tokens: DiffToken[]
+  oldLabel: string
+  newLabel: string
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {/* Old panel — shows unchanged + removed; additions are absent */}
+      <div className="rounded-lg border border-border bg-muted/10 p-4 text-sm leading-relaxed">
+        <div className="mb-2 text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground/70">
+          {oldLabel}
+        </div>
+        <p className="whitespace-pre-wrap break-words">
+          {tokens.map((token, i) => {
+            if (token.type === 'unchanged') {
+              return (
+                <span key={i} className="text-muted-foreground">
+                  {token.text}
+                </span>
+              )
+            }
+            if (token.type === 'removed') {
+              return (
+                <span
+                  key={i}
+                  className="rounded-[2px] bg-destructive/20 text-destructive/80 line-through decoration-destructive/50"
+                >
+                  {token.text}
+                </span>
+              )
+            }
+            // added — not shown in old panel
+            return null
+          })}
+        </p>
+      </div>
+
+      {/* New panel — shows unchanged + added; removals are absent */}
+      <div className="rounded-lg border border-border bg-muted/10 p-4 text-sm leading-relaxed">
+        <div className="mb-2 text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground/70">
+          {newLabel}
+        </div>
+        <p className="whitespace-pre-wrap break-words">
+          {tokens.map((token, i) => {
+            if (token.type === 'unchanged') {
+              return (
+                <span key={i} className="text-muted-foreground">
+                  {token.text}
+                </span>
+              )
+            }
+            if (token.type === 'added') {
+              return (
+                <span key={i} className="rounded-[2px] bg-emerald-500/20 text-emerald-300">
+                  {token.text}
+                </span>
+              )
+            }
+            // removed — not shown in new panel
+            return null
+          })}
+        </p>
+      </div>
     </div>
   )
 }
