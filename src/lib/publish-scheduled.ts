@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getValidAccessToken } from '@/lib/linkedin-tokens'
+import { createPostDiff } from '@/lib/voice-analysis'
 import type { Post } from '@/lib/types'
 
 const LINKEDIN_DAILY_LIMIT = 100
@@ -129,6 +130,7 @@ export async function processDuePosts(): Promise<{
               updated_at: new Date().toISOString(),
             })
             .eq('id', post.id)
+          await generatePostDiff(supabase, post)
           published++
           continue
         }
@@ -151,6 +153,7 @@ export async function processDuePosts(): Promise<{
         })
         .eq('id', post.id)
 
+      await generatePostDiff(supabase, post)
       published++
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
@@ -162,6 +165,41 @@ export async function processDuePosts(): Promise<{
   console.log(`[publish] Processed ${posts.length} posts: ${published} published, ${failed} failed`)
 
   return { processed: posts.length, published, failed }
+}
+
+/**
+ * Generate a post_diff record comparing the original Scribe draft (revision v1)
+ * against the published content. Delegates to voice-analysis.createPostDiff.
+ * Safe to call from anywhere; errors are logged but never bubble up to the caller
+ * so publishing itself is never blocked.
+ */
+async function generatePostDiff(
+  supabase: ReturnType<typeof createAdminClient>,
+  post: Post
+): Promise<void> {
+  try {
+    // Fetch the earliest revision (Scribe's original draft)
+    const { data: revision } = await supabase
+      .from('post_revisions')
+      .select('content')
+      .eq('post_id', post.id)
+      .order('version', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    const originalContent = revision?.content ?? post.content
+
+    await createPostDiff(
+      supabase,
+      post.id,
+      post.organization_id,
+      post.user_id,
+      originalContent,
+      post.content,
+    )
+  } catch (err) {
+    console.error('[publish] Failed to generate post diff for post', post.id, err)
+  }
 }
 
 async function markPublishFailed(

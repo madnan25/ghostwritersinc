@@ -242,6 +242,14 @@ export interface AgentActivityLog {
   created_at: string
 }
 
+export interface LearnedPreferenceEntry {
+  observation_id: string
+  observation: string
+  confidence: number
+  source_post_ids: string[]
+  applied_at: string
+}
+
 export interface UserWritingProfile {
   id: string
   user_id: string
@@ -251,6 +259,7 @@ export interface UserWritingProfile {
   sample_post_ids: string[]
   avoid_topics: string[]
   preferred_formats: string[]
+  learned_preferences: LearnedPreferenceEntry[] | null
   created_at: string
   updated_at: string
 }
@@ -360,6 +369,41 @@ export interface StrategyConfig {
   scout_context: string | null
   whats_working: Record<string, unknown> | null
   whats_working_updated_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 5 — Voice Profile Learning
+// ---------------------------------------------------------------------------
+
+export type DiffEditType = 'no_edit' | 'minor_edit' | 'major_edit'
+
+export interface PostDiff {
+  id: string
+  post_id: string
+  organization_id: string
+  user_id: string
+  original_content: string
+  published_content: string
+  edit_type: DiffEditType
+  change_summary: string | null
+  created_at: string
+}
+
+export type ObservationStatus = 'pending' | 'confirmed' | 'dismissed'
+
+export interface VoiceObservation {
+  id: string
+  organization_id: string
+  user_id: string
+  observation: string
+  confidence: number
+  status: ObservationStatus
+  source_post_ids: string[]
+  created_by_agent_id: string | null
+  confirmed_at: string | null
+  dismissed_at: string | null
   created_at: string
   updated_at: string
 }
