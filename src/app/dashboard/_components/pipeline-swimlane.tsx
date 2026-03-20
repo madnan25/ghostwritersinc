@@ -297,8 +297,113 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         </div>
       </div>
 
-      {/* Desktop: horizontal swimlane */}
-      <div className="hidden md:flex md:gap-3 md:overflow-x-auto md:pb-2">
+      {/* Tablet: 2-column hybrid view (768px–1024px) */}
+      <div className="hidden md:block lg:hidden">
+        <div role="tablist" aria-label="Pipeline stages" className="mb-3 flex gap-1 overflow-x-auto pb-2">
+          {PIPELINE_COLUMN_DEFS.map((col, idx) => (
+            <button
+              key={col.id}
+              id={`pipeline-tab-tablet-${idx}`}
+              role="tab"
+              aria-selected={activeTab === idx}
+              aria-controls={`pipeline-panel-tablet-${col.id}`}
+              tabIndex={activeTab === idx ? 0 : -1}
+              onClick={() => setActiveTab(idx)}
+              onKeyDown={(e) => handleTabKeyDown(e, idx)}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                activeTab === idx
+                  ? 'border-primary/30 bg-primary/12 text-primary'
+                  : 'border-border/40 text-foreground/60 hover:border-border/60 hover:text-foreground/80',
+              )}
+            >
+              {col.label}
+              <span
+                className={cn(
+                  'inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[0.6rem]',
+                  activeTab === idx
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-foreground/8 text-foreground/56',
+                )}
+              >
+                {getColumnPosts(PIPELINE_COLUMN_DEFS[idx].id).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Primary panel: active tab */}
+          {(() => {
+            const col = PIPELINE_COLUMN_DEFS[activeTab]
+            const colPosts = getColumnPosts(col.id)
+            return (
+              <div
+                role="tabpanel"
+                id={`pipeline-panel-tablet-${col.id}`}
+                aria-labelledby={`pipeline-tab-tablet-${activeTab}`}
+                tabIndex={0}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">{col.label}</span>
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[0.65rem] font-medium text-foreground/56">
+                    {colPosts.length}
+                  </span>
+                </div>
+                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto pr-0.5">
+                  {colPosts.length === 0 ? (
+                    <EmptyColumn />
+                  ) : (
+                    colPosts.map((post) => (
+                      <CompactPostCard
+                        key={post.id}
+                        post={post}
+                        pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                        showSubBadge={col.id === 'in_review'}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Secondary panel: adjacent column (next, or previous when on last tab) */}
+          {(() => {
+            const adjIdx = activeTab < PIPELINE_COLUMN_DEFS.length - 1 ? activeTab + 1 : activeTab - 1
+            const col = PIPELINE_COLUMN_DEFS[adjIdx]
+            const colPosts = getColumnPosts(col.id)
+            return (
+              <div className="flex flex-col gap-2" aria-label={col.label}>
+                <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">{col.label}</span>
+                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[0.65rem] font-medium text-foreground/56">
+                    {colPosts.length}
+                  </span>
+                </div>
+                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto pr-0.5">
+                  {colPosts.length === 0 ? (
+                    <EmptyColumn />
+                  ) : (
+                    colPosts.map((post) => (
+                      <CompactPostCard
+                        key={post.id}
+                        post={post}
+                        pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                        showSubBadge={col.id === 'in_review'}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* Desktop: horizontal swimlane (1024px+) */}
+      <div className="hidden lg:flex lg:gap-3 lg:overflow-x-auto lg:pb-2">
         {PIPELINE_COLUMN_DEFS.map((col) => {
           const colPosts = getColumnPosts(col.id)
           return (
