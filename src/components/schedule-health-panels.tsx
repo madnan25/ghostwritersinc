@@ -144,31 +144,17 @@ export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
   return (
     <section className="space-y-3">
       {months.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          <button
-            onClick={() => setSelectedMonth(null)}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              selectedMonth === null
-                ? 'bg-white/10 text-foreground'
-                : 'text-foreground/45 hover:text-foreground/70'
-            }`}
-          >
-            All
-          </button>
+        <select
+          value={selectedMonth ?? ''}
+          onChange={(e) => setSelectedMonth(e.target.value || null)}
+          className="appearance-none rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 pr-7 text-xs font-medium text-foreground/70 outline-none transition-colors hover:border-white/20 hover:text-foreground focus:border-white/25"
+          style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'rgba(255,255,255,0.4)\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'m6 9 6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+        >
+          <option value="">All months</option>
           {months.map((month) => (
-            <button
-              key={month}
-              onClick={() => setSelectedMonth(month)}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                selectedMonth === month
-                  ? 'bg-white/10 text-foreground'
-                  : 'text-foreground/45 hover:text-foreground/70'
-              }`}
-            >
-              {month}
-            </button>
+            <option key={month} value={month}>{month}</option>
           ))}
-        </div>
+        </select>
       )}
       {months.length === 1 && (
         <p className="text-xs font-medium text-foreground/45">{months[0]}</p>
