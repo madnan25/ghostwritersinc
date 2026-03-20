@@ -1050,10 +1050,18 @@ export async function archivePost(postId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
   const { error } = await supabase
     .from('posts')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', postId)
+    .eq('organization_id', profile.organization_id)
 
   if (error) throw new Error(error.message)
 
@@ -1066,10 +1074,18 @@ export async function restorePost(postId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
   const { error } = await supabase
     .from('posts')
     .update({ archived_at: null })
     .eq('id', postId)
+    .eq('organization_id', profile.organization_id)
 
   if (error) throw new Error(error.message)
 
@@ -1082,10 +1098,18 @@ export async function markPostStillValid(postId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
   const { data: post } = await supabase
     .from('posts')
     .select('freshness_type')
     .eq('id', postId)
+    .eq('organization_id', profile.organization_id)
     .single()
 
   if (!post || post.freshness_type !== 'time_sensitive') {
@@ -1096,6 +1120,7 @@ export async function markPostStillValid(postId: string) {
     .from('posts')
     .update({ expiry_date: null })
     .eq('id', postId)
+    .eq('organization_id', profile.organization_id)
 
   if (error) throw new Error(error.message)
 
