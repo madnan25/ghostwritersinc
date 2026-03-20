@@ -138,6 +138,25 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
   const [alertDismissed, setAlertDismissed] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
+  const [showRightFade, setShowRightFade] = useState(false)
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = desktopScrollRef.current
+    if (!el) return
+    function update() {
+      if (!el) return
+      setShowRightFade(el.scrollWidth > el.clientWidth + el.scrollLeft + 4)
+    }
+    update()
+    el.addEventListener('scroll', update)
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [])
 
   usePostsRealtimeSync(setPosts)
 
@@ -403,23 +422,24 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
       </div>
 
       {/* Desktop: horizontal swimlane (1024px+) */}
-      <div className="hidden lg:flex lg:gap-3 lg:overflow-x-auto lg:pb-2">
+      <div className="relative hidden lg:block">
+        <div ref={desktopScrollRef} className="flex gap-4 overflow-x-auto pb-2">
         {PIPELINE_COLUMN_DEFS.map((col) => {
           const colPosts = getColumnPosts(col.id)
           return (
-            <div key={col.id} aria-label={col.label} className="flex w-[260px] shrink-0 flex-col gap-2 xl:w-[280px]">
+            <div key={col.id} aria-label={col.label} className="flex w-[280px] shrink-0 flex-col gap-3 xl:w-[300px]">
               {/* Column header */}
-              <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">
+              <div className="flex items-center justify-between rounded-lg border border-border/35 bg-background/50 px-3 py-2.5">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/78">
                   {col.label}
                 </span>
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[0.65rem] font-medium text-foreground/56">
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/10 px-1.5 text-[0.65rem] font-semibold text-foreground/60">
                   {colPosts.length}
                 </span>
               </div>
 
               {/* Column body — independent vertical scroll */}
-              <div className="flex max-h-[calc(100vh-340px)] min-h-[120px] flex-col gap-2 overflow-y-auto pr-0.5">
+              <div className="flex max-h-[calc(100vh-340px)] min-h-[120px] flex-col gap-3 overflow-y-auto pr-0.5">
                 {colPosts.length === 0 ? (
                   <EmptyColumn />
                 ) : (
@@ -436,6 +456,13 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
             </div>
           )
         })}
+        </div>
+        {showRightFade && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent"
+          />
+        )}
       </div>
     </div>
   )

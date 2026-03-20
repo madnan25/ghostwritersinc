@@ -23,11 +23,11 @@ interface CompactPostCardProps {
 const SUB_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
   pending_review_agent: {
     label: 'Agent Reviewed',
-    className: 'border-amber-400/50 bg-amber-500/10 text-amber-300',
+    className: 'border-amber-400/20 bg-amber-500/[0.04] text-amber-200/60',
   },
   pending_review: {
     label: 'Awaiting Agent',
-    className: 'border-amber-300/24 text-amber-200',
+    className: 'border-amber-300/16 text-amber-200/48',
   },
 }
 
@@ -158,7 +158,7 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
 
       {/* Title */}
       <Link href={`/post/${post.id}`} className="block" onClick={handleLinkClick}>
-        <h4 className="line-clamp-1 text-sm font-semibold tracking-[-0.02em] text-foreground transition-colors hover:text-primary/92">
+        <h4 className="line-clamp-1 text-[0.84rem] font-semibold tracking-[-0.025em] text-foreground/92 transition-colors hover:text-primary/92">
           {title}
         </h4>
       </Link>
