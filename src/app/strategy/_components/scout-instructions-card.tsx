@@ -56,6 +56,7 @@ export function ScoutInstructionsCard({
 
       <textarea
         value={context}
+        maxLength={10000}
         onChange={(e) => setContext(e.target.value)}
         rows={5}
         placeholder="e.g. Focus on AI infrastructure trends this week. Look for case studies on enterprise adoption..."

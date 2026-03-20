@@ -837,6 +837,30 @@ export async function createHumanBriefRequest(data: {
     .single()
   if (!profile) throw new Error('Profile not found')
 
+  // Server-side validation
+  if (!data.topic?.trim()) throw new Error('Topic is required')
+  if (data.topic.trim().length > 500) throw new Error('Topic too long')
+  if (data.angle && data.angle.trim().length > 2000) throw new Error('Angle too long')
+  if (data.notes && data.notes.trim().length > 5000) throw new Error('Notes too long')
+  if (data.priority && !['normal', 'urgent'].includes(data.priority)) {
+    throw new Error('Invalid priority')
+  }
+
+  // Parse YYYY-Www week input → Monday of that week
+  let publishAt: string | null = null
+  if (data.publishWeek) {
+    const match = data.publishWeek.match(/^(\d{4})-W(\d{2})$/)
+    if (!match) throw new Error('Invalid publish week format')
+    const year = parseInt(match[1], 10)
+    const week = parseInt(match[2], 10)
+    if (week < 1 || week > 53) throw new Error('Invalid week number')
+    // ISO week date: Jan 4 is always in week 1
+    const jan4 = new Date(Date.UTC(year, 0, 4))
+    const dayOfWeek = jan4.getUTCDay() || 7 // Mon=1..Sun=7
+    const monday = new Date(jan4.getTime() + ((week - 1) * 7 - (dayOfWeek - 1)) * 86400000)
+    publishAt = monday.toISOString()
+  }
+
   // Compose voice_notes from optional fields
   const voiceParts: string[] = []
   if (data.angle) voiceParts.push(`Hook: ${data.angle}`)
@@ -844,9 +868,9 @@ export async function createHumanBriefRequest(data: {
 
   const { error } = await supabase.from('briefs').insert({
     organization_id: profile.organization_id,
-    angle: data.topic,
+    angle: data.topic.trim(),
     voice_notes: voiceParts.length > 0 ? voiceParts.join('\n') : null,
-    publish_at: data.publishWeek ? new Date(data.publishWeek).toISOString() : null,
+    publish_at: publishAt,
     source: 'human_request',
     priority: data.priority ?? 'normal',
   })
@@ -855,4 +879,5 @@ export async function createHumanBriefRequest(data: {
 
   revalidatePath('/dashboard')
   revalidatePath('/calendar')
+  revalidatePath('/strategy')
 }

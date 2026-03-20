@@ -60,6 +60,10 @@ function RequestPostDialog({ open, onClose }: { open: boolean; onClose: () => vo
     setTimeout(reset, 200)
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') handleClose()
+  }
+
   function handleSubmit() {
     if (!topic.trim()) {
       setFieldError('Topic is required.')
@@ -105,6 +109,10 @@ function RequestPostDialog({ open, onClose }: { open: boolean; onClose: () => vo
           )}
         >
           <m.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-post-title"
+            onKeyDown={handleKeyDown}
             onClick={(e) => e.stopPropagation()}
             initial={mobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 8 }}
             animate={
@@ -175,6 +183,7 @@ function RequestPostDialog({ open, onClose }: { open: boolean; onClose: () => vo
                   <input
                     type="text"
                     value={topic}
+                    maxLength={500}
                     onChange={(e) => {
                       setTopic(e.target.value)
                       if (fieldError) setFieldError(null)
@@ -199,6 +208,7 @@ function RequestPostDialog({ open, onClose }: { open: boolean; onClose: () => vo
                   <input
                     type="text"
                     value={angle}
+                    maxLength={2000}
                     onChange={(e) => setAngle(e.target.value)}
                     placeholder="Any specific direction or hook?"
                     className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
@@ -255,6 +265,7 @@ function RequestPostDialog({ open, onClose }: { open: boolean; onClose: () => vo
                   </label>
                   <textarea
                     value={notes}
+                    maxLength={5000}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
                     placeholder="Any additional context for the writer..."
