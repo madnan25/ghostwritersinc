@@ -5,9 +5,12 @@ import { ContentMixChart } from './_components/content-mix-chart'
 import { RotationTimeline } from './_components/rotation-timeline'
 import { ScoutInstructionsCard } from './_components/scout-instructions-card'
 import { PillarWeightSliders } from './_components/pillar-weight-sliders'
+import { WhatsWorkingCard } from './_components/whats-working-card'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
 import { getScoutContext } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
+import type { WhatsWorkingSummary } from '@/lib/performance-analysis'
+import { getCalendarDate } from '@/lib/post-display'
 
 function computeActualPct(posts: Post[], pillarId: string): number {
   const pillarPosts = posts.filter((p) => p.pillar_id === pillarId)
@@ -55,6 +58,19 @@ export default async function StrategyPage() {
     getPillarWeightsConfig(),
   ])
 
+  // Fetch "What's Working" summary (non-blocking — returns null if no data)
+  let whatsWorking: WhatsWorkingSummary | null = null
+  let whatsWorkingUpdatedAt: string | null = null
+  if (user) {
+    const { data: strategyRow } = await supabase
+      .from('strategy_config')
+      .select('whats_working, whats_working_updated_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    whatsWorking = (strategyRow?.whats_working as WhatsWorkingSummary | null) ?? null
+    whatsWorkingUpdatedAt = strategyRow?.whats_working_updated_at ?? null
+  }
+
   // Get org name (needs user ID)
   let orgName = 'Your Organization'
   if (user) {
@@ -82,8 +98,8 @@ export default async function StrategyPage() {
 
   // Last 10 posts with scheduled date for rotation timeline
   const recentPosts = [...posts]
-    .filter((p) => p.suggested_publish_at)
-    .sort((a, b) => new Date(b.suggested_publish_at!).getTime() - new Date(a.suggested_publish_at!).getTime())
+    .filter((p) => getCalendarDate(p))
+    .sort((a, b) => new Date(getCalendarDate(b)!).getTime() - new Date(getCalendarDate(a)!).getTime())
     .slice(0, 10)
 
   return (
@@ -120,6 +136,12 @@ export default async function StrategyPage() {
           initialContext={scoutData.context}
           initialUpdatedAt={scoutData.updatedAt}
         />
+      </div>
+
+      {/* What's Working Summary */}
+      <div className="mb-10">
+        <h2 className="mb-4 text-lg font-semibold">Performance Insights</h2>
+        <WhatsWorkingCard summary={whatsWorking} updatedAt={whatsWorkingUpdatedAt} />
       </div>
 
       {pillars.length === 0 ? (

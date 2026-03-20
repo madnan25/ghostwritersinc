@@ -263,6 +263,130 @@ function UnscheduledSection({ posts, pillarMap }: { posts: Post[]; pillarMap: Ma
   )
 }
 
+// ─── Pillar Distribution Bar ──────────────────────────────────────────────────
+
+function PillarDistributionBar({
+  posts,
+  pillars,
+  anchor,
+}: {
+  posts: Post[]
+  pillars: ContentPillar[]
+  anchor: Date
+}) {
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth()
+  const monthStart = new Date(year, month, 1)
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59)
+
+  const monthPosts = posts.filter((p) => {
+    const dateStr = p.scheduled_publish_at ?? p.suggested_publish_at
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    return d >= monthStart && d <= monthEnd
+  })
+
+  const total = monthPosts.length
+  const pillarMap = new Map(pillars.map((p) => [p.id, p]))
+
+  const counts: Record<string, number> = {}
+  for (const post of monthPosts) {
+    if (post.pillar_id && pillarMap.has(post.pillar_id)) {
+      counts[post.pillar_id] = (counts[post.pillar_id] ?? 0) + 1
+    }
+  }
+
+  const segments = pillars.map((p) => ({
+    pillar: p,
+    actualPct: total > 0 ? Math.round(((counts[p.id] ?? 0) / total) * 100) : 0,
+    targetPct: p.weight_pct,
+  }))
+
+  const monthLabel = anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="mb-4 rounded-xl border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Pillar Distribution — {monthLabel}</h3>
+        <span className="text-xs text-muted-foreground">{total} planned post{total !== 1 ? 's' : ''}</span>
+      </div>
+
+      {total === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground">No posts planned for this month.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Planned</p>
+            <div className="flex h-6 overflow-hidden rounded-md">
+              {segments
+                .filter((s) => s.actualPct > 0)
+                .map((s) => (
+                  <div
+                    key={s.pillar.id}
+                    className="flex items-center justify-center transition-all duration-300"
+                    style={{
+                      width: `${s.actualPct}%`,
+                      backgroundColor: s.pillar.color,
+                      opacity: 0.85,
+                    }}
+                    title={`${s.pillar.name}: ${s.actualPct}%`}
+                  >
+                    {s.actualPct >= 12 && (
+                      <span className="text-[10px] font-semibold text-white drop-shadow">
+                        {s.actualPct}%
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Target</p>
+            <div className="flex h-6 overflow-hidden rounded-md">
+              {segments
+                .filter((s) => s.targetPct > 0)
+                .map((s) => (
+                  <div
+                    key={s.pillar.id}
+                    className="flex items-center justify-center"
+                    style={{
+                      width: `${s.targetPct}%`,
+                      backgroundColor: s.pillar.color,
+                      opacity: 0.35,
+                    }}
+                    title={`${s.pillar.name}: ${s.targetPct}%`}
+                  >
+                    {s.targetPct >= 12 && (
+                      <span className="text-[10px] font-semibold text-white drop-shadow">
+                        {s.targetPct}%
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+            {segments.filter((s) => s.actualPct > 0 || s.targetPct > 0).map((s) => (
+              <div key={s.pillar.id} className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: s.pillar.color }} />
+                <span>{s.pillar.name}</span>
+                <span className="font-medium text-foreground">{s.actualPct}%</span>
+                {s.actualPct !== s.targetPct && (
+                  <span className={`text-[10px] ${s.actualPct > s.targetPct ? 'text-orange-400' : 'text-blue-400'}`}>
+                    ({s.actualPct > s.targetPct ? '+' : ''}{s.actualPct - s.targetPct}% vs target)
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewProps) {
@@ -289,6 +413,9 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
 
   return (
     <div>
+      {pillars.length > 0 && (
+        <PillarDistributionBar posts={posts} pillars={pillars} anchor={anchor} />
+      )}
       <div className="rounded-xl border border-border bg-card">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">

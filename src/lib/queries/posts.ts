@@ -545,3 +545,75 @@ export async function getPillarWeightsConfig(): Promise<PillarWeightsConfig | nu
     monthlyExpired,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Insights data — joins posts with post_performance and content_pillars
+// ---------------------------------------------------------------------------
+
+export interface PostWithPerformance {
+  id: string
+  content_type: string
+  pillar_id: string | null
+  pillar_name: string | null
+  pillar_color: string | null
+  published_at: string | null
+  suggested_publish_at: string | null
+  created_at: string
+  impressions: number
+  reactions: number
+  comments_count: number
+  reposts: number
+}
+
+export async function getInsightsData(): Promise<PostWithPerformance[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      id,
+      content_type,
+      pillar_id,
+      published_at,
+      suggested_publish_at,
+      created_at,
+      content_pillars!posts_pillar_id_fkey (name, color),
+      post_performance (impressions, reactions, comments_count, reposts)
+    `)
+    .eq('status', 'published')
+    .not('post_performance', 'is', null)
+
+  if (error) {
+    logQueryError('insights data', error)
+    return []
+  }
+
+  return (data ?? [])
+    .filter((p: Record<string, unknown>) => {
+      const perf = p.post_performance as unknown
+      return perf !== null && typeof perf === 'object'
+    })
+    .map((p: Record<string, unknown>) => {
+      const perf = p.post_performance as {
+        impressions: number | null
+        reactions: number | null
+        comments_count: number | null
+        reposts: number | null
+      }
+      const pillar = p.content_pillars as { name: string; color: string } | null
+
+      return {
+        id: p.id as string,
+        content_type: (p.content_type as string) ?? 'text',
+        pillar_id: p.pillar_id as string | null,
+        pillar_name: pillar?.name ?? null,
+        pillar_color: pillar?.color ?? null,
+        published_at: p.published_at as string | null,
+        suggested_publish_at: p.suggested_publish_at as string | null,
+        created_at: p.created_at as string,
+        impressions: perf.impressions ?? 0,
+        reactions: perf.reactions ?? 0,
+        comments_count: perf.comments_count ?? 0,
+        reposts: perf.reposts ?? 0,
+      }
+    })
+}
