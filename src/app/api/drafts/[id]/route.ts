@@ -25,6 +25,8 @@ const UpdateDraftSchema = z.object({
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
   revision_reason: z.string().nullable().optional(),
+  freshness_type: z.enum(['evergreen', 'time_sensitive', 'date_locked']).nullable().optional(),
+  expiry_date: z.string().datetime({ offset: true }).nullable().optional(),
 })
 
 /** GET /api/drafts/:id — fetch a single draft */

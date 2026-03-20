@@ -63,6 +63,9 @@ function makePost(id: string, pillarId: string | null, suggestedAt: string, sche
     content_version: 1,
     revision_count: 0,
     brief_id: null,
+    freshness_type: 'evergreen',
+    expiry_date: null,
+    archived_at: null,
     created_at: suggestedAt,
     updated_at: suggestedAt,
   };

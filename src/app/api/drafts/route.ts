@@ -26,6 +26,8 @@ const CreateDraftSchema = z.object({
   brief_ref: z.string().max(512).nullable().optional(),
   suggested_publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   media_urls: z.array(z.string().url()).nullable().optional(),
+  freshness_type: z.enum(['evergreen', 'time_sensitive', 'date_locked']).nullable().optional(),
+  expiry_date: z.string().datetime({ offset: true }).nullable().optional(),
 })
 
 /** POST /api/drafts — create a new draft */
@@ -153,6 +155,8 @@ export async function POST(request: NextRequest) {
       status: 'pending_review',
       agent_id: auth.agentId,
       created_by_agent: auth.agentName,
+      freshness_type: parsed.data.freshness_type ?? null,
+      expiry_date: parsed.data.expiry_date ?? null,
     })
     .select()
     .single()

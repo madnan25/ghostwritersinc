@@ -10,6 +10,8 @@ export type PostStatus =
 
 export type ContentType = 'text' | 'image' | 'document'
 
+export type FreshnessType = 'evergreen' | 'time_sensitive' | 'date_locked'
+
 export type AuthorType = 'user' | 'agent'
 
 export type ReviewAction = 'approved' | 'rejected' | 'escalated' | 'revised'
@@ -54,6 +56,9 @@ export interface Post {
   revision_count: number
   brief_id: string | null
   brief_version_id?: string | null
+  freshness_type: FreshnessType
+  expiry_date: string | null
+  archived_at: string | null
   source?: string | null
   created_at: string
   updated_at: string
