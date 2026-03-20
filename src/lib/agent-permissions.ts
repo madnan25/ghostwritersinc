@@ -43,6 +43,11 @@ export const AGENT_PERMISSION_GROUPS = [
     label: "Strategy",
     permissions: ["strategy:read", "strategy:write"] as const,
   },
+  {
+    key: "briefs",
+    label: "Briefs",
+    permissions: ["briefs:read", "briefs:write"] as const,
+  },
 ] as const;
 
 export const ALL_AGENT_PERMISSIONS = AGENT_PERMISSION_GROUPS.flatMap((group) =>
@@ -98,6 +103,7 @@ export const AGENT_PROVIDER_OPTIONS: Array<{
 
 export const AGENT_PERMISSION_PRESETS: Record<string, string[]> = {
   writer: ["drafts:read", "drafts:write", "comments:read", "comments:write"],
+  engineer: ["drafts:read", "comments:read", "comments:write"],
   reviewer: ["drafts:read", "comments:read", "reviews:read", "reviews:write"],
   strategist: [
     "drafts:read",
@@ -106,6 +112,8 @@ export const AGENT_PERMISSION_PRESETS: Record<string, string[]> = {
     "pillars:write",
     "strategy:read",
     "strategy:write",
+    "briefs:read",
+    "briefs:write",
   ],
   researcher: ["research:read", "research:write", "strategy:read"],
 };
@@ -118,6 +126,19 @@ export const DEFAULT_AGENT_PERMISSIONS: Record<AgentType, string[]> = {
   researcher: [...AGENT_PERMISSION_PRESETS.researcher],
   custom: [],
 };
+
+// Maps specific agent slugs to their permission preset key.
+// Use this for named overrides that don't correspond to a general AgentType.
+const AGENT_SLUG_PRESET_MAP: Record<string, string> = {
+  craftsman: "engineer",
+};
+
+export function getPermissions(agentName: string): string[] {
+  const slug = agentName.toLowerCase();
+  const presetKey = AGENT_SLUG_PRESET_MAP[slug];
+  if (presetKey) return AGENT_PERMISSION_PRESETS[presetKey] ?? [];
+  return DEFAULT_AGENT_PERMISSIONS[slug as AgentType] ?? [];
+}
 
 export function normalizeAgentName(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
