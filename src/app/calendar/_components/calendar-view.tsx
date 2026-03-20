@@ -56,6 +56,7 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
         minute: '2-digit',
       })
     : ''
+  const isHumanRequested = post.source === 'human_request'
 
   return (
     <Link href={`/post/${post.id}`}>
@@ -64,6 +65,11 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
         title={post.content}
         style={pillarColor ? { borderLeftColor: pillarColor, borderLeftWidth: 3 } : undefined}
       >
+        {isHumanRequested && (
+          <span className="mr-1 inline-flex items-center rounded bg-violet-500/20 px-1 text-[0.6rem] font-medium text-violet-400">
+            HR
+          </span>
+        )}
         {time && <span className="mr-1 opacity-70">{time}</span>}
         <span>{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</span>
       </div>
@@ -345,6 +351,12 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
           <span className="flex items-center gap-1.5 text-xs">
             <span className="inline-block size-2 rounded-full bg-green-400" />
             <span className="text-muted-foreground">Approved</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs">
+            <span className="inline-flex items-center rounded bg-violet-500/20 px-1 text-[0.6rem] font-medium text-violet-400">
+              HR
+            </span>
+            <span className="text-muted-foreground">Human Requested</span>
           </span>
           {pillars.length > 0 && (
             <>

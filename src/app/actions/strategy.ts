@@ -83,3 +83,67 @@ export async function saveStrategyConfig(formData: FormData) {
 
   revalidatePath("/settings");
 }
+
+// ---------------------------------------------------------------------------
+// Scout instructions context
+// ---------------------------------------------------------------------------
+
+export type ScoutContextData = {
+  context: string | null
+  updatedAt: string | null
+}
+
+export async function getScoutContext(): Promise<ScoutContextData> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { context: null, updatedAt: null };
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile) return { context: null, updatedAt: null };
+
+  const { data } = await supabase
+    .from("strategy_config")
+    .select("scout_context, updated_at")
+    .eq("user_id", user.id)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+
+  return {
+    context: (data as { scout_context?: string | null } | null)?.scout_context ?? null,
+    updatedAt: (data as { updated_at?: string | null } | null)?.updated_at ?? null,
+  };
+}
+
+export async function saveScoutContext(context: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile) throw new Error("Profile not found");
+
+  const { error } = await supabase.from("strategy_config").upsert(
+    {
+      user_id: user.id,
+      organization_id: profile.organization_id,
+      scout_context: context || null,
+    },
+    { onConflict: "user_id,organization_id" }
+  );
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/strategy");
+}

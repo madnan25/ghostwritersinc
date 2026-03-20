@@ -3,6 +3,9 @@ import { getPillars, getAllPosts } from '@/lib/queries/posts'
 import { PillarCard } from './_components/pillar-card'
 import { ContentMixChart } from './_components/content-mix-chart'
 import { RotationTimeline } from './_components/rotation-timeline'
+import { ScoutInstructionsCard } from './_components/scout-instructions-card'
+import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
+import { getScoutContext } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
 
 function computeActualPct(posts: Post[], pillarId: string): number {
@@ -43,10 +46,11 @@ function getPostsThisMonth(posts: Post[]): number {
 export default async function StrategyPage() {
   // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const [{ data: { user } }, pillars, posts] = await Promise.all([
+  const [{ data: { user } }, pillars, posts, scoutData] = await Promise.all([
     supabase.auth.getUser(),
     getPillars(),
     getAllPosts(),
+    getScoutContext(),
   ])
 
   // Get org name (needs user ID)
@@ -84,8 +88,13 @@ export default async function StrategyPage() {
     <div className="container px-4 py-8">
       {/* Section A: Strategy Overview Header */}
       <div className="mb-10">
-        <p className="text-sm font-medium text-muted-foreground">{orgName}</p>
-        <h1 className="mt-1 text-2xl font-bold">Content Strategy</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">{orgName}</p>
+            <h1 className="mt-1 text-2xl font-bold">Content Strategy</h1>
+          </div>
+          <RequestPostButton />
+        </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           <div className="rounded-lg border border-border bg-card px-4 py-3">
@@ -101,6 +110,14 @@ export default async function StrategyPage() {
             <p className="mt-0.5 text-xs opacity-70">Pillar balance</p>
           </div>
         </div>
+      </div>
+
+      {/* Scout Instructions */}
+      <div className="mb-10">
+        <ScoutInstructionsCard
+          initialContext={scoutData.context}
+          initialUpdatedAt={scoutData.updatedAt}
+        />
       </div>
 
       {pillars.length === 0 ? (

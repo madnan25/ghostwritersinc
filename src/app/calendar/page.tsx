@@ -1,5 +1,6 @@
 import { getCalendarPosts, getPillars } from '@/lib/queries/posts'
 import { CalendarView } from './_components/calendar-view'
+import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
 
 export default async function CalendarPage() {
   // Auth handled by middleware
@@ -12,13 +13,16 @@ export default async function CalendarPage() {
 
   return (
     <div className="container px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Content Calendar</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {totalPosts === 0
-            ? 'No posts scheduled yet'
-            : `${scheduled.length} scheduled · ${unscheduled.length} unscheduled`}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Content Calendar</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {totalPosts === 0
+              ? 'No posts scheduled yet'
+              : `${scheduled.length} scheduled · ${unscheduled.length} unscheduled`}
+          </p>
+        </div>
+        <RequestPostButton />
       </div>
 
       {totalPosts === 0 ? (

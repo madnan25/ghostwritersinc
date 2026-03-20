@@ -5,6 +5,7 @@ import {
   DASHBOARD_METRIC_CARDS,
   type DashboardMetrics,
 } from "@/lib/dashboard-ui";
+import { RequestPostButton } from "./request-post-dialog";
 
 type DashboardHeroProps = {
   metrics: DashboardMetrics;
@@ -48,6 +49,9 @@ export function DashboardHero({ metrics, narrative }: DashboardHeroProps) {
             <p className="mt-5 max-w-2xl text-base leading-8 text-foreground/70">
               {narrative}
             </p>
+            <div className="mt-6">
+              <RequestPostButton />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
