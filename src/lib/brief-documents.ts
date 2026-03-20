@@ -2,6 +2,7 @@ import type { BriefStatus, BriefVersionWithContext } from './types'
 
 const BRIEF_STATUS_LABELS: Record<BriefStatus, string> = {
   pending: 'Pending',
+  pending_strategist: 'Pending Strategist',
   in_review: 'In Review',
   revision_requested: 'Revision Requested',
   done: 'Done',

@@ -99,13 +99,13 @@ export function findNextProcessableBrief(
       continue
     }
 
-    // For part 1, always eligible if still pending
-    if (brief.series_part_number === 1 && brief.status === 'pending') {
+    // For part 1, always eligible if still pending/pending_strategist
+    if (brief.series_part_number === 1 && (brief.status === 'pending' || brief.status === 'pending_strategist')) {
       return brief
     }
 
     // For part N, check if part N-1 is at least in_review
-    if (brief.series_part_number > 1 && brief.status === 'pending') {
+    if (brief.series_part_number > 1 && (brief.status === 'pending' || brief.status === 'pending_strategist')) {
       const priorPart = seriesBriefs.find(
         (b) => b.series_part_number === brief.series_part_number - 1,
       )
