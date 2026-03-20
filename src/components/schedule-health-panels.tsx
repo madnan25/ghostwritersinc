@@ -10,6 +10,24 @@ interface ScheduleHealthPanelsProps {
   warnings: RotationWarning[]
 }
 
+const SHORT_TO_FULL_MONTH: Record<string, string> = {
+  Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
+  May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
+  Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December',
+}
+
+function getWarningMonth(warning: RotationWarning): string {
+  if (!warning.period_label) return ''
+  if (warning.scope === 'month') return warning.period_label
+  // Weekly scope: "Mar 15 - Mar 21, 2026" → "March 2026"
+  const abbrev = warning.period_label.match(/^(\w+)\s+\d+/)
+  const year = warning.period_label.match(/(\d{4})/)
+  if (abbrev && year) {
+    return `${SHORT_TO_FULL_MONTH[abbrev[1]] ?? abbrev[1]} ${year[1]}`
+  }
+  return warning.period_label
+}
+
 function SuggestedQueueList({ warnings }: { warnings: RotationWarning[] }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -113,11 +131,49 @@ function ScheduledMixList({ warnings }: { warnings: RotationWarning[] }) {
 }
 
 export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
-  const suggestedWarnings = warnings.filter((warning) => warning.source === 'suggested')
-  const scheduledWarnings = warnings.filter((warning) => warning.source === 'scheduled')
+  const months = [...new Set(warnings.map(getWarningMonth).filter(Boolean))]
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
+
+  const filtered = selectedMonth
+    ? warnings.filter((w) => getWarningMonth(w) === selectedMonth)
+    : warnings
+
+  const suggestedWarnings = filtered.filter((warning) => warning.source === 'suggested')
+  const scheduledWarnings = filtered.filter((warning) => warning.source === 'scheduled')
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2">
+    <section className="space-y-3">
+      {months.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          <button
+            onClick={() => setSelectedMonth(null)}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              selectedMonth === null
+                ? 'bg-white/10 text-foreground'
+                : 'text-foreground/45 hover:text-foreground/70'
+            }`}
+          >
+            All
+          </button>
+          {months.map((month) => (
+            <button
+              key={month}
+              onClick={() => setSelectedMonth(month)}
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                selectedMonth === month
+                  ? 'bg-white/10 text-foreground'
+                  : 'text-foreground/45 hover:text-foreground/70'
+              }`}
+            >
+              {month}
+            </button>
+          ))}
+        </div>
+      )}
+      {months.length === 1 && (
+        <p className="text-xs font-medium text-foreground/45">{months[0]}</p>
+      )}
+      <div className="grid gap-4 lg:grid-cols-2">
       <div className="dashboard-frame rounded-[24px] p-5 sm:p-6">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-amber-400/18 bg-amber-500/[0.08] text-amber-300">
@@ -160,6 +216,7 @@ export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
           </div>
         </div>
         <ScheduledMixList warnings={scheduledWarnings} />
+      </div>
       </div>
     </section>
   )
