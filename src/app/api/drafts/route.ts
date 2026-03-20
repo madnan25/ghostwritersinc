@@ -202,6 +202,7 @@ export async function GET(request: NextRequest) {
     .from('posts')
     .select('*')
     .eq('organization_id', auth.organizationId)
+    .is('archived_at', null)
     .order('suggested_publish_at', { ascending: true })
 
   if (!isSharedOrgAgentContext(auth)) {

@@ -243,7 +243,7 @@ export async function PATCH(
   return NextResponse.json(post)
 }
 
-/** DELETE /api/drafts/:id — hard delete a post */
+/** DELETE /api/drafts/:id — soft-archive a post (sets archived_at, content preserved) */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -271,7 +271,7 @@ export async function DELETE(
   // Verify the post exists and belongs to the agent's scope
   const { data: existing } = await supabase
     .from('posts')
-    .select('organization_id, user_id, status')
+    .select('organization_id, user_id, status, archived_at')
     .eq('id', id)
     .single()
 
@@ -279,20 +279,25 @@ export async function DELETE(
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  let deleteQuery = supabase
+  // Idempotent: already archived — return success without re-writing
+  if (existing.archived_at) {
+    return new NextResponse(null, { status: 204 })
+  }
+
+  let archiveQuery = supabase
     .from('posts')
-    .delete()
+    .update({ archived_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', auth.organizationId)
 
   if (!isSharedOrgAgentContext(auth)) {
-    deleteQuery = deleteQuery.eq('user_id', auth.userId)
+    archiveQuery = archiveQuery.eq('user_id', auth.userId)
   }
 
-  const { error } = await deleteQuery
+  const { error } = await archiveQuery
 
   if (error) {
-    console.error('[drafts] DB error deleting post:', error)
+    console.error('[drafts] DB error archiving post:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
@@ -302,7 +307,7 @@ export async function DELETE(
     agentId: auth.agentId,
     postId: id,
     actionType: 'status_changed',
-    metadata: { status: existing.status },
+    metadata: { from: existing.status, to: 'archived' },
     providerMetadata: providerRunId ? { provider_run_id: providerRunId } : undefined,
   })
 
