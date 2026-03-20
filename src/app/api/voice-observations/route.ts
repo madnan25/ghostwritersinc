@@ -88,6 +88,28 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient()
 
+  if (parsed.data.source_post_ids && parsed.data.source_post_ids.length > 0) {
+    const { data: foundPosts, error: postsError } = await supabase
+      .from('posts')
+      .select('id')
+      .in('id', parsed.data.source_post_ids)
+      .eq('organization_id', auth.organizationId)
+
+    if (postsError) {
+      console.error('[voice-observations] DB error validating source_post_ids:', postsError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+
+    const foundIds = new Set((foundPosts ?? []).map((p) => p.id))
+    const invalidIds = parsed.data.source_post_ids.filter((id) => !foundIds.has(id))
+    if (invalidIds.length > 0) {
+      return NextResponse.json(
+        { error: 'Invalid source_post_ids: posts not found in organization', invalid_ids: invalidIds },
+        { status: 422 }
+      )
+    }
+  }
+
   const { data, error } = await supabase
     .from('voice_observations')
     .insert({
