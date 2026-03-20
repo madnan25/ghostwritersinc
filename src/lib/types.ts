@@ -296,9 +296,9 @@ export interface ResearchPoolItem {
   updated_at: string
 }
 
-export type BriefStatus = 'pending' | 'in_review' | 'revision_requested' | 'done'
+export type BriefStatus = 'pending' | 'pending_strategist' | 'in_review' | 'revision_requested' | 'done'
 
-export type BriefSource = 'ai_generated' | 'human_request'
+export type BriefSource = 'ai_generated' | 'human_request' | 'series_generated'
 
 export type BriefPriority = 'normal' | 'urgent'
 
@@ -396,6 +396,7 @@ export interface ContentSeries {
   created_at: string
   updated_at: string
   completed_at: string | null
+  debrief: SeriesDebrief | null
 }
 
 export interface SeriesBrief {

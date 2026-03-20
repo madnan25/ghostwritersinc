@@ -52,7 +52,8 @@ create table if not exists content_series (
   status         series_status not null default 'planning',
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
-  completed_at   timestamptz
+  completed_at   timestamptz,
+  debrief        jsonb
 );
 
 create index if not exists idx_content_series_org
