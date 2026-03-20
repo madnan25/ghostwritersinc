@@ -54,11 +54,12 @@ set
   pillar_id = cp.id,
   pillar_mapping_status = 'auto',
   updated_at = now()
-from pillar_aliases pa
-join content_pillars cp on cp.slug = pa.target_slug and cp.user_id = p.user_id
+from pillar_aliases pa, content_pillars cp
 where p.pillar_id is null
   and p.pillar is not null
-  and lower(trim(p.pillar)) = pa.alias;
+  and lower(trim(p.pillar)) = pa.alias
+  and cp.slug = pa.target_slug
+  and cp.user_id = p.user_id;
 
 -- =============================================================================
 -- 5. RESOLVE pillar text with "P\d+ — " prefix stripped

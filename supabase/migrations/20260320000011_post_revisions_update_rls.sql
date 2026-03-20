@@ -17,13 +17,13 @@ create policy "Users can update post revisions"
     exists (
       select 1 from posts
       where posts.id = post_revisions.post_id
-        and posts.organization_id = auth.user_organization_id()
+        and posts.organization_id = (select organization_id from public.users where id = auth.uid())
     )
   )
   with check (
     exists (
       select 1 from posts
       where posts.id = post_revisions.post_id
-        and posts.organization_id = auth.user_organization_id()
+        and posts.organization_id = (select organization_id from public.users where id = auth.uid())
     )
   );

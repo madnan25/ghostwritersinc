@@ -13,15 +13,18 @@
 -- =============================================================================
 -- 1. Revision type enum
 -- =============================================================================
-create type revision_type as enum ('full', 'targeted');
+do $$ begin
+  create type revision_type as enum ('full', 'targeted');
+exception when duplicate_object then null;
+end $$;
 
 -- =============================================================================
 -- 2. New columns on post_revisions
 -- =============================================================================
 alter table post_revisions
-  add column revision_type revision_type not null default 'full',
-  add column flagged_sections jsonb,
-  add column diff_sections jsonb;
+  add column if not exists revision_type revision_type not null default 'full',
+  add column if not exists flagged_sections jsonb,
+  add column if not exists diff_sections jsonb;
 
 -- =============================================================================
 -- 3. Allow version to be NULL for targeted revision records
@@ -33,17 +36,24 @@ alter table post_revisions
 -- 4. Replace the blanket unique constraint with a partial index (full revisions only)
 --    Targeted revisions (version IS NULL) are exempt from the uniqueness check.
 -- =============================================================================
-alter table post_revisions
-  drop constraint uq_post_revisions_post_version;
+-- Try both possible constraint names (explicit vs auto-generated)
+do $$
+begin
+  alter table post_revisions drop constraint if exists uq_post_revisions_post_version;
+  alter table post_revisions drop constraint if exists post_revisions_post_id_version_key;
+exception when undefined_object then
+  null;
+end;
+$$;
 
-create unique index uq_post_revisions_full_version
+create unique index if not exists uq_post_revisions_full_version
   on post_revisions (post_id, version)
   where version is not null;
 
 -- =============================================================================
 -- 5. Index: targeted revisions per post (for rate-limit count queries)
 -- =============================================================================
-create index idx_post_revisions_targeted
+create index if not exists idx_post_revisions_targeted
   on post_revisions (post_id, revision_type)
   where revision_type = 'targeted';
 
