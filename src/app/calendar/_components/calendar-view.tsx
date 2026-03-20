@@ -16,6 +16,7 @@ function getStatusColor(status: Post['status']): string {
   switch (status) {
     case 'scheduled': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
     case 'approved': return 'bg-green-500/20 text-green-400 border-green-500/30'
+    case 'revision': return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
     case 'publish_failed': return 'bg-destructive/20 text-destructive border-destructive/30'
     default: return 'bg-muted text-muted-foreground border-border'
   }

@@ -1,6 +1,7 @@
 export type PostStatus =
   | 'draft'
   | 'pending_review'
+  | 'revision'
   | 'approved'
   | 'scheduled'
   | 'published'
@@ -32,6 +33,7 @@ export interface Post {
   id: string
   organization_id: string
   user_id: string
+  title?: string | null
   content: string
   content_type: ContentType
   media_urls: string[] | null
@@ -51,6 +53,7 @@ export interface Post {
   content_version: number
   revision_count: number
   brief_id: string | null
+  brief_version_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -62,6 +65,7 @@ export interface PostRevision {
   content: string
   revised_by_agent: string | null
   revision_reason: string | null
+  brief_version_id?: string | null
   created_at: string
 }
 
@@ -189,6 +193,7 @@ export interface ContentPillar {
   user_id: string
   name: string
   slug: string
+  active?: boolean
   description: string | null
   color: string
   weight_pct: number
@@ -284,11 +289,41 @@ export interface Brief {
   voice_notes: string | null
   publish_at: string | null
   status: BriefStatus
+  current_version?: number
   revision_count: number
   revision_notes: string | null
   assigned_agent_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface BriefVersion {
+  id: string
+  brief_id: string
+  organization_id: string
+  version: number
+  pillar_id: string | null
+  angle: string
+  research_refs: string[]
+  voice_notes: string | null
+  publish_at: string | null
+  status: BriefStatus
+  revision_count: number
+  revision_notes: string | null
+  assigned_agent_id: string | null
+  created_at: string
+}
+
+export interface BriefVersionResearchItem {
+  id: string
+  title: string
+  source_type: string
+}
+
+export interface BriefVersionWithContext extends BriefVersion {
+  assigned_agent_name: string | null
+  research_items: BriefVersionResearchItem[]
+  linked_post_versions: number[]
 }
 
 export interface LinkedInConnection {

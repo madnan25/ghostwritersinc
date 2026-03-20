@@ -9,6 +9,7 @@ export type RotationWarning = {
 
 export const STATUS_STYLES: Record<string, string> = {
   pending_review: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+  revision: "bg-orange-500/15 text-orange-400 border-orange-500/25",
   approved: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
   rejected: "bg-destructive/15 text-destructive border-destructive/25",
   draft: "bg-muted text-muted-foreground border-border",

@@ -21,6 +21,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   approved: { label: 'Approved', className: 'editorial-chip border-emerald-300/20 text-emerald-200' },
   scheduled: { label: 'Scheduled', className: 'editorial-chip border-sky-300/22 text-sky-200' },
   published: { label: 'Published', className: 'editorial-chip status-chip-live border-transparent' },
+  revision: { label: 'Revision', className: 'editorial-chip border-amber-400/40 bg-amber-500/10 text-amber-300' },
   rejected: { label: 'Rejected', className: 'editorial-chip border-red-300/20 text-red-200' },
   publish_failed: { label: 'Publish Failed', className: 'editorial-chip border-red-300/30 text-red-200' },
 }

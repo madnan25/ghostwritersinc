@@ -8,6 +8,7 @@ export type DashboardStatusFilter = {
     | "awaiting_agent"
     | "needs_approval"
     | "draft"
+    | "revision"
     | "approved"
     | "scheduled"
     | "published"
@@ -23,6 +24,7 @@ export const DASHBOARD_STATUS_FILTERS: DashboardStatusFilter[] = [
   { id: "awaiting_agent", label: "Awaiting Agent", statuses: ["pending_review"], agentReviewedFilter: "without" },
   { id: "needs_approval", label: "Needs Approval", statuses: ["pending_review"], agentReviewedFilter: "with" },
   { id: "draft", label: "Drafts", statuses: ["draft"], agentReviewedFilter: null },
+  { id: "revision", label: "Revision", statuses: ["revision"], agentReviewedFilter: null },
   { id: "approved", label: "Approved", statuses: ["approved"], agentReviewedFilter: null },
   { id: "scheduled", label: "Scheduled", statuses: ["scheduled"], agentReviewedFilter: null },
   { id: "published", label: "Published", statuses: ["published"], agentReviewedFilter: null },
@@ -130,12 +132,13 @@ export function getStatusFilterCount(
 function getDashboardPriority(post: Post): number {
   if (post.status === "pending_review" && post.reviewed_by_agent) return 0;
   if (post.status === "pending_review") return 1;
-  if (post.status === "approved") return 2;
-  if (post.status === "scheduled") return 3;
-  if (post.status === "draft") return 4;
-  if (post.status === "publish_failed") return 5;
-  if (post.status === "published") return 6;
-  if (post.status === "rejected") return 7;
+  if (post.status === "revision") return 2;
+  if (post.status === "approved") return 3;
+  if (post.status === "scheduled") return 4;
+  if (post.status === "draft") return 5;
+  if (post.status === "publish_failed") return 6;
+  if (post.status === "published") return 7;
+  if (post.status === "rejected") return 8;
   return 99;
 }
 
