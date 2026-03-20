@@ -66,6 +66,7 @@ export default function RootLayout({
                       { href: "/insights", label: "Insights" },
                       { href: "/team", label: "Team" },
                       { href: "/strategy", label: "Strategy" },
+                      { href: "/series", label: "Series" },
                       { href: "/research", label: "Research" },
                     ].map(({ href, label }) => (
                       <Link

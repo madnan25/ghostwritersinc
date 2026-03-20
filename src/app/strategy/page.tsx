@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getPillars, getAllPosts, getPillarWeightsConfig } from '@/lib/queries/posts'
+import { getSeries } from '@/lib/queries/series'
 import { PillarCard } from './_components/pillar-card'
 import { ContentMixChart } from './_components/content-mix-chart'
 import { RotationTimeline } from './_components/rotation-timeline'
@@ -9,10 +10,13 @@ import { PostingDaysToggle } from './_components/posting-days-toggle'
 import { WhatsWorkingCard } from './_components/whats-working-card'
 import { VoiceLearningCard } from './_components/voice-learning-card'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
+import { CreateSeriesButton } from '../series/_components/create-series-wizard'
+import { SeriesCard } from '../series/_components/series-card'
 import { getScoutContext, getStrategyConfig, getVoiceObservationsData } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
 import type { WhatsWorkingSummary } from '@/lib/performance-analysis'
 import { getCalendarDate } from '@/lib/post-display'
+import Link from 'next/link'
 
 function computeActualPct(posts: Post[], pillarId: string): number {
   const pillarPosts = posts.filter((p) => p.pillar_id === pillarId)
@@ -52,7 +56,7 @@ function getPostsThisMonth(posts: Post[]): number {
 export default async function StrategyPage() {
   // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig, strategyConfig, voiceData] = await Promise.all([
+  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig, strategyConfig, voiceData, allSeries] = await Promise.all([
     supabase.auth.getUser(),
     getPillars(),
     getAllPosts(),
@@ -60,6 +64,7 @@ export default async function StrategyPage() {
     getPillarWeightsConfig(),
     getStrategyConfig(),
     getVoiceObservationsData(),
+    getSeries(),
   ])
 
   // Get org membership (needed for org name + scoping queries)
@@ -160,6 +165,43 @@ export default async function StrategyPage() {
           observations={voiceData.observations}
           diffCount={voiceData.diffCount}
         />
+      </div>
+
+      {/* Content Series */}
+      <div className="mb-10">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Content Series</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Multi-part narrative arcs for sequenced publishing
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {allSeries.length > 0 && (
+              <Link
+                href="/series"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                View all
+              </Link>
+            )}
+            <CreateSeriesButton />
+          </div>
+        </div>
+
+        {allSeries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              No series yet. Create one to plan a multi-post narrative arc.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {allSeries.slice(0, 6).map((s) => (
+              <SeriesCard key={s.id} series={s} />
+            ))}
+          </div>
+        )}
       </div>
 
       {pillars.length === 0 ? (

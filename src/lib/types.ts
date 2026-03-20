@@ -374,6 +374,82 @@ export interface StrategyConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Sprint 6 — Content Series
+// ---------------------------------------------------------------------------
+
+export type SeriesStatus = 'planning' | 'active' | 'paused' | 'cancelled' | 'completed'
+
+export type SeriesCadence = 'weekly' | 'biweekly' | 'monthly'
+
+export interface ContentSeries {
+  id: string
+  organization_id: string
+  user_id: string
+  title: string
+  description: string | null
+  total_parts: number
+  cadence: SeriesCadence
+  status: SeriesStatus
+  created_at: string
+  updated_at: string
+  completed_at: string | null
+}
+
+export interface SeriesBrief {
+  id: string
+  series_id: string
+  series_part_number: number
+  angle: string
+  status: string
+  post_id?: string | null
+  post_status?: string | null
+}
+
+export interface SeriesWithBriefs extends ContentSeries {
+  briefs: SeriesBrief[]
+}
+
+export interface SeriesBriefWithPost {
+  id: string
+  series_id: string
+  series_part_number: number
+  angle: string
+  status: BriefStatus
+  priority: BriefPriority
+  pillar_id: string | null
+  research_refs: string[]
+  voice_notes: string | null
+  publish_at: string | null
+  post_id: string | null
+  post_content: string | null
+  post_status: string | null
+  post_published_at: string | null
+}
+
+export interface SeriesDebrief {
+  generated_at: string
+  series_id: string
+  series_title: string
+  total_parts: number
+  parts_with_data: number
+  parts: Array<{
+    part_number: number
+    brief_id: string
+    post_id: string | null
+    status: string
+    impressions: number
+    reactions: number
+    comments_count: number
+    reposts: number
+    engagement: number
+  }>
+  best_performing_part: number | null
+  worst_performing_part: number | null
+  avg_engagement: number
+  engagement_trend: 'increasing' | 'decreasing' | 'stable'
+}
+
+// ---------------------------------------------------------------------------
 // Sprint 5 — Voice Profile Learning
 // ---------------------------------------------------------------------------
 
