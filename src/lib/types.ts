@@ -60,6 +60,9 @@ export interface Post {
   expiry_date: string | null
   archived_at: string | null
   source?: string | null
+  // Populated via brief join for calendar series visualization
+  series_id?: string | null
+  series_part_number?: number | null
   created_at: string
   updated_at: string
 }
