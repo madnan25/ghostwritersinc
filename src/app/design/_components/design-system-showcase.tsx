@@ -45,12 +45,36 @@ export function DesignSystemShowcase() {
           {foundationTokens.map((token) => (
             <div key={token.name} className="editorial-card p-4">
               <div
-                className="flex h-24 items-end rounded-[20px] border border-border/60 p-4"
+                className="relative flex h-24 items-end overflow-hidden rounded-[20px] border border-border/60 p-4"
                 style={{
-                  backgroundColor: `var(${token.cssVar})`,
+                  backgroundColor: token.previewStyle?.backgroundColor ?? `var(${token.cssVar})`,
+                  backgroundImage: token.previewStyle?.backgroundImage,
                   color: `var(${token.textVar})`,
                 }}
               >
+                {token.previewKind === "shell" ? (
+                  <>
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 opacity-[0.08]"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px)",
+                        backgroundSize: "84px 84px",
+                        maskImage: "radial-gradient(ellipse 75% 65% at 50% 50%, black 20%, transparent 80%)",
+                      }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 opacity-[0.68]"
+                      style={{
+                        background:
+                          "radial-gradient(circle at 14% 12%, oklch(0.52 0.06 143 / 0.12) 0%, transparent 28%), radial-gradient(circle at 86% 10%, oklch(0.94 0.03 110 / 0.08) 0%, transparent 30%), radial-gradient(circle at 50% 96%, oklch(0.34 0.04 143 / 0.12) 0%, transparent 34%)",
+                        filter: "blur(20px)",
+                      }}
+                    />
+                  </>
+                ) : null}
                 <span className="text-sm font-medium">{token.name}</span>
               </div>
               <div className="mt-4 space-y-1.5">
