@@ -60,8 +60,16 @@ export function scoreContentQuality(item: {
   return Math.min(1, score)
 }
 
+/** Common English words that carry no topical signal */
+const STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'new', 'how', 'can', 'all', 'any', 'our',
+  'its', 'are', 'was', 'has', 'had', 'not', 'but', 'from', 'this', 'that',
+  'they', 'will', 'have', 'been', 'you', 'your', 'their', 'what', 'who',
+])
+
 /**
  * Tokenize text into lowercase words for matching.
+ * Filters out short tokens and common stopwords.
  */
 function tokenize(text: string): Set<string> {
   return new Set(
@@ -69,7 +77,7 @@ function tokenize(text: string): Set<string> {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter((w) => w.length > 2)
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w))
   )
 }
 
@@ -135,7 +143,7 @@ export function matchPillar(
   }
 
   // Only match if score exceeds minimum threshold
-  if (!bestPillar || bestScore < 0.05) return null
+  if (!bestPillar || bestScore < 0.20) return null
 
   return { pillar: bestPillar, score: bestScore }
 }
