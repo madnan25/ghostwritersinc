@@ -2,7 +2,7 @@
 
 import { useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pause, X, CheckCircle, Plus } from 'lucide-react'
+import { Pause, Play, X, CheckCircle, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { SeriesStatus } from '@/lib/types'
 
@@ -23,7 +23,7 @@ export function SeriesLifecycleActions({
   const [isPending, startTransition] = useTransition()
   const [actionError, setActionError] = useState<string | null>(null)
 
-  async function callAction(action: 'pause' | 'resume' | 'cancel' | 'complete' | 'add-post') {
+  async function callAction(action: 'activate' | 'pause' | 'resume' | 'cancel' | 'complete' | 'add-post') {
     setActionError(null)
     startTransition(async () => {
       try {
@@ -39,6 +39,7 @@ export function SeriesLifecycleActions({
     })
   }
 
+  const canActivate = status === 'planning'
   const canPause = status === 'active'
   const canResume = status === 'paused'
   const canCancel = status === 'active' || status === 'paused' || status === 'planning'
@@ -48,6 +49,19 @@ export function SeriesLifecycleActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Add Post requires a post-picker UI — disabled until that component is built */}
+
+      {canActivate && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => callAction('activate')}
+          disabled={isPending}
+          className="gap-1.5 text-green-400 hover:text-green-300 hover:border-green-500/50"
+        >
+          <Play className="size-3.5" />
+          Activate
+        </Button>
+      )}
 
       {canPause && (
         <Button
