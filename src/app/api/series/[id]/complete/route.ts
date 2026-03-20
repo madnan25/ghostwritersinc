@@ -92,6 +92,7 @@ export async function POST(
     .from('briefs')
     .select('id')
     .eq('series_id', id)
+    .eq('organization_id', organizationId)
     .not('status', 'eq', 'done')
 
   if (checkError) {

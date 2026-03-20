@@ -92,6 +92,7 @@ export async function POST(
     .from('briefs')
     .update({ status: 'done' })
     .eq('series_id', id)
+    .eq('organization_id', organizationId)
     .in('status', ['pending_strategist', 'pending', 'in_review', 'revision_requested'])
 
   if (briefsError) {

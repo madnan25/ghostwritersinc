@@ -34,10 +34,11 @@ export async function POST(request: NextRequest) {
 
   if (
     !hasAgentPermission(auth.permissions, 'briefs:read') ||
-    !hasAgentPermission(auth.permissions, 'drafts:read')
+    !hasAgentPermission(auth.permissions, 'drafts:read') ||
+    !hasAgentPermission(auth.permissions, 'posts:read')
   ) {
     return NextResponse.json(
-      { error: 'Insufficient permissions: requires briefs:read, drafts:read' },
+      { error: 'Insufficient permissions: requires briefs:read, drafts:read, posts:read' },
       { status: 403 },
     )
   }
