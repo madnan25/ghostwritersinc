@@ -42,7 +42,7 @@ export async function POST(
   if (!isAgentContext(auth)) return auth
 
   // Targeted revision is a heavier write — tighter rate limit than plain drafts:write
-  const limited = await rateLimit(getAgentRateLimitKey(auth, 'write'), {
+  const limited = await rateLimit(getAgentRateLimitKey(auth, 'targeted-revision'), {
     maxRequests: 5,
   })
   if (limited) return limited

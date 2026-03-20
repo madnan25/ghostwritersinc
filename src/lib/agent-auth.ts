@@ -287,7 +287,7 @@ export function hasAgentPermission(
 
 export function getAgentRateLimitKey(
   auth: AgentContext,
-  capability: 'read' | 'write' | 'review'
+  capability: 'read' | 'write' | 'review' | 'targeted-revision'
 ): string {
   const identity = auth.keyId ?? auth.keyPrefix ?? `${auth.agentName}:${auth.userId}`
   return `${capability}:${auth.organizationId}:${auth.userId}:${identity}`
