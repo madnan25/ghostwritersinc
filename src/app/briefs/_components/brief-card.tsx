@@ -1,4 +1,4 @@
-import { CalendarDays, FileText, Layers } from 'lucide-react'
+import { CalendarDays, FileText, Layers, Sparkles } from 'lucide-react'
 import type { BriefWithContext } from '@/lib/queries/posts'
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -63,7 +63,7 @@ export function BriefCard({ brief }: BriefCardProps) {
                 {priorityCfg.label}
               </span>
             )}
-            {brief.pillar_name && (
+            {brief.pillar_name ? (
               <span
                 className="editorial-chip"
                 style={
@@ -77,6 +77,11 @@ export function BriefCard({ brief }: BriefCardProps) {
                 }
               >
                 {brief.pillar_name}
+              </span>
+            ) : (
+              <span className="editorial-chip inline-flex items-center gap-1 border-violet-300/24 text-violet-300 bg-violet-500/8">
+                <Sparkles className="size-3" />
+                Wildcard
               </span>
             )}
           </div>
