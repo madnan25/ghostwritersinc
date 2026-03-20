@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       .update({
         pillar_id: pillarId,
         research_refs: uniqueRefs,
-        voice_notes: seriesContext,
+        voice_notes: [nextBrief.voice_notes, seriesContext].filter(Boolean).join('\n\n---\n\n'),
         status: 'in_review',
       })
       .eq('id', nextBrief.id)
