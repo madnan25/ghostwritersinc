@@ -281,6 +281,17 @@ export async function confirmObservation(id: string): Promise<void> {
     .single()
   if (!profile) throw new Error('Profile not found')
 
+  const { data: existing } = await supabase
+    .from('voice_observations')
+    .select('status')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .eq('organization_id', profile.organization_id)
+    .single()
+  if (existing?.status === 'dismissed') {
+    throw new Error('Cannot confirm a dismissed observation')
+  }
+
   const { error } = await supabase
     .from('voice_observations')
     .update({ status: 'confirmed', confirmed_at: new Date().toISOString(), dismissed_at: null })
