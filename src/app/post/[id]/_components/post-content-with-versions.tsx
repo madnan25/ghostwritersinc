@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import type { PostComment, PostRevision, PostStatus } from '@/lib/types'
 import { requestRevision } from '@/app/actions/posts'
 import { VersionSwitcher } from './version-switcher'
+import { DiffVersionSelectors } from './diff-version-selectors'
 import { CommentablePostContent } from './commentable-post-content'
 import { RevisionDiff } from './revision-diff'
 import { AnnotatablePostContent, type FlaggedAnnotation } from './annotatable-post-content'
@@ -26,6 +27,8 @@ interface Props {
 export function PostContentWithVersions({ postId, content, currentVersion, status, comments, revisions }: Props) {
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [diffMode, setDiffMode] = useState(false)
+  const [compareFrom, setCompareFrom] = useState<number | null>(null)
+  const [compareTo, setCompareTo] = useState<number | null>(null)
   const [revisionMode, setRevisionMode] = useState(status === 'revision')
   const [annotations, setAnnotations] = useState<FlaggedAnnotation[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -37,15 +40,23 @@ export function PostContentWithVersions({ postId, content, currentVersion, statu
       ? revisions.find((r) => r.version === selectedVersion)?.content
       : undefined
 
-  // Determine what to diff: selected version vs current, or last revision vs current
   const canShowDiff = revisions.length > 0
-  const diffOldContent = selectedVersion != null
-    ? versionContent ?? ''
-    : (revisions[0]?.content ?? '') // most recent revision (ordered desc)
-  const diffOldLabel = selectedVersion != null
-    ? `v${selectedVersion}`
-    : `v${revisions[0]?.version ?? ''}`
-  const diffNewLabel = `v${currentVersion} (current)`
+
+  // Resolve content for diff comparison
+  function resolveContent(version: number | null): string {
+    if (version === null) return content
+    return revisions.find((r) => r.version === version)?.content ?? ''
+  }
+
+  function resolveLabel(version: number | null): string {
+    if (version === null) return `v${currentVersion} (current)`
+    return `v${version}`
+  }
+
+  const diffOldContent = resolveContent(compareFrom)
+  const diffOldLabel = resolveLabel(compareFrom)
+  const diffNewContent = resolveContent(compareTo)
+  const diffNewLabel = resolveLabel(compareTo)
   const canRequestRevision = status === 'pending_review'
   const canUseRevisionTools = status === 'revision'
 
@@ -91,6 +102,11 @@ export function PostContentWithVersions({ postId, content, currentVersion, statu
   }
 
   function handleToggleDiff() {
+    if (!diffMode) {
+      // Turning diff on: initialize selectors
+      setCompareFrom(selectedVersion ?? revisions[0]?.version ?? null)
+      setCompareTo(null)
+    }
     setDiffMode((d) => !d)
     if (revisionMode) {
       setRevisionMode(false)
@@ -103,12 +119,22 @@ export function PostContentWithVersions({ postId, content, currentVersion, statu
       <div className="mb-5 rounded-[20px] border border-border/60 bg-background/40 p-2 shadow-[0_14px_36px_-30px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            {revisions.length > 0 && (
+            {revisions.length > 0 && !diffMode && (
               <VersionSwitcher
                 revisions={revisions}
                 currentVersion={currentVersion}
                 selectedVersion={selectedVersion}
                 onSelect={(v) => { setSelectedVersion(v); setDiffMode(false); setRevisionMode(false); setAnnotations([]) }}
+              />
+            )}
+            {diffMode && (
+              <DiffVersionSelectors
+                revisions={revisions}
+                currentVersion={currentVersion}
+                compareFrom={compareFrom}
+                compareTo={compareTo}
+                onChangeFrom={setCompareFrom}
+                onChangeTo={setCompareTo}
               />
             )}
             {canShowDiff && (
@@ -152,7 +178,9 @@ export function PostContentWithVersions({ postId, content, currentVersion, statu
             )}
           </div>
           <div className="px-2 text-[0.72rem] uppercase tracking-[0.16em] text-muted-foreground/80">
-            {selectedVersion != null ? `Viewing v${selectedVersion}` : `Current v${currentVersion}`}
+            {diffMode
+              ? `Comparing ${resolveLabel(compareFrom)} → ${resolveLabel(compareTo)}`
+              : selectedVersion != null ? `Viewing v${selectedVersion}` : `Current v${currentVersion}`}
           </div>
         </div>
         {error && (
@@ -163,7 +191,7 @@ export function PostContentWithVersions({ postId, content, currentVersion, statu
       {diffMode ? (
         <RevisionDiff
           oldContent={diffOldContent}
-          newContent={content}
+          newContent={diffNewContent}
           oldLabel={diffOldLabel}
           newLabel={diffNewLabel}
         />
