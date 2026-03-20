@@ -7,20 +7,40 @@ import {
   isAgentContext,
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { logAgentActivity } from '@/lib/agent-activity'
 import { rateLimit } from '@/lib/rate-limit'
 
-const CreateBriefSchema = z.object({
+const AgentCreateBriefSchema = z.object({
   pillar_id: z.string().uuid().nullable().optional(),
   angle: z.string().min(1, 'Angle is required'),
   research_refs: z.array(z.string().uuid()).default([]),
   voice_notes: z.string().nullable().optional(),
   publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   assigned_agent_id: z.string().uuid().nullable().optional(),
+  source: z.enum(['ai_generated', 'human_request']).default('ai_generated'),
+  priority: z.enum(['normal', 'urgent']).default('normal'),
 })
 
-/** POST /api/briefs — create a new brief */
+const UserCreateBriefSchema = z.object({
+  pillar_id: z.string().uuid().nullable().optional(),
+  angle: z.string().min(1, 'Topic/angle is required').max(2000),
+  voice_notes: z.string().max(5000).nullable().optional(),
+  publish_at: z.string().datetime({ offset: true }).nullable().optional(),
+  priority: z.enum(['normal', 'urgent']).default('normal'),
+})
+
+/** POST /api/briefs — create a new brief (agent or user) */
 export async function POST(request: NextRequest) {
+  const hasBearer = request.headers.get('authorization')?.startsWith('Bearer ')
+
+  if (hasBearer) {
+    return handleAgentCreate(request)
+  }
+  return handleUserCreate(request)
+}
+
+async function handleAgentCreate(request: NextRequest) {
   const auth = await authenticateAgent(request)
   if (!isAgentContext(auth)) return auth
 
@@ -41,7 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = CreateBriefSchema.safeParse(body)
+  const parsed = AgentCreateBriefSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Validation error', details: parsed.error.issues },
@@ -60,6 +80,8 @@ export async function POST(request: NextRequest) {
       voice_notes: parsed.data.voice_notes ?? null,
       publish_at: parsed.data.publish_at ?? null,
       assigned_agent_id: parsed.data.assigned_agent_id ?? null,
+      source: parsed.data.source,
+      priority: parsed.data.priority,
     })
     .select()
     .single()
@@ -82,6 +104,68 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data, { status: 201 })
 }
 
+async function handleUserCreate(request: NextRequest) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const admin = createAdminClient()
+  const { data: dbUser } = await admin
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!dbUser) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
+
+  const limited = await rateLimit(`user:briefs:write:${user.id}`, { maxRequests: 10 })
+  if (limited) return limited
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  const parsed = UserCreateBriefSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation error', details: parsed.error.issues },
+      { status: 400 }
+    )
+  }
+
+  const { data, error } = await admin
+    .from('briefs')
+    .insert({
+      organization_id: dbUser.organization_id,
+      pillar_id: parsed.data.pillar_id ?? null,
+      angle: parsed.data.angle.trim(),
+      research_refs: [],
+      voice_notes: parsed.data.voice_notes?.trim() ?? null,
+      publish_at: parsed.data.publish_at ?? null,
+      assigned_agent_id: null,
+      source: 'human_request',
+      priority: parsed.data.priority,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[briefs] DB error creating user brief:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  return NextResponse.json(data, { status: 201 })
+}
+
 /** GET /api/briefs — list briefs for the org */
 export async function GET(request: NextRequest) {
   const auth = await authenticateAgent(request)
@@ -100,6 +184,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const pillarId = searchParams.get('pillar_id')
+  const source = searchParams.get('source')
 
   const supabase = createAdminClient()
   let query = supabase
@@ -117,6 +202,17 @@ export async function GET(request: NextRequest) {
       )
     }
     query = query.eq('status', status)
+  }
+
+  if (source) {
+    const validSources = ['ai_generated', 'human_request']
+    if (!validSources.includes(source)) {
+      return NextResponse.json(
+        { error: `Invalid source: ${source}. Must be one of: ${validSources.join(', ')}` },
+        { status: 400 }
+      )
+    }
+    query = query.eq('source', source)
   }
 
   if (pillarId) {

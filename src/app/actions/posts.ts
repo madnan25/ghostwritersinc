@@ -812,3 +812,47 @@ export async function publishToLinkedIn(
 
   return { success: true }
 }
+
+// ---------------------------------------------------------------------------
+// Human brief request (user-initiated)
+// ---------------------------------------------------------------------------
+
+export async function createHumanBriefRequest(data: {
+  topic: string
+  angle?: string
+  publishWeek?: string | null
+  priority?: 'normal' | 'urgent'
+  notes?: string
+}) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  // Compose voice_notes from optional fields
+  const voiceParts: string[] = []
+  if (data.angle) voiceParts.push(`Hook: ${data.angle}`)
+  if (data.notes) voiceParts.push(data.notes)
+
+  const { error } = await supabase.from('briefs').insert({
+    organization_id: profile.organization_id,
+    angle: data.topic,
+    voice_notes: voiceParts.length > 0 ? voiceParts.join('\n') : null,
+    publish_at: data.publishWeek ? new Date(data.publishWeek).toISOString() : null,
+    source: 'human_request',
+    priority: data.priority ?? 'normal',
+  })
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath('/calendar')
+}

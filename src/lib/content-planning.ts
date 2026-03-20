@@ -160,6 +160,8 @@ export function planBriefsFromResearch(
     voice_notes: null,
     publish_at: null,
     status: 'pending' as const,
+    source: 'ai_generated' as const,
+    priority: 'normal' as const,
     revision_count: 0,
     revision_notes: null,
     assigned_agent_id: null,

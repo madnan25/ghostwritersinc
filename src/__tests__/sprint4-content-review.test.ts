@@ -68,6 +68,8 @@ function makeBrief(overrides: Partial<Brief> = {}): Brief {
     voice_notes: null,
     publish_at: null,
     status: 'pending',
+    source: 'ai_generated',
+    priority: 'normal',
     revision_count: 0,
     revision_notes: null,
     assigned_agent_id: null,

@@ -54,6 +54,7 @@ export interface Post {
   revision_count: number
   brief_id: string | null
   brief_version_id?: string | null
+  source?: string | null
   created_at: string
   updated_at: string
 }
@@ -280,6 +281,10 @@ export interface ResearchPoolItem {
 
 export type BriefStatus = 'pending' | 'in_review' | 'revision_requested' | 'done'
 
+export type BriefSource = 'ai_generated' | 'human_request'
+
+export type BriefPriority = 'normal' | 'urgent'
+
 export interface Brief {
   id: string
   organization_id: string
@@ -289,6 +294,8 @@ export interface Brief {
   voice_notes: string | null
   publish_at: string | null
   status: BriefStatus
+  source: BriefSource
+  priority: BriefPriority
   current_version?: number
   revision_count: number
   revision_notes: string | null
@@ -308,6 +315,8 @@ export interface BriefVersion {
   voice_notes: string | null
   publish_at: string | null
   status: BriefStatus
+  source: BriefSource
+  priority: BriefPriority
   revision_count: number
   revision_notes: string | null
   assigned_agent_id: string | null
@@ -341,6 +350,7 @@ export interface StrategyConfig {
   intel_score_threshold: number
   default_publish_hour: number
   voice_notes: string | null
+  scout_context: string | null
   created_at: string
   updated_at: string
 }

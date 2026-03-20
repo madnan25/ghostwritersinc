@@ -22,6 +22,7 @@ describe('Sprint 1: Type definitions', () => {
         intel_score_threshold: 0.70,
         default_publish_hour: 9,
         voice_notes: 'Keep it professional',
+        scout_context: null,
         created_at: '2026-03-19T00:00:00Z',
         updated_at: '2026-03-19T00:00:00Z',
       }
@@ -39,6 +40,7 @@ describe('Sprint 1: Type definitions', () => {
         intel_score_threshold: 0.5,
         default_publish_hour: 14,
         voice_notes: null,
+        scout_context: null,
         created_at: '2026-03-19T00:00:00Z',
         updated_at: '2026-03-19T00:00:00Z',
       }
@@ -105,6 +107,8 @@ describe('Sprint 1: Type definitions', () => {
         voice_notes: 'Professional tone',
         publish_at: '2026-03-25T09:00:00Z',
         status: 'pending',
+        source: 'ai_generated',
+        priority: 'normal',
         revision_count: 0,
         revision_notes: null,
         assigned_agent_id: 'agent-1',
@@ -131,6 +135,8 @@ describe('Sprint 1: Type definitions', () => {
         voice_notes: null,
         publish_at: null,
         status: 'pending',
+        source: 'ai_generated',
+        priority: 'normal',
         revision_count: 0,
         revision_notes: null,
         assigned_agent_id: null,
