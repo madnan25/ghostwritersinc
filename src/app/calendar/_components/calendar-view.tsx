@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import type { ContentPillar, Post } from '@/lib/types'
+import { getStalenessState, STALENESS_CONFIG } from '@/lib/staleness'
 
 type ViewMode = 'month' | 'week'
 
@@ -57,11 +58,13 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
       })
     : ''
   const isHumanRequested = post.source === 'human_request'
+  const staleness = getStalenessState(post)
+  const stalenessConfig = staleness ? STALENESS_CONFIG[staleness] : null
 
   return (
     <Link href={`/post/${post.id}`}>
       <div
-        className={`truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)}`}
+        className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)}`}
         title={post.content}
         style={pillarColor ? { borderLeftColor: pillarColor, borderLeftWidth: 3 } : undefined}
       >
@@ -71,7 +74,13 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
           </span>
         )}
         {time && <span className="mr-1 opacity-70">{time}</span>}
-        <span>{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</span>
+        <span className="flex-1 truncate">{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</span>
+        {stalenessConfig && (
+          <span
+            className={`ml-auto shrink-0 inline-block size-1.5 rounded-full ${stalenessConfig.dotClass}`}
+            title={stalenessConfig.label}
+          />
+        )}
       </div>
     </Link>
   )
@@ -484,6 +493,24 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
               HR
             </span>
             <span className="text-muted-foreground">Human Requested</span>
+          </span>
+          <span className="text-xs text-muted-foreground">·</span>
+          <span className="text-xs text-muted-foreground">Freshness:</span>
+          <span className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block size-1.5 rounded-full bg-emerald-400" />
+            <span className="text-muted-foreground">Fresh</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block size-1.5 rounded-full bg-yellow-400" />
+            <span className="text-muted-foreground">Aging</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block size-1.5 rounded-full bg-red-400" />
+            <span className="text-muted-foreground">Stale</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block size-1.5 rounded-full bg-muted-foreground" />
+            <span className="text-muted-foreground">Archived</span>
           </span>
           {pillars.length > 0 && (
             <>

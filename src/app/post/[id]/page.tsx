@@ -20,6 +20,7 @@ import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
 import { BriefDocumentsPanel } from './_components/brief-documents-panel'
 import { PerformancePanel } from './_components/performance-panel'
+import { StalenessPanel } from './_components/staleness-panel'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -96,6 +97,9 @@ export default async function PostPage({ params }: PostPageProps) {
               reviewedByAgent={post.reviewed_by_agent}
             />
           </div>
+
+          {/* Staleness panel — shown when post has freshness metadata */}
+          <StalenessPanel post={post} />
 
           {/* Post content with inline commenting */}
           <div className="dashboard-frame p-6 sm:p-7">
@@ -183,6 +187,17 @@ export default async function PostPage({ params }: PostPageProps) {
                       &ldquo;{post.review_notes}&rdquo;
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+            {post.expiry_date && post.freshness_type !== 'evergreen' && (
+              <div className="flex items-start gap-2">
+                <Calendar className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <div className="text-[0.72rem] uppercase tracking-[0.18em] text-primary/70">
+                    {post.freshness_type === 'date_locked' ? 'Target window closes' : 'Expires'}
+                  </div>
+                  <div className="mt-0.5 font-medium">{formatPostDate(post.expiry_date)}</div>
                 </div>
               </div>
             )}

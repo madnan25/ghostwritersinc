@@ -6,6 +6,7 @@ import { m } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
+import { getStalenessState, STALENESS_CONFIG } from '@/lib/staleness'
 
 type PillarBadge = {
   name: string
@@ -77,6 +78,8 @@ export function PostCard({ post, pillar, featured = false, variant = 'default' }
   const statusConfig = STATUS_CONFIG[statusKey]
   const hasAgentMeta = post.created_by_agent || post.reviewed_by_agent
   const isBoardCard = variant === 'board'
+  const staleness = getStalenessState(post)
+  const stalenessConfig = staleness ? STALENESS_CONFIG[staleness] : null
 
   return (
     <m.div
@@ -118,6 +121,20 @@ export function PostCard({ post, pillar, featured = false, variant = 'default' }
             }}
           >
             {pillar.name}
+          </m.span>
+        )}
+        {stalenessConfig && (
+          <m.span
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em]',
+              stalenessConfig.badgeClass,
+            )}
+          >
+            <span className={cn('inline-block size-1.5 rounded-full', stalenessConfig.dotClass)} />
+            {stalenessConfig.label}
           </m.span>
         )}
       </div>
