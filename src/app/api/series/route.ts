@@ -11,13 +11,13 @@ import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
 
 const PartOutlineSchema = z.object({
-  angle: z.string().min(1, 'Part angle is required'),
-  voice_notes: z.string().nullable().optional(),
+  angle: z.string().min(1, 'Part angle is required').max(1000),
+  voice_notes: z.string().max(2000).nullable().optional(),
 })
 
 const AgentCreateSeriesSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().nullable().optional(),
+  title: z.string().min(1, 'Title is required').max(500),
+  description: z.string().max(2000).nullable().optional(),
   total_parts: z
     .number()
     .int()
@@ -25,7 +25,7 @@ const AgentCreateSeriesSchema = z.object({
     .max(8, 'Maximum 8 parts'),
   cadence: z.enum(['weekly', 'biweekly', 'monthly']).default('weekly'),
   pillar_id: z.string().uuid().nullable().optional(),
-  part_outlines: z.array(PartOutlineSchema).optional(),
+  part_outlines: z.array(PartOutlineSchema).max(8).optional(),
 })
 
 const UserCreateSeriesSchema = z.object({
@@ -38,7 +38,7 @@ const UserCreateSeriesSchema = z.object({
     .max(8, 'Maximum 8 parts'),
   cadence: z.enum(['weekly', 'biweekly', 'monthly']).default('weekly'),
   pillar_id: z.string().uuid().nullable().optional(),
-  part_outlines: z.array(PartOutlineSchema).optional(),
+  part_outlines: z.array(PartOutlineSchema).max(8).optional(),
 })
 
 /** POST /api/series — create a series with auto-generated brief stubs (agent or user) */

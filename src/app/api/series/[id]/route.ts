@@ -12,8 +12,8 @@ import { rateLimit } from '@/lib/rate-limit'
 import { isValidUuid } from '@/lib/validation'
 
 const UpdateSeriesSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(2000).nullable().optional(),
   cadence: z.enum(['weekly', 'biweekly', 'monthly']).optional(),
 })
 
