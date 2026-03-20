@@ -23,11 +23,11 @@ interface CompactPostCardProps {
 const SUB_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
   pending_review_agent: {
     label: 'Agent Reviewed',
-    className: 'border-amber-400/20 bg-amber-500/[0.04] text-amber-200/60',
+    className: 'border-foreground/10 text-foreground/40',
   },
   pending_review: {
     label: 'Awaiting Agent',
-    className: 'border-amber-300/16 text-amber-200/48',
+    className: 'border-foreground/8 text-foreground/32',
   },
 }
 

@@ -427,7 +427,7 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         {PIPELINE_COLUMN_DEFS.map((col) => {
           const colPosts = getColumnPosts(col.id)
           return (
-            <div key={col.id} aria-label={col.label} className="flex w-[280px] shrink-0 flex-col gap-3 xl:w-[300px]">
+            <div key={col.id} aria-label={col.label} className="flex min-w-[200px] flex-1 flex-col gap-3">
               {/* Column header */}
               <div className="flex items-center justify-between rounded-lg border border-border/35 bg-background/50 px-3 py-2.5">
                 <span className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/78">
