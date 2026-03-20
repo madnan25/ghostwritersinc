@@ -3,14 +3,21 @@ import Link from 'next/link'
 import { ChevronLeft, Bot, User, Calendar, FileText, MessageSquare } from 'lucide-react'
 import { formatPostDate, STATUS_STYLES } from '@/lib/post-display'
 import type { Post } from '@/lib/types'
-import { getPostById, getPostReviewEvents, getPostComments, getPostRevisions, getPillars, getBriefById, getCurrentUserLinkedInName } from '@/lib/queries/posts'
+import {
+  getBriefVersionsForPost,
+  getCurrentUserLinkedInName,
+  getPostById,
+  getPostComments,
+  getPostReviewEvents,
+  getPostRevisions,
+} from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
 import { PostDetailActions } from './_components/post-detail-actions'
 import { PostContentWithVersions } from './_components/post-content-with-versions'
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
-import { BriefContext } from './_components/brief-context'
+import { BriefDocumentsPanel } from './_components/brief-documents-panel'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -19,19 +26,24 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   // Auth handled by middleware; fetch data directly
   const { id } = await params
-  const [post, reviewEvents, comments, revisions, pillars, linkedInName] = await Promise.all([
+  const [post, reviewEvents, comments, revisions, linkedInName] = await Promise.all([
     getPostById(id),
     getPostReviewEvents(id),
     getPostComments(id),
     getPostRevisions(id),
-    getPillars(),
     getCurrentUserLinkedInName(),
   ])
 
   if (!post) notFound()
 
-  const pillar = post.pillar_id ? pillars.find((p) => p.id === post.pillar_id) ?? null : null
-  const brief = post.brief_id ? await getBriefById(post.brief_id) : null
+  const currentPostVersion = (post as Post & { content_version?: number }).content_version ?? 1
+  const briefVersions = await getBriefVersionsForPost(
+    post.id,
+    post.brief_id,
+    currentPostVersion,
+    post.brief_version_id,
+  )
+  const pageTitle = post.title?.trim() || post.content.trim().split('\n')[0]?.slice(0, 80) || 'Post'
 
   const isAgentReviewed = post.status === 'pending_review' && !!post.reviewed_by_agent
   const statusStyle = isAgentReviewed
@@ -57,12 +69,17 @@ export default async function PostPage({ params }: PostPageProps) {
         <div className="flex flex-col gap-6">
           {/* Header */}
           <div className="dashboard-frame flex flex-wrap items-start justify-between gap-4 p-6 sm:p-7">
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
-              >
-                {statusLabel}
-              </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.16em] ${statusStyle}`}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+              <h1 className="mt-3 text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+                {pageTitle}
+              </h1>
             </div>
             {/* PostDetailActions renders inline on md+ and sticky-bottom on mobile */}
             <PostDetailActions
@@ -72,6 +89,7 @@ export default async function PostPage({ params }: PostPageProps) {
               scheduledPublishAt={post.scheduled_publish_at}
               suggestedPublishAt={post.suggested_publish_at}
               revisionCount={revisions.length}
+              reviewedByAgent={post.reviewed_by_agent}
             />
           </div>
 
@@ -86,7 +104,7 @@ export default async function PostPage({ params }: PostPageProps) {
             <PostContentWithVersions
               postId={post.id}
               content={post.content}
-              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+              currentVersion={currentPostVersion}
               comments={comments}
               revisions={revisions}
             />
@@ -105,7 +123,7 @@ export default async function PostPage({ params }: PostPageProps) {
             </h2>
             <CommentThread
               comments={comments}
-              currentVersion={(post as Post & { content_version?: number }).content_version ?? 1}
+              currentVersion={currentPostVersion}
             />
             <div className="mt-4 pt-4 border-t border-border">
               <OverallCommentForm postId={post.id} />
@@ -186,14 +204,19 @@ export default async function PostPage({ params }: PostPageProps) {
           )}
         </div>
 
-        {/* Right column: LinkedIn preview + brief context + review chain */}
+        {/* Right column: LinkedIn preview + editorial process + review chain */}
         <div className="flex flex-col gap-6">
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">LinkedIn Preview</h2>
             <LinkedInPreview content={post.content} authorName={linkedInName ?? undefined} />
           </div>
 
-          <BriefContext briefRef={post.brief_ref} pillar={pillar} brief={brief} />
+          <BriefDocumentsPanel
+            briefRef={post.brief_ref}
+            versions={briefVersions}
+            currentBriefVersionId={post.brief_version_id}
+            currentPostVersion={currentPostVersion}
+          />
 
           <div className="dashboard-frame p-5 sm:p-6">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>

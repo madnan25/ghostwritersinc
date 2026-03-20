@@ -3,9 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import type { PostStatus } from '@/lib/types'
+import { getLatestBriefVersion } from '@/lib/brief-versioning'
 import { buildVersionedContentUpdate } from '@/lib/post-versioning'
 import { validateTransition } from '@/lib/workflow'
-import { createStrategyReviewTask } from '@/lib/paperclip'
+import { createStrategyReviewTask, createReReviewTask } from '@/lib/paperclip'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,7 +54,7 @@ async function transitionPostStatus(
   // Fetch current post to get its status + version info for snapshotting
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status, content, content_version')
+    .select('status, content, content_version, brief_id, brief_version_id')
     .eq('id', postId)
     .single()
 
@@ -77,7 +78,12 @@ async function transitionPostStatus(
   if (to === 'pending_review') {
     const version = post.content_version ?? 1
     await supabase.from('post_revisions').upsert(
-      { post_id: postId, version, content: post.content },
+      {
+        post_id: postId,
+        version,
+        content: post.content,
+        brief_version_id: post.brief_version_id ?? null,
+      },
       { onConflict: 'post_id,version' }
     )
   }
@@ -374,7 +380,7 @@ export async function updatePostContent(postId: string, content: string) {
 
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status, content, content_version')
+    .select('status, content, content_version, brief_id, brief_version_id')
     .eq('id', postId)
     .single()
 
@@ -390,6 +396,8 @@ export async function updatePostContent(postId: string, content: string) {
   }
 
   const currentVersion = post.content_version ?? 1
+  const latestBriefVersion =
+    post.brief_id ? await getLatestBriefVersion(supabase, post.brief_id) : null
   const { updateFields } = buildVersionedContentUpdate({
     status: post.status as PostStatus,
     currentVersion,
@@ -400,6 +408,7 @@ export async function updatePostContent(postId: string, content: string) {
       post_id: postId,
       version: currentVersion,
       content: post.content,
+      brief_version_id: post.brief_version_id ?? null,
     },
     { onConflict: 'post_id,version' },
   )
@@ -409,6 +418,7 @@ export async function updatePostContent(postId: string, content: string) {
     .update({
       ...updateFields,
       content: nextContent,
+      brief_version_id: latestBriefVersion?.id ?? post.brief_version_id ?? null,
     })
     .eq('id', postId)
 
@@ -433,7 +443,7 @@ export async function reviseAndResubmit(postId: string) {
   // Fetch current post state
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status, content, content_version, user_id, organization_id')
+    .select('status, content, content_version, user_id, organization_id, brief_version_id')
     .eq('id', postId)
     .single()
 
@@ -453,6 +463,7 @@ export async function reviseAndResubmit(postId: string) {
     post_id: postId,
     version: currentVersion,
     content: post.content,
+    brief_version_id: post.brief_version_id ?? null,
   })
 
   // Transition rejected → pending_review via validateTransition
@@ -510,7 +521,7 @@ export async function reopenRejectedPost(postId: string, notes: string) {
 
   const { data: post, error: fetchError } = await supabase
     .from('posts')
-    .select('status, content, content_version, user_id, organization_id')
+    .select('status, content, content_version, user_id, organization_id, brief_version_id')
     .eq('id', postId)
     .single()
 
@@ -529,6 +540,7 @@ export async function reopenRejectedPost(postId: string, notes: string) {
     version: currentVersion,
     content: post.content,
     revision_reason: `Reopened: ${notes}`,
+    brief_version_id: post.brief_version_id ?? null,
   })
 
   // Transition back to pending_review and reset version to 1
@@ -564,6 +576,34 @@ export async function reopenRejectedPost(postId: string, notes: string) {
       post_id: postId,
     })
   }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
+export async function requestReReview(postId: string) {
+  const supabase = await createClient()
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select('status, reviewed_by_agent, content')
+    .eq('id', postId)
+    .single()
+
+  if (!post) throw new Error('Post not found')
+  if (post.status !== 'pending_review') throw new Error('Post must be at pending_review')
+  if (!post.reviewed_by_agent) throw new Error('Post has not been reviewed by an agent')
+
+  // Clear reviewed_by_agent — no status transition needed
+  const { error } = await supabase
+    .from('posts')
+    .update({ reviewed_by_agent: null })
+    .eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  const postTitle = post.content?.slice(0, 80) ?? `Post ${postId.slice(0, 8)}`
+  await createReReviewTask({ postId, postTitle })
 
   revalidatePath('/dashboard')
   revalidatePath(`/post/${postId}`)

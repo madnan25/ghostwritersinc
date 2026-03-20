@@ -63,6 +63,50 @@ async function findExistingReviewTask(
 }
 
 /**
+ * Create a Paperclip re-review task for Strategist when a user requests
+ * re-review on an agent-reviewed post at pending_review.
+ */
+export async function createReReviewTask(opts: {
+  postId: string
+  postTitle: string
+}): Promise<void> {
+  if (!isConfigured()) {
+    console.warn(
+      '[paperclip] Skipping re-review task — missing env vars',
+    )
+    return
+  }
+
+  const { postId, postTitle } = opts
+  const truncatedTitle = postTitle.slice(0, 40)
+
+  try {
+    await paperclipFetch(`/api/companies/${PAPERCLIP_COMPANY_ID}/issues`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: `Re-review requested: ${truncatedTitle}`,
+        description:
+          `Re-review requested by user. Read the comment thread for context on what was requested, then review accordingly.\n\n` +
+          `**Post ID:** \`${postId}\`\n` +
+          `**Post title:** ${postTitle}\n` +
+          `**Link:** /post/${postId}\n\n` +
+          `Search key — post:${postId}`,
+        status: 'todo',
+        priority: 'medium',
+        assigneeAgentId: STRATEGIST_AGENT_ID,
+        parentId: REVIEW_PARENT_ISSUE_ID,
+        projectId: PROJECT_ID,
+      }),
+    })
+  } catch (err) {
+    console.error(
+      '[paperclip] Failed to create re-review task:',
+      err instanceof Error ? err.message : err,
+    )
+  }
+}
+
+/**
  * Create a Paperclip review task for Strategist, or append a comment to an
  * existing one if a task for this post already exists.
  */

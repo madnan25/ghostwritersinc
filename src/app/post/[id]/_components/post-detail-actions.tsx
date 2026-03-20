@@ -6,6 +6,7 @@ import {
   approvePost,
   submitForAgentReview,
   requestAgentReview,
+  requestReReview,
 } from '@/app/actions/posts'
 import { useCopyFeedback } from '@/hooks/use-copy-feedback'
 import {
@@ -27,6 +28,7 @@ interface PostDetailActionsProps {
   scheduledPublishAt?: string | null
   suggestedPublishAt?: string | null
   revisionCount?: number
+  reviewedByAgent?: string | null
 }
 
 export function PostDetailActions({
@@ -36,6 +38,7 @@ export function PostDetailActions({
   scheduledPublishAt,
   suggestedPublishAt,
   revisionCount = 0,
+  reviewedByAgent,
 }: PostDetailActionsProps) {
   const [isPending, startTransition] = useTransition()
   const { copied: copyToast, copy } = useCopyFeedback(3000)
@@ -49,6 +52,12 @@ export function PostDetailActions({
   function handleRequestReview() {
     startTransition(async () => {
       await requestAgentReview(postId)
+    })
+  }
+
+  function handleRequestReReview() {
+    startTransition(async () => {
+      await requestReReview(postId)
     })
   }
 
@@ -112,6 +121,11 @@ export function PostDetailActions({
             <EditPostDialog postId={postId} initialContent={content} />
           )}
           {canRejectPost(status) && <RejectDialog postId={postId} />}
+          {reviewedByAgent && (
+            <Button variant="outline" size="sm" onClick={handleRequestReReview} disabled={isPending}>
+              {isPending ? 'Requesting…' : 'Request Re-review'}
+            </Button>
+          )}
           <DeletePostDialog postId={postId} />
         </div>
       )
@@ -172,10 +186,7 @@ export function PostDetailActions({
     }
 
     return (
-      <div className="flex items-center gap-2">
-        <div className="inline-flex items-center rounded-full border border-border px-3 py-1 text-xs text-muted-foreground capitalize">
-          {status.replace('_', ' ')}
-        </div>
+      <div className={wrapClass}>
         <DeletePostDialog postId={postId} />
       </div>
     )
