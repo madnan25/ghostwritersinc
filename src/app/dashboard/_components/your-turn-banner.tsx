@@ -50,7 +50,7 @@ function getActionablePosts(posts: Post[]): ActionablePost[] {
     .filter((p) => p.status === 'publish_failed')
     .map((post): ActionablePost => ({ post, type: 'publish_failed' }))
 
-  return [...agentReviewed, ...publishFailed].slice(0, 3)
+  return [...agentReviewed, ...publishFailed]
 }
 
 // ---------------------------------------------------------------------------
@@ -169,12 +169,16 @@ interface YourTurnBannerProps {
   posts: Post[]
 }
 
+const BANNER_DISPLAY_LIMIT = 3
+
 export function YourTurnBanner({ posts }: YourTurnBannerProps) {
-  const items = getActionablePosts(posts)
+  const allItems = getActionablePosts(posts)
+  const visibleItems = allItems.slice(0, BANNER_DISPLAY_LIMIT)
+  const hiddenCount = allItems.length - visibleItems.length
 
   return (
     <AnimatePresence>
-      {items.length > 0 && (
+      {allItems.length > 0 && (
         <m.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -199,7 +203,7 @@ export function YourTurnBanner({ posts }: YourTurnBannerProps) {
                 'uppercase tracking-[0.12em] text-amber-300',
               )}
             >
-              {items.length}
+              {allItems.length}
             </span>
           </div>
 
@@ -208,13 +212,25 @@ export function YourTurnBanner({ posts }: YourTurnBannerProps) {
 
           {/* Rows */}
           <div className="space-y-0">
-            {items.map((item, i) => (
+            {visibleItems.map((item, i) => (
               <div key={item.post.id}>
                 {i > 0 && <div className="editorial-rule my-3" />}
                 <BannerRow item={item} />
               </div>
             ))}
           </div>
+
+          {/* Overflow indicator */}
+          {hiddenCount > 0 && (
+            <div className="mt-3 border-t border-amber-400/10 pt-3">
+              <Link
+                href="/dashboard"
+                className="text-[0.72rem] font-medium text-amber-400/70 transition-colors hover:text-amber-300"
+              >
+                + {hiddenCount} more item{hiddenCount !== 1 ? 's' : ''} need your attention
+              </Link>
+            </div>
+          )}
         </m.div>
       )}
     </AnimatePresence>
