@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
     .select('id, title, angle, status, freshness_type, expiry_date, created_at, updated_at')
     .eq('organization_id', auth.organizationId)
     .eq('freshness_type', 'date_locked')
+    .gt('expiry_date', new Date().toISOString())
     .lt('expiry_date', threeDaysFromNow)
     .is('archived_at', null)
     .order('expiry_date', { ascending: true })

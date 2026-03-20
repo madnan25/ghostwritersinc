@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DiffEditType } from './types'
+import { isValidUuid } from './validation'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -394,6 +395,28 @@ export function analyzeEditPatterns(diffs: DiffRecord[]): AnalysisResult {
 // ---------------------------------------------------------------------------
 
 /**
+ * Count post diffs for a user in an organization without fetching content.
+ */
+export async function getDiffCount(
+  supabase: SupabaseClient,
+  organizationId: string,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('post_diffs')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('[voice-analysis] Error counting diffs:', error)
+    return 0
+  }
+
+  return count ?? 0
+}
+
+/**
  * Fetch all post diffs for a user in an organization.
  */
 export async function getAllDiffs(
@@ -448,7 +471,7 @@ export async function createObservations(
       confidence: p.confidence,
       status: 'pending' as const,
       source_post_ids: p.source_post_ids,
-      created_by_agent_id: agentId,
+      created_by_agent_id: isValidUuid(agentId) ? agentId : null,
     }))
 
   if (newObservations.length === 0) return 0

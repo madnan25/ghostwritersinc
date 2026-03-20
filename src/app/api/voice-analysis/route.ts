@@ -13,6 +13,7 @@ import {
   analyzeEditPatterns,
   createObservations,
   getLearnedPreferences,
+  getDiffCount,
 } from '@/lib/voice-analysis'
 
 /**
@@ -92,12 +93,12 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
   const preferences = await getLearnedPreferences(supabase, auth.organizationId, auth.userId)
 
-  // Also get diff stats
-  const diffs = await getAllDiffs(supabase, auth.organizationId, auth.userId)
+  // Get diff count without loading full content
+  const totalDiffs = await getDiffCount(supabase, auth.organizationId, auth.userId)
 
   return NextResponse.json({
     learned_preferences: preferences,
-    total_diffs: diffs.length,
-    analysis_ready: diffs.length >= MIN_DIFFS_FOR_ANALYSIS,
+    total_diffs: totalDiffs,
+    analysis_ready: totalDiffs >= MIN_DIFFS_FOR_ANALYSIS,
   })
 }

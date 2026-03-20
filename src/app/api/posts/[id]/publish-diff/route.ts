@@ -64,6 +64,7 @@ export async function POST(
     .from('post_diffs')
     .select('id')
     .eq('post_id', postId)
+    .eq('organization_id', auth.organizationId)
     .maybeSingle()
 
   if (existingDiff) {

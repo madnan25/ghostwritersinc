@@ -8,6 +8,7 @@ import {
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { isValidUuid } from '@/lib/validation'
 
 const CreateObservationSchema = z.object({
   observation: z.string().min(1).max(2000),
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       observation: parsed.data.observation,
       confidence: parsed.data.confidence ?? 0.5,
       source_post_ids: parsed.data.source_post_ids ?? [],
-      created_by_agent_id: auth.agentId ?? null,
+      created_by_agent_id: isValidUuid(auth.agentId) ? auth.agentId : null,
     })
     .select()
     .single()
