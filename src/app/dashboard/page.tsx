@@ -4,6 +4,7 @@ import { getDashboardMetrics, getDashboardNarrative } from '@/lib/dashboard-ui'
 import { processDuePosts } from '@/lib/publish-scheduled'
 import { ScheduleHealthPanels } from '@/components/schedule-health-panels'
 import { DashboardHero } from './_components/dashboard-hero'
+import { YourTurnBanner } from './_components/your-turn-banner'
 import { DashboardViewContainer } from './_components/dashboard-view-container'
 import { AgentActivityFeed } from './_components/agent-activity-feed'
 
@@ -22,6 +23,8 @@ export default async function DashboardPage() {
       <DashboardHero metrics={metrics} narrative={narrative} />
 
       <ScheduleHealthPanels warnings={rotationWarnings} />
+
+      <YourTurnBanner posts={posts} />
 
       <DashboardViewContainer posts={posts} pillars={pillars} />
 
