@@ -579,9 +579,24 @@ export interface PillarWeightsConfig {
 
 export async function getPillarWeightsConfig(): Promise<PillarWeightsConfig | null> {
   const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) return null
+
   const { data, error } = await supabase
     .from('strategy_config')
     .select('pillar_weights, pillar_weights_scope, pillar_weights_month')
+    .eq('user_id', user.id)
+    .eq('organization_id', profile.organization_id)
     .maybeSingle()
 
   if (error) {

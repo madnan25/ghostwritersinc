@@ -126,8 +126,8 @@ export async function POST(
     .upsert(
       {
         post_id: id,
-        organization_id: auth.organizationId,
-        user_id: auth.userId,
+        organization_id: post.organization_id,
+        user_id: post.user_id,
         ...parsed.data,
       },
       { onConflict: 'post_id' }

@@ -1063,12 +1063,23 @@ export async function logPostPerformance(postId: string, data: PostPerformanceIn
   // Verify post is published and belongs to the user's org
   const { data: post, error: postError } = await supabase
     .from('posts')
-    .select('id, status, organization_id')
+    .select('id, status, organization_id, user_id')
     .eq('id', postId)
     .single()
 
   if (postError || !post) throw new Error('Post not found')
   if (post.status !== 'published') throw new Error('Performance data can only be logged for published posts')
+
+  // Validate non-negative integers
+  const numericFields = ['impressions', 'reactions', 'comments_count', 'reposts'] as const
+  for (const field of numericFields) {
+    const val = data[field]
+    if (val !== null && val !== undefined) {
+      if (!Number.isInteger(val) || val < 0) {
+        throw new Error(`${field} must be a non-negative integer`)
+      }
+    }
+  }
 
   // Upsert into post_performance (one record per post — overwrite model)
   const { error } = await supabase
@@ -1077,7 +1088,7 @@ export async function logPostPerformance(postId: string, data: PostPerformanceIn
       {
         post_id: postId,
         organization_id: post.organization_id,
-        user_id: user.id,
+        user_id: post.user_id,
         impressions: data.impressions ?? null,
         reactions: data.reactions ?? null,
         comments_count: data.comments_count ?? null,

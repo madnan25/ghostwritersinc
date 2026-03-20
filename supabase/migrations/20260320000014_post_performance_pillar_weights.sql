@@ -19,7 +19,7 @@ end $$;
 -- =============================================================================
 -- 2. post_performance table (single record per post — upsert model)
 -- =============================================================================
-create table post_performance (
+create table if not exists post_performance (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references posts(id) on delete cascade,
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -35,12 +35,20 @@ create table post_performance (
   constraint post_performance_post_id_unique unique (post_id)
 );
 
-create index idx_post_performance_org on post_performance (organization_id);
-create index idx_post_performance_user on post_performance (user_id);
+create index if not exists idx_post_performance_org on post_performance (organization_id);
+create index if not exists idx_post_performance_user on post_performance (user_id);
 
-create trigger post_performance_updated_at
-  before update on post_performance
-  for each row execute function update_updated_at();
+do $$ begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'post_performance_updated_at'
+      and tgrelid = 'post_performance'::regclass
+  ) then
+    create trigger post_performance_updated_at
+      before update on post_performance
+      for each row execute function update_updated_at();
+  end if;
+end $$;
 
 -- =============================================================================
 -- 3. RLS — org-scoped read/write
