@@ -470,3 +470,78 @@ export async function getPillars(): Promise<ContentPillar[]> {
   }
   return data ?? []
 }
+
+// ---------------------------------------------------------------------------
+// Post performance (LIN-473) — reads from post_performance table (LIN-472)
+// ---------------------------------------------------------------------------
+
+export interface PostPerformanceRow {
+  id: string
+  post_id: string
+  impressions: number | null
+  reactions: number | null
+  comments_count: number | null
+  reposts: number | null
+  qualitative_notes: string | null
+  logged_at: string
+}
+
+export async function getPostPerformance(postId: string): Promise<PostPerformanceRow | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('post_performance')
+    .select('id, post_id, impressions, reactions, comments_count, reposts, qualitative_notes, logged_at')
+    .eq('post_id', postId)
+    .maybeSingle()
+
+  if (error) {
+    logQueryError('post_performance', error)
+    return null
+  }
+  return data ?? null
+}
+
+// ---------------------------------------------------------------------------
+// Pillar weight overrides (LIN-473) — reads pillar_weights from strategy_config
+// ---------------------------------------------------------------------------
+
+export interface PillarWeightOverride {
+  pillarId: string
+  weightPct: number
+}
+
+export interface PillarWeightsConfig {
+  weights: Record<string, number>
+  scope: 'default' | 'monthly'
+  monthlyExpired: boolean
+}
+
+export async function getPillarWeightsConfig(): Promise<PillarWeightsConfig | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('strategy_config')
+    .select('pillar_weights, pillar_weights_scope, pillar_weights_month')
+    .maybeSingle()
+
+  if (error) {
+    logQueryError('strategy_config pillar_weights', error)
+    return null
+  }
+  if (!data || !data.pillar_weights) return null
+
+  const scope = (data.pillar_weights_scope ?? 'default') as 'default' | 'monthly'
+  const monthlyExpired =
+    scope === 'monthly' && !!data.pillar_weights_month
+      ? (() => {
+          const now = new Date()
+          const [year, mon] = (data.pillar_weights_month as string).split('-').map(Number)
+          return !(year > now.getFullYear() || (year === now.getFullYear() && mon >= now.getMonth() + 1))
+        })()
+      : false
+
+  return {
+    weights: data.pillar_weights as Record<string, number>,
+    scope,
+    monthlyExpired,
+  }
+}

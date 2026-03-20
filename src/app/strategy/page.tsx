@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { getPillars, getAllPosts } from '@/lib/queries/posts'
+import { getPillars, getAllPosts, getPillarWeightsConfig } from '@/lib/queries/posts'
 import { PillarCard } from './_components/pillar-card'
 import { ContentMixChart } from './_components/content-mix-chart'
 import { RotationTimeline } from './_components/rotation-timeline'
 import { ScoutInstructionsCard } from './_components/scout-instructions-card'
+import { PillarWeightSliders } from './_components/pillar-weight-sliders'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
 import { getScoutContext } from '@/app/actions/strategy'
 import type { Post } from '@/lib/types'
@@ -46,11 +47,12 @@ function getPostsThisMonth(posts: Post[]): number {
 export default async function StrategyPage() {
   // Auth handled by middleware; fetch user + data in parallel
   const supabase = await createClient()
-  const [{ data: { user } }, pillars, posts, scoutData] = await Promise.all([
+  const [{ data: { user } }, pillars, posts, scoutData, pillarWeightsConfig] = await Promise.all([
     supabase.auth.getUser(),
     getPillars(),
     getAllPosts(),
     getScoutContext(),
+    getPillarWeightsConfig(),
   ])
 
   // Get org name (needs user ID)
@@ -147,7 +149,7 @@ export default async function StrategyPage() {
             </div>
           </section>
 
-          {/* Section C: Content Mix Summary */}
+          {/* Section C: Content Mix Summary + Weight Sliders */}
           <section>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Content Mix</h2>
@@ -155,8 +157,11 @@ export default async function StrategyPage() {
                 Actual vs target distribution across your pillars
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-5">
-              <ContentMixChart pillars={pillars} posts={posts} />
+            <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+              <div className="rounded-xl border border-border bg-card p-5">
+                <ContentMixChart pillars={pillars} posts={posts} />
+              </div>
+              <PillarWeightSliders pillars={pillars} savedConfig={pillarWeightsConfig} />
             </div>
           </section>
 

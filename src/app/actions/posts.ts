@@ -644,6 +644,41 @@ export async function requestAgentReview(postId: string) {
   revalidatePath(`/post/${postId}`)
 }
 
+export async function requestRevision(postId: string) {
+  const supabase = await createClient()
+
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('status, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError || !post) {
+    throw new Error(fetchError?.message ?? 'Post not found')
+  }
+
+  if (post.status !== 'pending_review') {
+    throw new Error(`Revision can only be requested from pending_review (got '${post.status}')`)
+  }
+
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ status: 'revision', updated_at: new Date().toISOString() })
+    .eq('id', postId)
+
+  if (updateError) throw new Error(updateError.message)
+
+  await supabase.from('review_events').insert({
+    post_id: postId,
+    agent_name: 'client',
+    action: 'revised' as const,
+    notes: 'User requested revision',
+  })
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/post/${postId}`)
+}
+
 export async function deletePost(postId: string) {
   const supabase = await createClient()
 
@@ -880,4 +915,180 @@ export async function createHumanBriefRequest(data: {
   revalidatePath('/dashboard')
   revalidatePath('/calendar')
   revalidatePath('/strategy')
+}
+
+// ---------------------------------------------------------------------------
+// Targeted revision (user-initiated)
+// ---------------------------------------------------------------------------
+
+const MAX_TARGETED_REVISIONS = 3
+
+export async function submitTargetedRevision(
+  postId: string,
+  revisions: { start_char: number; end_char: number; note: string }[]
+) {
+  if (!revisions.length || revisions.length > MAX_TARGETED_REVISIONS) {
+    throw new Error(`Must provide 1-${MAX_TARGETED_REVISIONS} revision sections`)
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  // Validate each revision range
+  for (const rev of revisions) {
+    if (!Number.isInteger(rev.start_char) || !Number.isInteger(rev.end_char)) {
+      throw new Error('Character offsets must be integers')
+    }
+    if (rev.start_char < 0 || rev.end_char <= rev.start_char) {
+      throw new Error(`Invalid range: [${rev.start_char}, ${rev.end_char})`)
+    }
+    if (!rev.note || rev.note.length > 1000) {
+      throw new Error('Each revision note must be 1-1000 characters')
+    }
+  }
+
+  // Check for overlapping ranges
+  const sorted = [...revisions].sort((a, b) => a.start_char - b.start_char)
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].start_char < sorted[i - 1].end_char) {
+      throw new Error('Revision ranges must not overlap')
+    }
+  }
+
+  // Fetch the post (scoped to user's org)
+  const { data: post } = await supabase
+    .from('posts')
+    .select('id, organization_id, status, content, content_version, brief_version_id')
+    .eq('id', postId)
+    .eq('organization_id', profile.organization_id)
+    .single()
+
+  if (!post) throw new Error('Post not found')
+
+  if (!['pending_review', 'revision'].includes(post.status)) {
+    throw new Error(`Cannot request targeted revision on a post with status '${post.status}'`)
+  }
+
+  const content: string = post.content ?? ''
+
+  // Validate ranges against actual content length
+  for (const rev of revisions) {
+    if (rev.end_char > content.length) {
+      throw new Error(`Range [${rev.start_char}, ${rev.end_char}) exceeds content length (${content.length})`)
+    }
+  }
+
+  // Check cap on existing targeted revisions for this draft
+  const { count: existingCount } = await supabase
+    .from('post_revisions')
+    .select('id', { count: 'exact', head: true })
+    .eq('post_id', postId)
+    .eq('revision_type', 'targeted')
+
+  if ((existingCount ?? 0) >= MAX_TARGETED_REVISIONS) {
+    throw new Error('Maximum targeted revisions reached for this draft. Consider a full rewrite.')
+  }
+
+  // Build revision data
+  const flaggedSections = revisions.map(({ start_char, end_char, note }) => ({
+    start_char,
+    end_char,
+    note,
+  }))
+
+  const diffSections = revisions.map(({ start_char, end_char }) => ({
+    start_char,
+    end_char,
+    before_text: content.slice(start_char, end_char),
+    after_text: null,
+  }))
+
+  // Insert targeted revision record
+  const { error: insertError } = await supabase
+    .from('post_revisions')
+    .insert({
+      post_id: postId,
+      version: null,
+      content,
+      revised_by_agent: null,
+      revision_type: 'targeted',
+      flagged_sections: flaggedSections,
+      diff_sections: diffSections,
+      brief_version_id: post.brief_version_id ?? null,
+    })
+
+  if (insertError) throw new Error(insertError.message)
+
+  // Transition post to 'revision' status
+  if (post.status === 'pending_review') {
+    await supabase
+      .from('posts')
+      .update({ status: 'revision', updated_at: new Date().toISOString() })
+      .eq('id', postId)
+      .eq('organization_id', profile.organization_id)
+  }
+
+  revalidatePath(`/post/${postId}`)
+}
+
+// ---------------------------------------------------------------------------
+// Performance logging (LIN-473)
+// ---------------------------------------------------------------------------
+
+export interface PostPerformanceInput {
+  impressions?: number | null
+  reactions?: number | null
+  comments_count?: number | null
+  reposts?: number | null
+  qualitative_notes?: string | null
+}
+
+export async function logPostPerformance(postId: string, data: PostPerformanceInput) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Verify post is published and belongs to the user's org
+  const { data: post, error: postError } = await supabase
+    .from('posts')
+    .select('id, status, organization_id')
+    .eq('id', postId)
+    .single()
+
+  if (postError || !post) throw new Error('Post not found')
+  if (post.status !== 'published') throw new Error('Performance data can only be logged for published posts')
+
+  // Upsert into post_performance (one record per post — overwrite model)
+  const { error } = await supabase
+    .from('post_performance')
+    .upsert(
+      {
+        post_id: postId,
+        organization_id: post.organization_id,
+        user_id: user.id,
+        impressions: data.impressions ?? null,
+        reactions: data.reactions ?? null,
+        comments_count: data.comments_count ?? null,
+        reposts: data.reposts ?? null,
+        qualitative_notes: data.qualitative_notes ?? null,
+        logged_at: new Date().toISOString(),
+      },
+      { onConflict: 'post_id' },
+    )
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/post/${postId}`)
 }

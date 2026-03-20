@@ -10,6 +10,7 @@ import {
   getPostComments,
   getPostReviewEvents,
   getPostRevisions,
+  getPostPerformance,
 } from '@/lib/queries/posts'
 import { ReviewChain } from './_components/review-chain'
 import { LinkedInPreview } from './_components/linkedin-preview'
@@ -18,6 +19,7 @@ import { PostContentWithVersions } from './_components/post-content-with-version
 import { CommentThread } from './_components/comment-thread'
 import { OverallCommentForm } from './_components/overall-comment-form'
 import { BriefDocumentsPanel } from './_components/brief-documents-panel'
+import { PerformancePanel } from './_components/performance-panel'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -33,6 +35,8 @@ export default async function PostPage({ params }: PostPageProps) {
     getPostRevisions(id),
     getCurrentUserLinkedInName(),
   ])
+
+  const postPerformance = post?.status === 'published' ? await getPostPerformance(id) : null
 
   if (!post) notFound()
 
@@ -105,6 +109,7 @@ export default async function PostPage({ params }: PostPageProps) {
               postId={post.id}
               content={post.content}
               currentVersion={currentPostVersion}
+              status={post.status}
               comments={comments}
               revisions={revisions}
             />
@@ -222,6 +227,10 @@ export default async function PostPage({ params }: PostPageProps) {
             <h2 className="mb-3 text-sm font-medium uppercase tracking-[0.24em] text-primary/72">Review Chain</h2>
             <ReviewChain events={reviewEvents} />
           </div>
+
+          {post.status === 'published' && (
+            <PerformancePanel postId={post.id} initialPerformance={postPerformance} />
+          )}
         </div>
       </div>
     </div>

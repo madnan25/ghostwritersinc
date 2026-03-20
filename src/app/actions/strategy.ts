@@ -134,16 +134,94 @@ export async function saveScoutContext(context: string) {
     .single();
   if (!profile) throw new Error("Profile not found");
 
-  const { error } = await supabase.from("strategy_config").upsert(
-    {
-      user_id: user.id,
-      organization_id: profile.organization_id,
-      scout_context: context || null,
-    },
-    { onConflict: "user_id,organization_id" }
-  );
-
-  if (error) throw new Error(error.message);
+  if (!context || context.length === 0) {
+    // Clear scout_context
+    const { error } = await supabase
+      .from("strategy_config")
+      .update({ scout_context: null })
+      .eq("user_id", user.id)
+      .eq("organization_id", profile.organization_id);
+    if (error) throw new Error(error.message);
+  } else {
+    if (context.length > 10000) throw new Error("Scout context too long (max 10,000 characters)");
+    // Try update first; if no row exists yet, upsert with defaults
+    const { data: updated, error: updateErr } = await supabase
+      .from("strategy_config")
+      .update({ scout_context: context })
+      .eq("user_id", user.id)
+      .eq("organization_id", profile.organization_id)
+      .select("id");
+    if (updateErr) throw new Error(updateErr.message);
+    if (!updated || updated.length === 0) {
+      // Row doesn't exist yet — create with scout_context and sensible defaults
+      const { error: insertErr } = await supabase.from("strategy_config").insert({
+        user_id: user.id,
+        organization_id: profile.organization_id,
+        scout_context: context,
+        monthly_post_target: 4,
+        intel_score_threshold: 0.5,
+        default_publish_hour: 9,
+      });
+      if (insertErr) throw new Error(insertErr.message);
+    }
+  }
 
   revalidatePath("/strategy");
+}
+
+// ---------------------------------------------------------------------------
+// Pillar weight updates (LIN-473)
+// ---------------------------------------------------------------------------
+
+export type PillarWeightScope = 'default' | 'monthly'
+
+export interface PillarWeightEntry {
+  pillarId: string
+  weightPct: number
+}
+
+export async function updatePillarWeights(
+  weights: PillarWeightEntry[],
+  scope: PillarWeightScope,
+) {
+  if (weights.length === 0) throw new Error('No weights provided')
+
+  const total = weights.reduce((sum, w) => sum + w.weightPct, 0)
+  if (total !== 100) throw new Error(`Weights must sum to 100% (got ${total}%)`)
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) throw new Error('Profile not found')
+
+  // pillar_weights stored as JSONB {[pillarId]: weightPct} in strategy_config
+  const pillarWeightsMap = Object.fromEntries(weights.map((w) => [w.pillarId, w.weightPct]))
+
+  const now = new Date()
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+  const { error } = await supabase
+    .from('strategy_config')
+    .upsert(
+      {
+        user_id: user.id,
+        organization_id: profile.organization_id,
+        pillar_weights: pillarWeightsMap,
+        pillar_weights_scope: scope,
+        pillar_weights_month: scope === 'monthly' ? monthStr : null,
+      },
+      { onConflict: 'user_id,organization_id' },
+    )
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/strategy')
 }

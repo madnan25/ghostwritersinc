@@ -12,6 +12,9 @@ import {
   getPillarFilterOptions,
   getStatusFilterCount,
   sortDashboardPosts,
+  WILDCARD_PILLAR_COLOR,
+  WILDCARD_PILLAR_ID,
+  WILDCARD_PILLAR_NAME,
   type DashboardStatusFilter,
 } from '@/lib/dashboard-ui'
 import { cn } from '@/lib/utils'
@@ -90,8 +93,20 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
   )
 
   const pillarMap = useMemo(
-    () => new Map(pillars.map((pillar) => [pillar.id, pillar])),
-    [pillars]
+    () => {
+      const map = new Map(pillars.map((pillar) => [pillar.id, pillar]))
+
+      if (posts.some((post) => !post.pillar_id)) {
+        map.set(WILDCARD_PILLAR_ID, {
+          id: WILDCARD_PILLAR_ID,
+          name: WILDCARD_PILLAR_NAME,
+          color: WILDCARD_PILLAR_COLOR,
+        } as ContentPillar)
+      }
+
+      return map
+    },
+    [pillars, posts]
   )
 
   return (
@@ -151,7 +166,7 @@ export function PostGrid({ posts: initialPosts, pillars, rotationWarnings }: Pos
               >
                 <PostCard
                   post={post}
-                  pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                  pillar={pillarMap.get(post.pillar_id ?? WILDCARD_PILLAR_ID)}
                   featured={index === 0 && filteredPosts.length > 2}
                 />
               </m.div>
