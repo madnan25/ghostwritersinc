@@ -1,10 +1,12 @@
 import { cn } from '@/lib/utils'
-import type { ContentPillar } from '@/lib/types'
+import type { ContentPillar, Post } from '@/lib/types'
+import { computeRotationWarnings, getCalendarDate, startOfCalendarWeek } from '@/lib/post-display'
 
 interface RecentPost {
   id: string
   pillar_id: string | null
   suggested_publish_at: string | null
+  scheduled_publish_at: string | null
 }
 
 interface RotationTimelineProps {
@@ -12,30 +14,28 @@ interface RotationTimelineProps {
   pillars: ContentPillar[]
 }
 
-function detectRuns(posts: RecentPost[]): Map<string, number> {
-  // Returns a map of postId -> run length it belongs to (only for runs > 2)
+function getCrowdedWeekPostIds(posts: RecentPost[], pillars: ContentPillar[]): Map<string, number> {
+  const pillarIds = new Set(pillars.map((pillar) => pillar.id))
   const highlighted = new Map<string, number>()
-  if (posts.length < 3) return highlighted
+  const weekGroups = new Map<string, RecentPost[]>()
 
-  let i = 0
-  while (i < posts.length) {
-    const currentPillar = posts[i].pillar_id
-    if (!currentPillar) {
-      i++
-      continue
-    }
-    let runEnd = i + 1
-    while (runEnd < posts.length && posts[runEnd].pillar_id === currentPillar) {
-      runEnd++
-    }
-    const runLength = runEnd - i
-    if (runLength > 2) {
-      for (let j = i; j < runEnd; j++) {
-        highlighted.set(posts[j].id, runLength)
-      }
-    }
-    i = runEnd
+  for (const post of posts) {
+    const calendarDate = post.suggested_publish_at
+    if (!calendarDate || post.scheduled_publish_at || !post.pillar_id || !pillarIds.has(post.pillar_id)) continue
+
+    const weekStart = startOfCalendarWeek(new Date(calendarDate)).toISOString()
+    const key = `${post.pillar_id}:${weekStart}`
+    if (!weekGroups.has(key)) weekGroups.set(key, [])
+    weekGroups.get(key)!.push(post)
   }
+
+  for (const group of weekGroups.values()) {
+    if (group.length < 3) continue
+    for (const post of group) {
+      highlighted.set(post.id, group.length)
+    }
+  }
+
   return highlighted
 }
 
@@ -44,23 +44,15 @@ export function RotationTimeline({ recentPosts, pillars }: RotationTimelineProps
 
   // Sort chronologically (oldest first for left-to-right reading)
   const sorted = [...recentPosts]
-    .filter((p) => p.suggested_publish_at)
-    .sort((a, b) => new Date(a.suggested_publish_at!).getTime() - new Date(b.suggested_publish_at!).getTime())
+    .filter((p) => getCalendarDate(p))
+    .sort((a, b) => new Date(getCalendarDate(a)!).getTime() - new Date(getCalendarDate(b)!).getTime())
     .slice(-10)
 
-  const highlighted = detectRuns(sorted)
-
-  // Collect warnings
-  const warningRuns = new Map<string, { pillarName: string; length: number }>()
-  for (const [postId, runLength] of highlighted) {
-    const post = sorted.find((p) => p.id === postId)
-    if (post?.pillar_id) {
-      const pillar = pillarMap.get(post.pillar_id)
-      if (pillar && !warningRuns.has(post.pillar_id)) {
-        warningRuns.set(post.pillar_id, { pillarName: pillar.name, length: runLength })
-      }
-    }
-  }
+  const highlighted = getCrowdedWeekPostIds(sorted, pillars)
+  const warnings = computeRotationWarnings(
+    sorted as Pick<Post, 'id' | 'pillar_id' | 'suggested_publish_at' | 'scheduled_publish_at'>[],
+    pillars,
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -77,6 +69,7 @@ export function RotationTimeline({ recentPosts, pillars }: RotationTimelineProps
               {sorted.map((post) => {
                 const pillar = post.pillar_id ? pillarMap.get(post.pillar_id) : null
                 const isHighlighted = highlighted.has(post.id)
+                const calendarDate = getCalendarDate(post)
                 return (
                   <div
                     key={post.id}
@@ -89,7 +82,7 @@ export function RotationTimeline({ recentPosts, pillars }: RotationTimelineProps
                     style={{
                       backgroundColor: pillar ? `${pillar.color}cc` : 'hsl(var(--muted))',
                     }}
-                    title={pillar ? `${pillar.name} · ${post.suggested_publish_at?.slice(0, 10)}` : 'Unassigned'}
+                    title={pillar ? `${pillar.name} · ${calendarDate?.slice(0, 10)}` : 'Unassigned'}
                   >
                     <span className="text-white drop-shadow-sm">
                       {pillar ? pillar.name.slice(0, 1).toUpperCase() : '?'}
@@ -115,25 +108,22 @@ export function RotationTimeline({ recentPosts, pillars }: RotationTimelineProps
           </div>
 
           {/* Warning messages */}
-          {warningRuns.size > 0 ? (
+          {warnings.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {[...warningRuns.entries()].map(([pillarId, { pillarName, length }]) => (
+              {warnings.map((warning, index) => (
                 <div
-                  key={pillarId}
+                  key={`${warning.scope ?? 'warning'}-${warning.pillar_id}-${warning.period_label ?? index}`}
                   className="flex items-start gap-2 rounded-lg border border-orange-500/25 bg-orange-500/10 px-3 py-2.5 text-sm text-orange-300"
                 >
                   <span className="mt-0.5 text-orange-400">⚠</span>
-                  <span>
-                    {length} consecutive <strong>{pillarName}</strong> posts detected.
-                    Mix in content from other pillars to keep your feed balanced and engaging.
-                  </span>
+                  <span>{warning.suggestion}</span>
                 </div>
               ))}
             </div>
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-green-500/25 bg-green-500/10 px-3 py-2.5 text-sm text-green-300">
               <span className="text-green-400">✓</span>
-              <span>Good variety — no consecutive same-pillar runs detected in recent posts.</span>
+              <span>Good variety — no weekly crowding or monthly pillar overweight detected.</span>
             </div>
           )}
         </>

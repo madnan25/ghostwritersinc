@@ -1,4 +1,6 @@
 import { getCalendarPosts, getPillars } from '@/lib/queries/posts'
+import { computeRotationWarnings } from '@/lib/post-display'
+import { ScheduleHealthPanels } from '@/components/schedule-health-panels'
 import { CalendarView } from './_components/calendar-view'
 import { RequestPostButton } from '../dashboard/_components/request-post-dialog'
 
@@ -10,6 +12,7 @@ export default async function CalendarPage() {
   ])
 
   const totalPosts = scheduled.length + unscheduled.length
+  const rotationWarnings = computeRotationWarnings([...scheduled, ...unscheduled], pillars)
 
   return (
     <div className="container px-4 py-8">
@@ -36,7 +39,10 @@ export default async function CalendarPage() {
           </p>
         </div>
       ) : (
-        <CalendarView posts={scheduled} unscheduledPosts={unscheduled} pillars={pillars} />
+        <div className="space-y-6">
+          <ScheduleHealthPanels warnings={rotationWarnings} />
+          <CalendarView posts={scheduled} unscheduledPosts={unscheduled} pillars={pillars} />
+        </div>
       )}
     </div>
   )

@@ -4,12 +4,17 @@ import Link from 'next/link'
 import { Bot, Calendar, FileText, User } from 'lucide-react'
 import { m } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import type { ContentPillar, Post } from '@/lib/types'
+import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
+
+type PillarBadge = {
+  name: string
+  color: string
+}
 
 interface PostCardProps {
   post: Post
-  pillar?: ContentPillar
+  pillar?: PillarBadge
   featured?: boolean
   variant?: 'default' | 'board'
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { X, Flag, RotateCcw, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { submitTargetedRevision } from '@/app/actions/posts'
 import type { FlaggedAnnotation } from './annotatable-post-content'
 
 interface Props {
@@ -24,22 +25,14 @@ export function RevisionSidebar({ postId, annotations, maxAnnotations, onRemove,
     setError(null)
     startTransition(async () => {
       try {
-        const res = await fetch(`/api/drafts/${postId}/targeted-revision`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            annotations: annotations.map((a) => ({
-              start_char: a.start,
-              end_char: a.end,
-              selected_text: a.text,
-              instruction: a.note || '',
-            })),
-          }),
-        })
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}))
-          throw new Error((body as { error?: string }).error ?? `Server error ${res.status}`)
-        }
+        await submitTargetedRevision(
+          postId,
+          annotations.map((a) => ({
+            start_char: a.start,
+            end_char: a.end,
+            note: a.note || 'Please revise this section',
+          }))
+        )
         setSubmitted(true)
         onReset()
       } catch (err) {

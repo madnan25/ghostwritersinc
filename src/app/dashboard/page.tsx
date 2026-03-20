@@ -2,6 +2,7 @@ import { getAllPosts, getPillars } from '@/lib/queries/posts'
 import { computeRotationWarnings } from '@/lib/post-display'
 import { getDashboardMetrics, getDashboardNarrative } from '@/lib/dashboard-ui'
 import { processDuePosts } from '@/lib/publish-scheduled'
+import { ScheduleHealthPanels } from '@/components/schedule-health-panels'
 import { DashboardHero } from './_components/dashboard-hero'
 import { PostGrid } from './_components/post-grid'
 import { AgentActivityFeed } from './_components/agent-activity-feed'
@@ -20,7 +21,9 @@ export default async function DashboardPage() {
     <div className="premium-page">
       <DashboardHero metrics={metrics} narrative={narrative} />
 
-      <PostGrid posts={posts} pillars={pillars} rotationWarnings={rotationWarnings} />
+      <ScheduleHealthPanels warnings={rotationWarnings} />
+
+      <PostGrid posts={posts} pillars={pillars} />
 
       <AgentActivityFeed />
     </div>

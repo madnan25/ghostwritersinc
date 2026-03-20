@@ -1,6 +1,13 @@
 import type { ContentPillar, Post, PostStatus } from "@/lib/types";
 
 export type AgentReviewedFilter = "with" | "without" | null;
+export const WILDCARD_PILLAR_ID = "__wildcard__";
+export const WILDCARD_PILLAR_NAME = "Wildcard";
+export const WILDCARD_PILLAR_COLOR = "#94A3B8";
+
+export type PillarFilterOption = Pick<ContentPillar, "id" | "name" | "color"> & {
+  count: number;
+};
 
 export type DashboardStatusFilter = {
   id:
@@ -90,7 +97,13 @@ export function filterPostsByPillars(posts: Post[], selectedPillarIds: Set<strin
     return posts;
   }
 
-  return posts.filter((post) => post.pillar_id && selectedPillarIds.has(post.pillar_id));
+  return posts.filter((post) => {
+    if (post.pillar_id) {
+      return selectedPillarIds.has(post.pillar_id);
+    }
+
+    return selectedPillarIds.has(WILDCARD_PILLAR_ID);
+  });
 }
 
 export function getDashboardStatusFilterById(
@@ -106,16 +119,29 @@ export function getPillarFilterOptions(
   pillars: ContentPillar[],
   posts: Post[],
   activeFilterId: DashboardStatusFilter["id"]
-) {
+): PillarFilterOption[] {
   const statusFilteredPosts = filterPostsByDashboardRule(
     posts,
     getDashboardStatusFilterById(activeFilterId)
   );
 
-  return pillars.map((pillar) => ({
+  const options: PillarFilterOption[] = pillars.map((pillar) => ({
     ...pillar,
     count: statusFilteredPosts.filter((post) => post.pillar_id === pillar.id).length,
   }));
+
+  const wildcardCount = statusFilteredPosts.filter((post) => !post.pillar_id).length;
+
+  if (wildcardCount > 0) {
+    options.push({
+      id: WILDCARD_PILLAR_ID,
+      name: WILDCARD_PILLAR_NAME,
+      color: WILDCARD_PILLAR_COLOR,
+      count: wildcardCount,
+    });
+  }
+
+  return options;
 }
 
 export function getStatusFilterCount(

@@ -60,33 +60,38 @@ export default async function StrategyPage() {
     getStrategyConfig(),
   ])
 
-  // Fetch "What's Working" summary (non-blocking — returns null if no data)
-  let whatsWorking: WhatsWorkingSummary | null = null
-  let whatsWorkingUpdatedAt: string | null = null
-  if (user) {
-    const { data: strategyRow } = await supabase
-      .from('strategy_config')
-      .select('whats_working, whats_working_updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    whatsWorking = (strategyRow?.whats_working as WhatsWorkingSummary | null) ?? null
-    whatsWorkingUpdatedAt = strategyRow?.whats_working_updated_at ?? null
-  }
-
-  // Get org name (needs user ID)
+  // Get org membership (needed for org name + scoping queries)
   let orgName = 'Your Organization'
+  let organizationId: string | null = null
   if (user) {
     const { data: orgMember } = await supabase
       .from('organization_members')
-      .select('organizations(name)')
+      .select('organization_id, organizations(name)')
       .eq('user_id', user.id)
       .limit(1)
       .single()
 
-    const orgData = orgMember?.organizations
-    if (orgData && !Array.isArray(orgData)) {
-      orgName = (orgData as { name: string }).name
+    if (orgMember) {
+      organizationId = orgMember.organization_id
+      const orgData = orgMember.organizations
+      if (orgData && !Array.isArray(orgData)) {
+        orgName = (orgData as { name: string }).name
+      }
     }
+  }
+
+  // Fetch "What's Working" summary (non-blocking — returns null if no data)
+  let whatsWorking: WhatsWorkingSummary | null = null
+  let whatsWorkingUpdatedAt: string | null = null
+  if (user && organizationId) {
+    const { data: strategyRow } = await supabase
+      .from('strategy_config')
+      .select('whats_working, whats_working_updated_at')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+    whatsWorking = (strategyRow?.whats_working as WhatsWorkingSummary | null) ?? null
+    whatsWorkingUpdatedAt = strategyRow?.whats_working_updated_at ?? null
   }
 
   const postsThisMonth = getPostsThisMonth(posts)

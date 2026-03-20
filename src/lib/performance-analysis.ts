@@ -88,11 +88,10 @@ export async function getPublishedPostsWithMetrics(
       suggested_publish_at,
       created_at,
       content_pillars!posts_pillar_id_fkey (name),
-      post_performance (impressions, reactions, comments_count, reposts, logged_at)
+      post_performance!inner (impressions, reactions, comments_count, reposts, logged_at)
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'published')
-    .not('post_performance', 'is', null)
 
   if (error) {
     console.error('[performance-analysis] query error:', error)
@@ -101,19 +100,19 @@ export async function getPublishedPostsWithMetrics(
 
   return (data ?? [])
     .filter((p: Record<string, unknown>) => {
-      const perf = p.post_performance as unknown[]
-      return Array.isArray(perf) && perf.length > 0
+      // post_performance is a 1:1 relation (unique on post_id) — Supabase returns
+      // it as a single object, not an array.
+      const perf = p.post_performance
+      return perf !== null && typeof perf === 'object' && !Array.isArray(perf)
     })
     .map((p: Record<string, unknown>) => {
-      // post_performance is a 1:1 relation (unique on post_id); take first entry
-      const perfArr = p.post_performance as Array<{
+      const latest = p.post_performance as {
         impressions: number
         reactions: number
         comments_count: number
         reposts: number
         logged_at: string
-      }>
-      const latest = perfArr[0]
+      }
 
       const pillarData = p.content_pillars as { name: string } | null
 
@@ -218,6 +217,22 @@ export function computePerformanceAwareWeights(
       weight_pct: Math.max(1, adjustedWeight), // never go below 1%
     }
   })
+
+  // Renormalize so adjusted weights sum to 100
+  const totalAdjusted = adjusted.reduce((s, p) => s + p.weight_pct, 0)
+  if (totalAdjusted !== 100 && totalAdjusted > 0) {
+    const normalized = adjusted.map((p) => ({
+      id: p.id,
+      weight_pct: Math.max(1, Math.round((p.weight_pct / totalAdjusted) * 100)),
+    }))
+    // Fix rounding drift: add remainder to the largest weight
+    const normTotal = normalized.reduce((s, p) => s + p.weight_pct, 0)
+    if (normTotal !== 100) {
+      const maxEntry = normalized.reduce((a, b) => (a.weight_pct >= b.weight_pct ? a : b))
+      maxEntry.weight_pct += 100 - normTotal
+    }
+    return normalized
+  }
 
   return adjusted
 }
@@ -359,12 +374,15 @@ export async function saveWhatsWorking(
 ): Promise<boolean> {
   const { error } = await supabase
     .from('strategy_config')
-    .update({
-      whats_working: summary,
-      whats_working_updated_at: new Date().toISOString(),
-    })
-    .eq('user_id', userId)
-    .eq('organization_id', organizationId)
+    .upsert(
+      {
+        user_id: userId,
+        organization_id: organizationId,
+        whats_working: summary,
+        whats_working_updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,organization_id' },
+    )
 
   if (error) {
     console.error('[performance-analysis] save whats_working error:', error)

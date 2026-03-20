@@ -1,4 +1,8 @@
-import { getAllRecentReviewEvents, getCommissionedAgents } from '@/lib/queries/agents'
+import {
+  getCommissionedAgents,
+  getReviewEventsForCommissionedAgents,
+  groupReviewEventsByCommissionedAgents,
+} from '@/lib/queries/agents'
 import type { ReviewEvent } from '@/lib/types'
 import { getCurrentOrgUser } from '@/lib/server-auth'
 import { HiringRequestSection } from './_components/hiring-request-section'
@@ -40,12 +44,7 @@ const AGENT_META: Record<
   },
 }
 
-const DEFAULT_META = {
-  icon: '🤖',
-  role: 'Content Agent',
-  description: 'AI-powered content assistant for the Ghostwriters Inc. platform.',
-  capabilities: ['Drafting', 'Review', 'Workflow automation'],
-}
+const FALLBACK_ICON = '🤖'
 
 function formatRelativeTime(date: string): string {
   const diff = Date.now() - new Date(date).getTime()
@@ -65,12 +64,23 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 
 interface AgentCardProps {
   name: string
+  agentType: string
+  jobTitle: string | null
   provider: string
   assignedUser: string | null
   permissions: string[]
   status: 'active' | 'inactive' | 'revoked'
   lastUsedAt: string | null
   recentEvents: ReviewEvent[]
+}
+
+function displayJobTitle(jobTitle: string | null, agentType: string): string {
+  const trimmed = jobTitle?.trim()
+  if (trimmed) return trimmed
+  const preset = AGENT_META[agentType]
+  if (preset) return preset.role
+  if (agentType === 'custom') return 'Commissioned agent'
+  return agentType.charAt(0).toUpperCase() + agentType.slice(1)
 }
 
 function formatPermission(permission: string): string {
@@ -81,6 +91,8 @@ function formatPermission(permission: string): string {
 
 function AgentCard({
   name,
+  agentType,
+  jobTitle,
   provider,
   assignedUser,
   permissions,
@@ -88,16 +100,20 @@ function AgentCard({
   lastUsedAt,
   recentEvents,
 }: AgentCardProps) {
-  const meta = AGENT_META[name.toLowerCase()] ?? DEFAULT_META
+  const preset = AGENT_META[agentType] ?? null
+  const icon = preset?.icon ?? FALLBACK_ICON
+  const typeDescription = preset?.description ?? null
   const isActive = status === 'active'
-  const capabilityLabels = permissions.length > 0 ? permissions.map(formatPermission) : meta.capabilities
+  const capabilityLabels =
+    permissions.length > 0 ? permissions.map(formatPermission) : (preset?.capabilities ?? [])
+  const roleLine = displayJobTitle(jobTitle, agentType)
 
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-6 gap-5">
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-2xl">
-          {meta.icon}
+          {icon}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -118,15 +134,16 @@ function AgentCard({
               {provider}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{meta.role}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{roleLine}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {assignedUser ? `Attached to ${assignedUser}` : 'No assigned user'}
           </p>
         </div>
       </div>
 
-      {/* Description */}
-      <p className="text-sm text-muted-foreground">{meta.description}</p>
+      {typeDescription ? (
+        <p className="text-sm text-muted-foreground">{typeDescription}</p>
+      ) : null}
 
       {/* Capabilities */}
       <div>
@@ -186,11 +203,11 @@ function AgentCard({
 
 export default async function TeamPage() {
   // Auth handled by middleware
-  const [agents, recentEvents, authResult] = await Promise.all([
-    getCommissionedAgents(),
-    getAllRecentReviewEvents(50),
-    getCurrentOrgUser(),
-  ])
+  const [agents, authResult] = await Promise.all([getCommissionedAgents(), getCurrentOrgUser()])
+
+  const reviewEvents =
+    agents.length === 0 ? [] : await getReviewEventsForCommissionedAgents(agents)
+  const eventsByAgent = groupReviewEventsByCommissionedAgents(agents, reviewEvents)
 
   let organizationContextSharingEnabled = false
   if (authResult.status === 'authenticated') {
@@ -201,14 +218,6 @@ export default async function TeamPage() {
       .eq('id', profile.organization_id)
       .maybeSingle()
     organizationContextSharingEnabled = org?.context_sharing_enabled === true
-  }
-
-  // Group recent events by agent
-  const eventsByAgent: Record<string, ReviewEvent[]> = {}
-  for (const event of recentEvents) {
-    const key = event.agent_id ?? event.agent_name.toLowerCase()
-    if (!eventsByAgent[key]) eventsByAgent[key] = []
-    eventsByAgent[key].push(event)
   }
 
   return (
@@ -237,12 +246,14 @@ export default async function TeamPage() {
             <AgentCard
               key={agent.id}
               name={agent.name}
+              agentType={agent.agent_type}
+              jobTitle={agent.job_title}
               provider={agent.provider}
               assignedUser={agent.assigned_user_name}
               permissions={agent.permissions ?? []}
               status={agent.status}
               lastUsedAt={agent.last_used_at}
-              recentEvents={(eventsByAgent[agent.id] ?? eventsByAgent[agent.name.toLowerCase()] ?? []).slice(0, 5)}
+              recentEvents={eventsByAgent[agent.id] ?? []}
             />
           ))}
         </div>

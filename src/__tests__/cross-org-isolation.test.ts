@@ -165,6 +165,10 @@ vi.mock('@/lib/supabase/admin', () => ({
           state.insertData = data
           return chainResult
         }),
+        upsert: vi.fn((data: unknown) => {
+          state.insertData = data
+          return chainResult
+        }),
         update: vi.fn(() => chainResult),
         delete: vi.fn(() => chainResult),
         eq: vi.fn((col: string, val: string) => {

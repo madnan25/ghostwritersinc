@@ -61,6 +61,12 @@ vi.mock("@/lib/supabase/admin", () => ({
           update: vi.fn(() => chainProxy({ data: POST_ROW, error: null })),
         };
       }
+      if (table === "post_revisions") {
+        return {
+          upsert: vi.fn(() => Promise.resolve({ error: null })),
+          insert: vi.fn(() => Promise.resolve({ error: null })),
+        };
+      }
       if (table === "post_comments") {
         return {
           insert: vi.fn(() => chainProxy({
@@ -77,6 +83,11 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "users") {
         return {
           select: vi.fn(() => chainProxy({ data: { id: "user-1" }, error: null })),
+        };
+      }
+      if (table === "agents") {
+        return {
+          select: vi.fn(() => chainProxy({ data: { name: "Scribe" }, error: null })),
         };
       }
       return { select: vi.fn(), insert: vi.fn(), update: vi.fn() };

@@ -52,6 +52,84 @@ export async function getAllRecentReviewEvents(limit = 20): Promise<ReviewEvent[
   return data ?? []
 }
 
+/** Review events for the given commissioned agents (by agent_id or agent_name/slug/id). Merges two queries so we are not limited to the N most recent rows globally. */
+export async function getReviewEventsForCommissionedAgents(
+  agents: Array<Pick<Agent, 'id' | 'name' | 'slug'>>,
+  perQueryLimit = 300,
+): Promise<ReviewEvent[]> {
+  if (agents.length === 0) return []
+  const supabase = await createClient()
+  const agentIds = agents.map((a) => a.id)
+  const nameKeys = [...new Set(agents.flatMap((a) => [a.name, a.slug, a.id]))]
+
+  const [{ data: byAgentId, error: errId }, { data: byName, error: errName }] = await Promise.all([
+    supabase
+      .from('review_events')
+      .select('*')
+      .in('agent_id', agentIds)
+      .order('created_at', { ascending: false })
+      .limit(perQueryLimit),
+    supabase
+      .from('review_events')
+      .select('*')
+      .in('agent_name', nameKeys)
+      .order('created_at', { ascending: false })
+      .limit(perQueryLimit),
+  ])
+
+  if (errId) logQueryError('review_events by agent_id', errId)
+  if (errName) logQueryError('review_events by agent_name', errName)
+
+  const seen = new Set<string>()
+  const merged: ReviewEvent[] = []
+  for (const row of [...(byAgentId ?? []), ...(byName ?? [])]) {
+    if (seen.has(row.id)) continue
+    seen.add(row.id)
+    merged.push(row)
+  }
+  return merged
+}
+
+export function groupReviewEventsByCommissionedAgents(
+  agents: Array<Pick<Agent, 'id' | 'name' | 'slug'>>,
+  events: ReviewEvent[],
+  perAgentLimit = 5,
+): Record<string, ReviewEvent[]> {
+  const byAgentId: Record<string, ReviewEvent[]> = Object.fromEntries(
+    agents.map((a) => [a.id, [] as ReviewEvent[]]),
+  )
+
+  const byLowerName = new Map<string, (typeof agents)[number]>()
+  for (const a of agents) {
+    byLowerName.set(a.name.toLowerCase(), a)
+    if (a.slug.toLowerCase() !== a.name.toLowerCase()) {
+      byLowerName.set(a.slug.toLowerCase(), a)
+    }
+  }
+
+  for (const e of events) {
+    let agent: (typeof agents)[number] | undefined
+    if (e.agent_id) {
+      agent = agents.find((a) => a.id === e.agent_id)
+    }
+    if (!agent) {
+      agent = byLowerName.get(e.agent_name.toLowerCase()) ?? agents.find((a) => a.id === e.agent_name)
+    }
+    if (agent) {
+      byAgentId[agent.id].push(e)
+    }
+  }
+
+  for (const a of agents) {
+    byAgentId[a.id].sort(
+      (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime(),
+    )
+    byAgentId[a.id] = byAgentId[a.id].slice(0, perAgentLimit)
+  }
+
+  return byAgentId
+}
+
 export interface CommissionedAgentSummary extends Agent {
   assigned_user_name: string | null
   assigned_user_email: string | null

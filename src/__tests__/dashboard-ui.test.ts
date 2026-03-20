@@ -7,6 +7,7 @@ import {
   getPillarFilterOptions,
   getStatusFilterCount,
   sortDashboardPosts,
+  WILDCARD_PILLAR_ID,
 } from '@/lib/dashboard-ui'
 
 const PILLARS: ContentPillar[] = [
@@ -15,10 +16,15 @@ const PILLARS: ContentPillar[] = [
     organization_id: 'org-1',
     user_id: 'user-1',
     name: 'AI',
+    slug: 'ai',
     description: null,
     color: '#7CFF6B',
     weight_pct: 40,
     active: true,
+    audience_summary: null,
+    example_hooks: [],
+    sort_order: 1,
+    brief_ref: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -27,10 +33,15 @@ const PILLARS: ContentPillar[] = [
     organization_id: 'org-1',
     user_id: 'user-1',
     name: 'Growth',
+    slug: 'growth',
     description: null,
     color: '#66B3FF',
     weight_pct: 60,
     active: true,
+    audience_summary: null,
+    example_hooks: [],
+    sort_order: 2,
+    brief_ref: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -41,6 +52,7 @@ function makePost(overrides: Partial<Post>): Post {
     id: crypto.randomUUID(),
     organization_id: 'org-1',
     user_id: 'user-1',
+    title: null,
     content: 'Post title\nBody copy',
     content_type: 'text',
     media_urls: null,
@@ -118,6 +130,26 @@ describe('dashboard filter model', () => {
 
     expect(filtered).toHaveLength(1)
     expect(filtered[0].reviewed_by_agent).toBe('scribe')
+  })
+
+  it('adds a wildcard pillar option for uncategorized posts', () => {
+    const options = getPillarFilterOptions(
+      PILLARS,
+      [...posts, makePost({ status: 'scheduled', pillar_id: null })],
+      'scheduled'
+    )
+
+    expect(options.find((option) => option.id === WILDCARD_PILLAR_ID)?.count).toBe(1)
+  })
+
+  it('filters uncategorized posts through the wildcard pillar', () => {
+    const filtered = filterPostsByPillars(
+      [...posts, makePost({ status: 'draft', pillar_id: null })],
+      new Set([WILDCARD_PILLAR_ID])
+    )
+
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].pillar_id).toBeNull()
   })
 
   it('sorts the all view by workflow priority', () => {
