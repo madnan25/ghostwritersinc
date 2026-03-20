@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, ExternalLink } from 'lucide-react'
 import { getSeriesById } from '@/lib/queries/series'
+import { isValidUuid } from '@/lib/validation'
 import { SeriesLifecycleActions } from '../_components/series-lifecycle-actions'
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -32,6 +33,7 @@ interface SeriesDetailPageProps {
 
 export default async function SeriesDetailPage({ params }: SeriesDetailPageProps) {
   const { id } = await params
+  if (!isValidUuid(id)) notFound()
   const series = await getSeriesById(id)
 
   if (!series) notFound()

@@ -2,8 +2,11 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import type { ContentPillar, Post } from '@/lib/types'
+import type { ContentPillar, Post, SeriesStatus } from '@/lib/types'
+import type { PostSeriesInfo } from '@/lib/queries/series'
 import { getStalenessState, getStalenessTooltip, STALENESS_CONFIG } from '@/lib/staleness'
+import { getSeriesColor, SeriesThreadPanel } from './series-thread-panel'
+import type { CalendarSeriesEntry } from './series-thread-panel'
 
 type ViewMode = 'month' | 'week'
 
@@ -11,6 +14,8 @@ interface CalendarViewProps {
   posts: Post[]
   unscheduledPosts: Post[]
   pillars: ContentPillar[]
+  /** Map of postId → PostSeriesInfo for any post that belongs to a series */
+  seriesInfoByPost?: Record<string, PostSeriesInfo>
 }
 
 function getStatusColor(status: Post['status']): string {
@@ -50,7 +55,21 @@ function formatWeekRange(start: Date): string {
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
 }
 
-function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
+function seriesOpacityClass(status: SeriesStatus | undefined): string {
+  if (status === 'paused') return 'opacity-50'
+  if (status === 'cancelled') return 'opacity-40'
+  return ''
+}
+
+function PostPill({
+  post,
+  pillarColor,
+  seriesInfo,
+}: {
+  post: Post
+  pillarColor?: string
+  seriesInfo?: PostSeriesInfo
+}) {
   const time = post.scheduled_publish_at
     ? new Date(post.scheduled_publish_at).toLocaleTimeString('en-US', {
         hour: 'numeric',
@@ -62,26 +81,49 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
   const stalenessConfig = staleness ? STALENESS_CONFIG[staleness] : null
   const isArchived = !!post.archived_at
   const stalenessTooltip = getStalenessTooltip(post)
-  const tooltipText = stalenessTooltip
-    ? `${stalenessTooltip}\n${post.content.slice(0, 100)}`
-    : post.content.slice(0, 100)
+
+  const seriesLabel = seriesInfo
+    ? `[S] ${seriesInfo.series_title} — P${seriesInfo.part_number}/${seriesInfo.series_total_parts}`
+    : ''
+  const tooltipText = [seriesLabel, stalenessTooltip, post.content.slice(0, 100)]
+    .filter(Boolean)
+    .join('\n')
+
+  const seriesColor = seriesInfo ? getSeriesColor(seriesInfo.series_id) : undefined
+  const isCancelled = seriesInfo?.series_status === 'cancelled'
+  const borderStyle = seriesColor
+    ? { borderLeftColor: seriesColor, borderLeftWidth: 4 }
+    : pillarColor
+      ? { borderLeftColor: pillarColor, borderLeftWidth: 3 }
+      : undefined
 
   return (
     <Link href={`/post/${post.id}`}>
       <div
-        className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)} ${isArchived ? 'opacity-40' : ''}`}
+        className={`flex items-center gap-1 truncate rounded border px-1.5 py-0.5 text-xs leading-5 transition-opacity hover:opacity-80 ${getStatusColor(post.status)} ${isArchived ? 'opacity-40' : ''} ${seriesOpacityClass(seriesInfo?.series_status)}`}
         title={tooltipText}
-        style={pillarColor ? { borderLeftColor: pillarColor, borderLeftWidth: 3 } : undefined}
+        style={borderStyle}
       >
+        {seriesInfo && (
+          <span
+            className="mr-0.5 inline-flex shrink-0 items-center rounded px-1 text-[0.6rem] font-bold text-white"
+            style={{ backgroundColor: seriesColor }}
+          >
+            P{seriesInfo.part_number}/{seriesInfo.series_total_parts}
+          </span>
+        )}
         {isHumanRequested && (
           <span className="mr-1 inline-flex items-center rounded bg-violet-500/20 px-1 text-[0.6rem] font-medium text-violet-400">
             HR
           </span>
         )}
         {time && <span className="mr-1 opacity-70">{time}</span>}
-        <span className={`flex-1 truncate ${isArchived ? 'line-through' : ''}`}>
+        <span className={`flex-1 truncate ${isArchived || isCancelled ? 'line-through' : ''}`}>
           {post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}
         </span>
+        {seriesInfo?.series_status === 'completed' && (
+          <span className="ml-auto shrink-0 text-[0.65rem] text-blue-400">✓</span>
+        )}
         {stalenessConfig && (
           <span
             className={`ml-auto shrink-0 inline-block size-1.5 rounded-full ${stalenessConfig.dotClass}`}
@@ -94,7 +136,7 @@ function PostPill({ post, pillarColor }: { post: Post; pillarColor?: string }) {
 
 // ─── Month View ───────────────────────────────────────────────────────────────
 
-function MonthView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; pillarMap: Map<string, ContentPillar> }) {
+function MonthView({ posts, anchor, pillarMap, seriesInfoByPost = {} }: { posts: Post[]; anchor: Date; pillarMap: Map<string, ContentPillar>; seriesInfoByPost?: Record<string, PostSeriesInfo> }) {
   const year = anchor.getFullYear()
   const month = anchor.getMonth()
   const firstDay = new Date(year, month, 1)
@@ -154,7 +196,12 @@ function MonthView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; 
               </div>
               <div className="flex flex-col gap-0.5">
                 {dayPosts.slice(0, 3).map((post) => (
-                  <PostPill key={post.id} post={post} pillarColor={post.pillar_id ? pillarMap.get(post.pillar_id)?.color : undefined} />
+                  <PostPill
+                    key={post.id}
+                    post={post}
+                    pillarColor={post.pillar_id ? pillarMap.get(post.pillar_id)?.color : undefined}
+                    seriesInfo={seriesInfoByPost[post.id]}
+                  />
                 ))}
                 {dayPosts.length > 3 && (
                   <span className="text-xs text-muted-foreground">+{dayPosts.length - 3} more</span>
@@ -170,7 +217,7 @@ function MonthView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; 
 
 // ─── Week View ────────────────────────────────────────────────────────────────
 
-function WeekView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; pillarMap: Map<string, ContentPillar> }) {
+function WeekView({ posts, anchor, pillarMap, seriesInfoByPost = {} }: { posts: Post[]; anchor: Date; pillarMap: Map<string, ContentPillar>; seriesInfoByPost?: Record<string, PostSeriesInfo> }) {
   const weekStart = startOfWeek(anchor)
   const days: Date[] = []
   for (let i = 0; i < 7; i++) {
@@ -214,7 +261,12 @@ function WeekView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; p
                 <span className="text-xs text-muted-foreground/50 pt-1">No posts</span>
               ) : (
                 dayPosts.map((post) => (
-                  <PostPill key={post.id} post={post} pillarColor={post.pillar_id ? pillarMap.get(post.pillar_id)?.color : undefined} />
+                  <PostPill
+                    key={post.id}
+                    post={post}
+                    pillarColor={post.pillar_id ? pillarMap.get(post.pillar_id)?.color : undefined}
+                    seriesInfo={seriesInfoByPost[post.id]}
+                  />
                 ))
               )}
             </div>
@@ -227,7 +279,7 @@ function WeekView({ posts, anchor, pillarMap }: { posts: Post[]; anchor: Date; p
 
 // ─── Unscheduled Approved Section ────────────────────────────────────────────
 
-function UnscheduledSection({ posts, pillarMap }: { posts: Post[]; pillarMap: Map<string, ContentPillar> }) {
+function UnscheduledSection({ posts, pillarMap, seriesInfoByPost = {} }: { posts: Post[]; pillarMap: Map<string, ContentPillar>; seriesInfoByPost?: Record<string, PostSeriesInfo> }) {
   if (posts.length === 0) return null
 
   return (
@@ -242,14 +294,32 @@ function UnscheduledSection({ posts, pillarMap }: { posts: Post[]; pillarMap: Ma
       <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {posts.map((post) => {
           const pillar = post.pillar_id ? pillarMap.get(post.pillar_id) : undefined
+          const series = seriesInfoByPost[post.id]
+          const seriesColor = series ? getSeriesColor(series.series_id) : undefined
+          const borderStyle = seriesColor
+            ? { borderLeftColor: seriesColor, borderLeftWidth: 4 }
+            : pillar
+              ? { borderLeftColor: pillar.color, borderLeftWidth: 3 }
+              : undefined
           return (
             <Link key={post.id} href={`/post/${post.id}`}>
               <div
                 className="group rounded-lg border border-border p-3 text-xs transition-colors hover:border-border/80 hover:bg-muted/30"
-                style={pillar ? { borderLeftColor: pillar.color, borderLeftWidth: 3 } : undefined}
+                style={borderStyle}
               >
                 <div className="flex items-start gap-2">
                   <div className="flex-1 min-w-0">
+                    {series && (
+                      <div className="mb-1 flex items-center gap-1">
+                        <span
+                          className="inline-flex items-center rounded px-1 py-0.5 text-[0.6rem] font-bold text-white"
+                          style={{ backgroundColor: seriesColor }}
+                        >
+                          P{series.part_number}/{series.series_total_parts}
+                        </span>
+                        <span className="truncate text-muted-foreground">{series.series_title}</span>
+                      </div>
+                    )}
                     <p className="line-clamp-2 text-foreground leading-relaxed">
                       {post.content.slice(0, 120)}{post.content.length > 120 ? '…' : ''}
                     </p>
@@ -404,7 +474,7 @@ function PillarDistributionBar({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewProps) {
+export function CalendarView({ posts, unscheduledPosts, pillars, seriesInfoByPost = {} }: CalendarViewProps) {
   const [view, setView] = useState<ViewMode>(() =>
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'week' : 'month',
   )
@@ -416,6 +486,32 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
   const visiblePosts = showArchived ? posts : posts.filter((p) => !p.archived_at)
   const visibleUnscheduled = showArchived ? unscheduledPosts : unscheduledPosts.filter((p) => !p.archived_at)
   const archivedCount = posts.filter((p) => !!p.archived_at).length + unscheduledPosts.filter((p) => !!p.archived_at).length
+
+  // Build series thread panel entries from all posts (scheduled + unscheduled)
+  const allPosts = [...posts, ...unscheduledPosts]
+  const seriesEntriesMap = new Map<string, CalendarSeriesEntry>()
+  for (const post of allPosts) {
+    const info = seriesInfoByPost[post.id]
+    if (!info) continue
+    if (!seriesEntriesMap.has(info.series_id)) {
+      seriesEntriesMap.set(info.series_id, {
+        series_id: info.series_id,
+        series_title: info.series_title,
+        series_total_parts: info.series_total_parts,
+        series_status: info.series_status,
+        parts: [],
+      })
+    }
+    seriesEntriesMap.get(info.series_id)!.parts.push({
+      part_number: info.part_number,
+      post_id: post.id,
+      post_status: post.status,
+      scheduled_at: post.scheduled_publish_at,
+    })
+  }
+  const seriesEntries = Array.from(seriesEntriesMap.values()).sort((a, b) =>
+    a.series_title.localeCompare(b.series_title),
+  )
 
   function navigate(dir: -1 | 1) {
     setAnchor((prev) => {
@@ -498,9 +594,9 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
 
         {/* Calendar body */}
         {view === 'month' ? (
-          <MonthView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} />
+          <MonthView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} seriesInfoByPost={seriesInfoByPost} />
         ) : (
-          <WeekView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} />
+          <WeekView posts={visiblePosts} anchor={anchor} pillarMap={pillarMap} seriesInfoByPost={seriesInfoByPost} />
         )}
 
         {/* Legend */}
@@ -550,10 +646,21 @@ export function CalendarView({ posts, unscheduledPosts, pillars }: CalendarViewP
               ))}
             </>
           )}
+          {seriesEntries.length > 0 && (
+            <>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">Series:</span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="inline-flex items-center rounded bg-muted px-1 text-[0.6rem] font-bold">P2/5</span>
+                part badge
+              </span>
+            </>
+          )}
         </div>
       </div>
 
-      <UnscheduledSection posts={visibleUnscheduled} pillarMap={pillarMap} />
+      <UnscheduledSection posts={visibleUnscheduled} pillarMap={pillarMap} seriesInfoByPost={seriesInfoByPost} />
+      <SeriesThreadPanel entries={seriesEntries} />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { getCalendarPosts, getPillars } from '@/lib/queries/posts'
+import { getSeriesInfoForBriefs, type PostSeriesInfo } from '@/lib/queries/series'
 import { computeRotationWarnings } from '@/lib/post-display'
 import { ScheduleHealthPanels } from '@/components/schedule-health-panels'
 import { CalendarView } from './_components/calendar-view'
@@ -10,6 +11,19 @@ export default async function CalendarPage() {
     getCalendarPosts(),
     getPillars(),
   ])
+
+  // Enrich posts with series info via brief join
+  const allPosts = [...scheduled, ...unscheduled]
+  const briefIds = allPosts.map((p) => p.brief_id).filter((id): id is string => !!id)
+  const seriesInfoByBrief = await getSeriesInfoForBriefs(briefIds)
+
+  // Build postId → PostSeriesInfo map (serializable for client component)
+  const seriesInfoByPost: Record<string, PostSeriesInfo> = {}
+  for (const post of allPosts) {
+    if (post.brief_id && seriesInfoByBrief.has(post.brief_id)) {
+      seriesInfoByPost[post.id] = seriesInfoByBrief.get(post.brief_id)!
+    }
+  }
 
   const totalPosts = scheduled.length + unscheduled.length
   const rotationWarnings = computeRotationWarnings([...scheduled, ...unscheduled], pillars)
@@ -41,7 +55,7 @@ export default async function CalendarPage() {
       ) : (
         <div className="space-y-6">
           <ScheduleHealthPanels warnings={rotationWarnings} />
-          <CalendarView posts={scheduled} unscheduledPosts={unscheduled} pillars={pillars} />
+          <CalendarView posts={scheduled} unscheduledPosts={unscheduled} pillars={pillars} seriesInfoByPost={seriesInfoByPost} />
         </div>
       )}
     </div>

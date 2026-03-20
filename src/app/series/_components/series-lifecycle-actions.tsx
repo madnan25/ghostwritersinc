@@ -23,7 +23,7 @@ export function SeriesLifecycleActions({
   const [isPending, startTransition] = useTransition()
   const [actionError, setActionError] = useState<string | null>(null)
 
-  async function callAction(action: 'pause' | 'cancel' | 'complete' | 'add-post') {
+  async function callAction(action: 'pause' | 'resume' | 'cancel' | 'complete' | 'add-post') {
     setActionError(null)
     startTransition(async () => {
       try {
@@ -47,21 +47,7 @@ export function SeriesLifecycleActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {canAddPost && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => callAction('add-post')}
-          disabled={isPending}
-          className="gap-1.5"
-        >
-          <Plus className="size-3.5" />
-          Add Post
-          {currentParts >= totalParts && (
-            <span className="text-xs text-muted-foreground">({8 - currentParts} remaining)</span>
-          )}
-        </Button>
-      )}
+      {/* Add Post requires a post-picker UI — disabled until that component is built */}
 
       {canPause && (
         <Button
@@ -80,7 +66,7 @@ export function SeriesLifecycleActions({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => callAction('pause')}
+          onClick={() => callAction('resume')}
           disabled={isPending}
           className="gap-1.5"
         >
