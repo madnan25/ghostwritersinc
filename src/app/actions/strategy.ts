@@ -9,6 +9,7 @@ export type StrategyConfig = {
   default_publish_hour: number;
   voice_notes: string | null;
   wildcard_count: number;
+  posting_days: number[];
 };
 
 export async function getStrategyConfig(): Promise<StrategyConfig | null> {
@@ -27,7 +28,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig | null> {
 
   const { data } = await supabase
     .from("strategy_config")
-    .select("monthly_post_target, intel_score_threshold, default_publish_hour, voice_notes, wildcard_count")
+    .select("monthly_post_target, intel_score_threshold, default_publish_hour, voice_notes, wildcard_count, posting_days")
     .eq("user_id", user.id)
     .eq("organization_id", profile.organization_id)
     .maybeSingle();
@@ -54,6 +55,10 @@ export async function saveStrategyConfig(formData: FormData) {
   const default_publish_hour = parseInt(formData.get("default_publish_hour") as string, 10);
   const voice_notes = (formData.get("voice_notes") as string) || null;
   const wildcard_count = parseInt(formData.get("wildcard_count") as string, 10) || 0;
+  const posting_days_raw = JSON.parse((formData.get("posting_days") as string) || "[]") as unknown[];
+  const posting_days = Array.isArray(posting_days_raw)
+    ? posting_days_raw.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+    : [];
 
   if (
     isNaN(monthly_post_target) ||
@@ -67,7 +72,8 @@ export async function saveStrategyConfig(formData: FormData) {
     default_publish_hour > 23 ||
     wildcard_count < 0 ||
     wildcard_count > 50 ||
-    wildcard_count > monthly_post_target
+    wildcard_count > monthly_post_target ||
+    posting_days.length === 0
   ) {
     throw new Error("Invalid values");
   }
@@ -81,6 +87,7 @@ export async function saveStrategyConfig(formData: FormData) {
       default_publish_hour,
       voice_notes,
       wildcard_count,
+      posting_days,
     },
     { onConflict: "user_id,organization_id" }
   );
@@ -193,7 +200,7 @@ export async function updatePillarWeights(
   if (weights.length === 0) throw new Error('No weights provided')
 
   const total = weights.reduce((sum, w) => sum + w.weightPct, 0)
-  if (total !== 100) throw new Error(`Weights must sum to 100% (got ${total}%)`)
+  if (Math.abs(total - 100) >= 0.01) throw new Error(`Weights must sum to 100% (got ${total}%)`)
 
   const supabase = await createClient()
   const {

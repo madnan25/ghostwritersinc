@@ -16,7 +16,31 @@ const DEFAULTS: StrategyConfig = {
   default_publish_hour: 9,
   voice_notes: null,
   wildcard_count: 0,
+  posting_days: [1, 2, 3, 4, 5],
 };
+
+const WEEK_DAYS = [
+  { value: 0, label: "S" },
+  { value: 1, label: "M" },
+  { value: 2, label: "T" },
+  { value: 3, label: "W" },
+  { value: 4, label: "T" },
+  { value: 5, label: "F" },
+  { value: 6, label: "S" },
+];
+
+function countSlotsThisMonth(postingDays: number[]): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const allowed = new Set(postingDays);
+  let count = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (allowed.has(new Date(year, month, d).getDay())) count++;
+  }
+  return count;
+}
 
 export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null }) {
   const saved = initial ?? DEFAULTS;
@@ -26,6 +50,7 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
   const [publishHour, setPublishHour] = useState(saved.default_publish_hour);
   const [voiceNotes, setVoiceNotes] = useState(saved.voice_notes ?? "");
   const [wildcardCount, setWildcardCount] = useState(saved.wildcard_count ?? 0);
+  const [postingDays, setPostingDays] = useState<number[]>(saved.posting_days ?? [1, 2, 3, 4, 5]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -35,17 +60,35 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
     publishHour: saved.default_publish_hour,
     voiceNotes: saved.voice_notes ?? "",
     wildcardCount: saved.wildcard_count ?? 0,
+    postingDays: saved.posting_days ?? [1, 2, 3, 4, 5],
   });
 
+  const slotsThisMonth = useMemo(() => countSlotsThisMonth(postingDays), [postingDays]);
+  const slotsWarning = monthlyTarget > slotsThisMonth;
+
   const isDirty = useMemo(() => {
+    const daysChanged =
+      postingDays.length !== savedState.postingDays.length ||
+      postingDays.some((d) => !savedState.postingDays.includes(d));
     return (
       monthlyTarget !== savedState.monthlyTarget ||
       threshold !== savedState.threshold ||
       publishHour !== savedState.publishHour ||
       voiceNotes !== savedState.voiceNotes ||
-      wildcardCount !== savedState.wildcardCount
+      wildcardCount !== savedState.wildcardCount ||
+      daysChanged
     );
-  }, [monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount, savedState]);
+  }, [monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount, postingDays, savedState]);
+
+  function toggleDay(day: number) {
+    setPostingDays((prev) => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev; // require at least 1
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day].sort((a, b) => a - b);
+    });
+  }
 
   function handleSubmit(formData: FormData) {
     formData.set("monthly_post_target", String(monthlyTarget));
@@ -53,11 +96,12 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
     formData.set("default_publish_hour", String(publishHour));
     formData.set("voice_notes", voiceNotes);
     formData.set("wildcard_count", String(wildcardCount));
+    formData.set("posting_days", JSON.stringify(postingDays));
     setError(null);
     startTransition(async () => {
       try {
         await saveStrategyConfig(formData);
-        setSavedState({ monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount });
+        setSavedState({ monthlyTarget, threshold, publishHour, voiceNotes, wildcardCount, postingDays });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to save");
       }
@@ -119,6 +163,42 @@ export function StrategyConfigForm({ initial }: { initial: StrategyConfig | null
           </div>
           <p className="text-xs text-foreground/68">
             Briefs created without a content pillar, scheduled evenly across the month.
+          </p>
+        </div>
+
+        <div className="editorial-rule" />
+
+        {/* Posting days */}
+        <div className="space-y-3">
+          <label className="premium-kicker text-[0.72rem] tracking-[0.22em]">
+            Posting Days
+          </label>
+          <div className="flex gap-1.5">
+            {WEEK_DAYS.map(({ value, label }) => {
+              const active = postingDays.includes(value);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleDay(value)}
+                  className={`w-9 h-9 rounded-full text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring/50 ${
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground/48 hover:text-foreground/72"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-foreground/68">
+            {slotsThisMonth} posting {slotsThisMonth === 1 ? "slot" : "slots"} available this month
+            {slotsWarning && (
+              <span className="ml-2 text-amber-500 font-medium">
+                — target ({monthlyTarget}) exceeds available slots
+              </span>
+            )}
           </p>
         </div>
 
