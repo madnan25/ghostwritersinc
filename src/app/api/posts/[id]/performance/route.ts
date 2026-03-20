@@ -12,10 +12,10 @@ import { rateLimit } from '@/lib/rate-limit'
 import { isValidUuid } from '@/lib/validation'
 
 const UpsertPerformanceSchema = z.object({
-  impressions: z.number().int().min(0).nullable().optional(),
-  reactions: z.number().int().min(0).nullable().optional(),
-  comments_count: z.number().int().min(0).nullable().optional(),
-  reposts: z.number().int().min(0).nullable().optional(),
+  impressions: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  reactions: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  comments_count: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  reposts: z.number().int().min(0).max(10_000_000).nullable().optional(),
   qualitative_notes: z.string().max(5000).nullable().optional(),
   logged_at: z.string().datetime({ offset: true }).optional(),
 })
