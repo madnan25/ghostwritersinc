@@ -8,6 +8,7 @@ import {
 } from '@/lib/agent-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { rateLimit } from '@/lib/rate-limit'
+import { getLearnedPreferences } from '@/lib/voice-analysis'
 
 const UpsertProfileSchema = z.object({
   tone: z.string().max(200).nullable().optional(),
@@ -49,7 +50,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Writing profile not found' }, { status: 404 })
   }
 
-  return NextResponse.json(profile)
+  // Enrich with learned preferences from confirmed voice observations
+  const learnedPreferences = await getLearnedPreferences(
+    supabase,
+    auth.organizationId,
+    auth.userId,
+  )
+
+  return NextResponse.json({
+    ...profile,
+    learned_preferences: learnedPreferences,
+  })
 }
 
 /** PUT /api/writing-profiles — upsert writing profile for the agent's assigned user */

@@ -96,6 +96,7 @@ export async function PATCH(
     .update(updateFields)
     .eq('id', id)
     .eq('organization_id', auth.organizationId)
+    .eq('user_id', auth.userId)
     .select()
     .single()
 
