@@ -26,7 +26,7 @@ function MetricCard({ label, value, detail }: { label: string; value: number; de
 
 export function DashboardHero({ metrics, narrative }: DashboardHeroProps) {
   return (
-    <section className="mb-8">
+    <section>
       <div className="dashboard-frame relative overflow-hidden p-7 sm:p-8 lg:p-10">
         <m.div
           aria-hidden="true"

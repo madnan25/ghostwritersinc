@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   const rotationWarnings = computeRotationWarnings(posts, pillars)
 
   return (
-    <div className="premium-page">
+    <div className="premium-page space-y-8 sm:space-y-10">
       <DashboardHero metrics={metrics} narrative={narrative} />
 
       <ScheduleHealthPanels warnings={rotationWarnings} />

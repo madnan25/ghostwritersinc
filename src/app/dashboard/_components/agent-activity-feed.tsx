@@ -66,7 +66,7 @@ export function AgentActivityFeed() {
   const visibleEntries = showAll ? weeklyEntries : weeklyEntries.slice(0, COLLAPSED_VISIBLE_COUNT)
 
   return (
-    <section className="dashboard-frame mt-8 p-5 sm:mt-10 sm:p-6">
+    <section className="dashboard-frame p-5 sm:p-6">
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="premium-kicker text-[0.64rem]">Live Feed</p>
