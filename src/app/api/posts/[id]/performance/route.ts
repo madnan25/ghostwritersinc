@@ -16,7 +16,7 @@ const UpsertPerformanceSchema = z.object({
   reactions: z.number().int().min(0).nullable().optional(),
   comments_count: z.number().int().min(0).nullable().optional(),
   reposts: z.number().int().min(0).nullable().optional(),
-  qualitative_notes: z.string().nullable().optional(),
+  qualitative_notes: z.string().max(5000).nullable().optional(),
   logged_at: z.string().datetime({ offset: true }).optional(),
 })
 
