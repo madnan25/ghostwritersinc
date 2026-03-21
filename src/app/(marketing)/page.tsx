@@ -65,36 +65,35 @@ export default function MarketingPage() {
             <span className={styles.muted}>You just never post.</span>
           </h2>
           <p className={styles.problemBody}>
-            Founders and operators with real things to say spend their LinkedIn
-            presence either silent or posting content that sounds like it was
-            written by a committee. The people with the most credibility are the
-            least visible.
+            LinkedIn has 1 billion users. Only 1% of them post content
+            regularly — yet that 1% captures the vast majority of views,
+            inbound opportunities, and trust.
             <br /><br />
-            Ghostwriters Inc. fixes that — making your expertise visible,
-            consistently, without consuming the one resource you don&apos;t
-            have: time.
+            The founders with the sharpest ideas, the most hard-won experience,
+            the most useful perspectives? Silent. Not because they have nothing
+            to say. Because writing consistently takes more time than they have.
           </p>
         </div>
         <div className={`${styles.statsCard} ${styles.reveal}`}>
           <div className={styles.stat}>
-            <div className={styles.statN}>4hrs</div>
+            <div className={styles.statN}>1%</div>
             <div className={styles.statL}>
-              Average time a founder spends producing one quality LinkedIn post
-              — from idea to publish
+              of LinkedIn&apos;s 1 billion users post regularly — they generate
+              virtually all the organic reach on the platform
             </div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statN}>7×</div>
+            <div className={styles.statN}>5.9×</div>
             <div className={styles.statL}>
-              Higher conversion from inbound leads who discovered you through
-              content vs cold outreach
+              more pipeline generated per dollar by content-led inbound vs
+              outbound, per HubSpot&apos;s State of Marketing report
             </div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statN}>0</div>
+            <div className={styles.statN}>3hrs</div>
             <div className={styles.statL}>
-              Posts published by most founders in any given month — despite
-              knowing exactly what to say
+              median time founders report spending per LinkedIn post —
+              research, drafting, editing, second-guessing, rewriting
             </div>
           </div>
         </div>
