@@ -14,9 +14,9 @@ import {
   canRejectPost,
   isReviewQueueStatus,
 } from '@/lib/post-actions'
-import { RejectDialog } from '@/app/dashboard/_components/reject-dialog'
-import { EditPostDialog } from '@/app/dashboard/_components/edit-post-dialog'
-import { DeletePostDialog } from '@/app/dashboard/_components/delete-post-dialog'
+import { RejectDialog } from '@/app/(app)/dashboard/_components/reject-dialog'
+import { EditPostDialog } from '@/app/(app)/dashboard/_components/edit-post-dialog'
+import { DeletePostDialog } from '@/app/(app)/dashboard/_components/delete-post-dialog'
 import { PublishOptionsDialog } from './publish-options-dialog'
 import { ApproveUnscheduledDialog } from './approve-unscheduled-dialog'
 import { ReopenRejectedDialog } from './reopen-rejected-dialog'
