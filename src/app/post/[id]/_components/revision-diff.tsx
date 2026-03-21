@@ -14,29 +14,45 @@ function tokenize(text: string): string[] {
   return text.split(/(\s+)/).filter((t) => t.length > 0)
 }
 
+/**
+ * Normalize typographic characters to their ASCII equivalents for comparison.
+ * Curly/smart quotes and apostrophes look identical to straight ones in most
+ * fonts but differ in Unicode code points, causing phantom diffs.
+ */
+function normalizeForComparison(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'") // smart single quotes → straight
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"') // smart double quotes → straight
+    .replace(/\u2026/g, '...') // ellipsis → three dots
+}
+
 function computeWordDiff(oldText: string, newText: string): DiffToken[] {
   const a = tokenize(oldText)
   const b = tokenize(newText)
   const m = a.length
   const n = b.length
 
-  // LCS DP table
+  // Normalize tokens for comparison (handles smart quotes vs straight quotes)
+  const aNorm = a.map(normalizeForComparison)
+  const bNorm = b.map(normalizeForComparison)
+
+  // LCS DP table (compare normalized forms)
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
+      dp[i][j] = aNorm[i - 1] === bNorm[j - 1]
         ? dp[i - 1][j - 1] + 1
         : Math.max(dp[i - 1][j], dp[i][j - 1])
     }
   }
 
-  // Backtrack to build token list
+  // Backtrack to build token list (use new-side text for unchanged tokens)
   const tokens: DiffToken[] = []
   let i = m
   let j = n
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      tokens.unshift({ type: 'unchanged', text: a[i - 1] })
+    if (i > 0 && j > 0 && aNorm[i - 1] === bNorm[j - 1]) {
+      tokens.unshift({ type: 'unchanged', text: b[j - 1] })
       i--
       j--
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
