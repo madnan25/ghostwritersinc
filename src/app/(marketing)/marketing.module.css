@@ -724,14 +724,13 @@
   .hero::before { left: 24px; }
   .heroInner { padding-left: 32px; }
   .heroWm {
-    display: block;
     position: absolute;
     bottom: 24px;
     left: 0;
     right: 0;
     text-align: center;
     font-size: clamp(120px, 30vw, 200px);
-    -webkit-text-stroke: 1px rgba(146,201,54,0.12);
+    -webkit-text-stroke: 1px rgba(146,201,54,0.06);
   }
   .problem { padding: 80px 24px; grid-template-columns: 1fr; gap: 40px; }
   .pipeline { padding: 60px 24px 80px; }
@@ -810,10 +809,8 @@
   }
   .heroAside { font-size: 9px; }
   .heroWm {
-    display: block;
     bottom: 32px;
     font-size: clamp(100px, 28vw, 160px);
-    -webkit-text-stroke: 1px rgba(146,201,54,0.12);
   }
 
   /* Ticker — allow wrapping, taller items */
