@@ -11,6 +11,12 @@ export const metadata = {
   title: 'Ghostwriters Inc. — Your LinkedIn, on Autopilot',
   description:
     'A coordinated team of AI agents that researches, strategizes, writes, and publishes your LinkedIn content — on autopilot, in your voice.',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    viewportFit: 'cover',
+  },
 };
 
 export default function MarketingPage() {

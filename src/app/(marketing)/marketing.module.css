@@ -25,7 +25,7 @@
     radial-gradient(44% 32% at 100% 0px, rgba(242,244,221,0.08) 0%, transparent 42%),
     radial-gradient(38% 26% at 0px 18%, rgba(40,55,43,0.11) 0%, transparent 55%),
     linear-gradient(#0e130f 0%, #040705 100%);
-  background-attachment: fixed;
+  background-attachment: scroll;
   color: var(--fg);
   font-family: var(--font-sans);
   font-weight: 400;
@@ -206,6 +206,7 @@
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  white-space: nowrap;
 }
 .btnLg:hover {
   background: #a3d93e;
@@ -715,7 +716,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE — TABLET (≤ 960px) ── */
 @media (max-width: 960px) {
   .nav { padding: 0 24px; }
   .navTag { display: none; }
@@ -725,63 +726,187 @@
   .heroWm { display: none; }
   .problem { padding: 80px 24px; grid-template-columns: 1fr; gap: 40px; }
   .pipeline { padding: 60px 24px 80px; }
+  .pipelineHdr { flex-direction: column; gap: 8px; }
   .steps { grid-template-columns: 1fr; gap: 8px; }
   .step::after { display: none !important; }
   .agents { padding: 80px 24px; }
-  .agentsHdr { grid-template-columns: 1fr; gap: 40px; }
+  .agentsHdr { grid-template-columns: 1fr; gap: 24px; }
   .agentsGrid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .pullquote { padding: 80px 24px; }
   .pillars { padding: 80px 24px; }
   .pillarsHdr { grid-template-columns: 1fr; gap: 16px; }
   .features { padding: 60px 24px 80px; }
   .featuresHdr { flex-direction: column; gap: 8px; }
-  .featuresGrid { grid-template-columns: 1fr; gap: 8px; }
+  .featuresGrid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .cta { padding: 100px 24px; }
-  .footer { padding: 24px; flex-direction: column; gap: 10px; text-align: center; }
+
+  /* Hero button — prevent text wrapping */
+  .btnLg {
+    white-space: nowrap;
+  }
+
+  /* Footer — stacked and centered */
+  .footer { padding: 28px 24px; flex-direction: column; gap: 12px; text-align: center; }
+  .footerCopy { font-size: 9px; }
 }
 
-/* ── MOBILE (≤ 520px) ── */
+/* ── RESPONSIVE — MOBILE (≤ 520px) ── */
 @media (max-width: 520px) {
-  /* Nav */
-  .nav    { height: 52px; padding: 0 16px; }
-  .navCta { height: 44px; }
+  /* Wrapper — disable fixed bg on mobile for perf */
+  .wrapper { -webkit-text-size-adjust: 100%; }
 
-  /* Hero */
-  .hero         { min-height: 100svh; height: auto; padding: 0 16px; }
-  .hero::before { left: 16px; }
-  .heroInner    { padding-left: 16px; }
-  .heroH1       { font-size: clamp(36px, 9vw, 52px); }
-  .heroSub      { font-size: 15px; }
+  /* Nav — touch-friendly sizing */
+  .nav { height: 56px; padding: 0 16px; }
+  .navBadge { width: 26px; height: 26px; }
+  .navWordmark { font-size: 13px; }
+  .navCta {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
 
-  /* All sections */
-  .problem   { padding: 60px 16px; }
-  .pipeline  { padding: 60px 16px; }
-  .agents    { padding: 60px 16px; }
-  .pullquote { padding: 60px 16px; }
-  .pillars   { padding: 60px 16px; }
-  .features  { padding: 60px 16px; }
-  .cta       { padding: 60px 16px; }
+  /* Hero — full viewport, remove decorative line, stack actions */
+  .hero { min-height: 100svh; height: auto; padding: 0 20px; }
+  .hero::before { display: none; }
+  .heroInner { padding-left: 0; max-width: 100%; }
+  .heroKicker { margin-bottom: 24px; }
+  .heroH1 {
+    font-size: clamp(32px, 9vw, 48px);
+    margin-bottom: 20px;
+    letter-spacing: -0.03em;
+  }
+  .heroSub {
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+    max-width: 100%;
+  }
+  .heroActions {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+    flex-wrap: nowrap;
+  }
+  .btnLg {
+    width: auto !important;
+    justify-content: center;
+    height: 48px;
+    padding: 0 32px;
+    font-size: 15px;
+    border-radius: 10px;
+    white-space: nowrap !important;
+    flex-shrink: 0;
+  }
+  .heroAside { font-size: 9px; }
 
-  /* Agent grid — 1 column on phones */
-  .agentsGrid { grid-template-columns: 1fr; }
+  /* Ticker — allow wrapping, taller items */
+  .tickerWindow { height: 40px; }
+  .tickerItem {
+    height: 40px;
+    white-space: normal;
+    font-size: 12px;
+    line-height: 1.4;
+  }
 
-  /* CTA form — stacked, full-width, touch-friendly */
-  .ctaForm   { flex-direction: column; }
-  .ctaInput  { border-right: 1px solid var(--border-mid); border-radius: 8px; height: 44px; }
-  .ctaSubmit { border-radius: 8px; height: 44px; }
+  /* All sections — consistent mobile padding */
+  .problem   { padding: 56px 20px; }
+  .pipeline  { padding: 48px 20px 56px; }
+  .agents    { padding: 56px 20px; }
+  .pullquote { padding: 56px 20px; }
+  .pillars   { padding: 56px 20px; }
+  .features  { padding: 48px 20px 56px; }
+  .cta       { padding: 64px 20px; }
 
-  /* Section headings — ~20% reduction */
-  .problemH2     { font-size: clamp(24px, 7vw, 38px); }
-  .pipelineTitle { font-size: clamp(21px, 5.5vw, 32px); }
-  .agentsH2      { font-size: clamp(24px, 7vw, 38px); }
-  .pqText        { font-size: clamp(16px, 5vw, 29px); }
-  .pillarsH2     { font-size: clamp(21px, 5.5vw, 32px); }
-  .featuresH2    { font-size: clamp(18px, 4.5vw, 27px); }
-  .ctaH2         { font-size: clamp(34px, 9vw, 64px); }
+  /* Problem section */
+  .problemH2 { font-size: clamp(24px, 7vw, 36px); }
+  .problemBody { font-size: 14px; line-height: 1.75; }
+  .statN { font-size: 40px; }
+  .stat { padding: 22px 24px; }
+  .statL { font-size: 12px; }
 
-  /* Pillar tags — allow wrapping */
-  .pillarTag { white-space: normal; }
+  /* Pipeline section */
+  .pipelineHdr { margin-bottom: 32px; padding-bottom: 16px; }
+  .pipelineTitle { font-size: clamp(22px, 6vw, 32px); }
+  .step { padding: 20px 18px; }
+  .stepTitle { font-size: 14px; }
+  .stepBody { font-size: 12px; }
+
+  /* Agents section */
+  .agentsH2 { font-size: clamp(24px, 7vw, 36px); }
+  .agentsBody { font-size: 14px; }
+  .agentsGrid { grid-template-columns: 1fr; gap: 8px; }
+  .agent { padding: 18px; }
+  .agentName { font-size: 15px; }
+
+  /* Pullquote */
+  .pqText { font-size: clamp(18px, 5.5vw, 28px); }
+  .pqInner { padding: 0; }
+
+  /* Pillars section — stack pillar rows vertically */
+  .pillarsH2 { font-size: clamp(22px, 6vw, 32px); }
+  .pillarsSub { font-size: 13px; }
+  .pillarRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 18px 0;
+  }
+  .pillarN { display: none; }
+  .pillarName { font-size: 15px; }
+  .pillarDesc { font-size: 12px; }
+  .pillarTag {
+    justify-self: start;
+    margin-top: 4px;
+    white-space: nowrap;
+    font-size: 8px;
+    padding: 3px 8px;
+  }
+  .pillarRow:hover { padding-left: 0; }
+
+  /* Features section */
+  .featuresH2 { font-size: clamp(19px, 5vw, 28px); }
+  .featuresGrid { grid-template-columns: 1fr; gap: 8px; }
+  .feat { padding: 20px; }
+  .featTitle { font-size: 14px; }
+  .featBody { font-size: 12px; }
+
+  /* CTA section — stacked form with gap */
+  .ctaH2 { font-size: clamp(30px, 8vw, 56px); margin-bottom: 32px; }
+  .ctaForm {
+    flex-direction: column;
+    gap: 0;
+    max-width: 100%;
+  }
+  .ctaInput {
+    border: 1px solid var(--border-strong, rgba(191,198,177,0.35));
+    border-radius: 10px 10px 0 0;
+    border-bottom: none;
+    height: 52px;
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 0 20px;
+  }
+  .ctaSubmit {
+    border-radius: 0 0 10px 10px;
+    height: 52px;
+    font-size: 15px;
+    width: 100%;
+  }
+  .ctaFine { font-size: 10px; margin-top: 12px; }
 
   /* Footer */
-  .footer { padding: 16px; }
+  .footer { padding: 32px 20px 48px; gap: 14px; }
+  .footerName { font-size: 12px; }
+  .footerCopy { font-size: 9px; text-align: center; }
+}
+
+/* ── RESPONSIVE — VERY SMALL (≤ 360px) ── */
+@media (max-width: 360px) {
+  .heroH1 { font-size: 30px; }
+  .heroSub { font-size: 14px; }
+  .problemH2 { font-size: 22px; }
+  .agentsH2 { font-size: 22px; }
+  .ctaH2 { font-size: 28px; }
+  .pqText { font-size: 17px; }
+  .statN { font-size: 34px; }
 }

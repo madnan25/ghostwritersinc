@@ -49,9 +49,14 @@ export function HeroTicker() {
     if (!track) return;
     let idx = 0;
     const total = track.children.length - 1;
+    const getItemHeight = () => {
+      const firstChild = track.children[0] as HTMLElement | undefined;
+      return firstChild?.offsetHeight ?? 24;
+    };
     const interval = setInterval(() => {
       idx++;
-      track.style.transform = `translateY(-${idx * 24}px)`;
+      const h = getItemHeight();
+      track.style.transform = `translateY(-${idx * h}px)`;
       if (idx >= total) {
         setTimeout(() => {
           track.style.transition = 'none';
