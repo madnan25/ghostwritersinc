@@ -751,7 +751,7 @@
   .navBadge { width: 26px; height: 26px; }
   .navWordmark { font-size: 13px; }
   .navCta {
-    height: 40px;
+    height: 36px;
     padding: 0 16px;
     font-size: 12px;
     border-radius: 8px;
@@ -780,11 +780,18 @@
     margin-bottom: 40px;
   }
   .btnLg {
-    width: 100%;
+    width: auto;
     justify-content: center;
     height: 48px;
+    padding: 0 32px;
     font-size: 15px;
     border-radius: 10px;
+    white-space: nowrap;
+  }
+  .heroActions {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
   }
   .heroAside { font-size: 9px; }
 
@@ -862,24 +869,26 @@
   .ctaH2 { font-size: clamp(30px, 8vw, 56px); margin-bottom: 32px; }
   .ctaForm {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     max-width: 100%;
   }
   .ctaInput {
     border-right: 1px solid var(--border-mid);
     border-radius: 10px;
-    height: 48px;
+    height: 50px;
     font-size: 16px; /* prevents iOS zoom on focus */
   }
   .ctaSubmit {
     border-radius: 10px;
-    height: 48px;
-    font-size: 14px;
+    height: 50px;
+    font-size: 15px;
+    width: 100%;
   }
-  .ctaFine { font-size: 9px; margin-top: 4px; }
+  .ctaFine { font-size: 10px; margin-top: 6px; }
 
   /* Footer */
-  .footer { padding: 20px 16px; }
+  .footer { padding: 28px 20px; gap: 12px; }
+  .footerName { font-size: 12px; }
   .footerCopy { font-size: 9px; }
 }
 
