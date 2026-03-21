@@ -738,7 +738,15 @@
   .featuresHdr { flex-direction: column; gap: 8px; }
   .featuresGrid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .cta { padding: 100px 24px; }
-  .footer { padding: 24px; flex-direction: column; gap: 10px; text-align: center; }
+
+  /* Hero button — prevent text wrapping */
+  .btnLg {
+    white-space: nowrap;
+  }
+
+  /* Footer — stacked and centered */
+  .footer { padding: 28px 24px; flex-direction: column; gap: 12px; text-align: center; }
+  .footerCopy { font-size: 9px; }
 }
 
 /* ── RESPONSIVE — MOBILE (≤ 520px) ── */
