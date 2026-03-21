@@ -272,6 +272,25 @@
   line-height: 1;
 }
 
+.heroWmMobile {
+  display: none;
+}
+
+.heroWmMobile span {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: clamp(138px, 46vw, 220px);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(146,201,54,0.045);
+  opacity: 0.92;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ── UTIL ── */
 .divider { height: 1px; background: var(--border); }
 .kicker {
@@ -769,7 +788,15 @@
   /* Hero — full viewport, remove decorative line, stack actions */
   .hero { min-height: 100svh; height: auto; padding: 0 20px; }
   .hero::before { display: none; }
-  .heroInner { padding-left: 0; max-width: 100%; }
+  .heroInner {
+    padding-left: 0;
+    max-width: 100%;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 88px; /* clears fixed nav */
+    padding-bottom: 16px;
+  }
   .heroKicker { margin-bottom: 24px; }
   .heroH1 {
     font-size: clamp(32px, 9vw, 48px);
@@ -810,6 +837,18 @@
     line-height: 1.4;
   }
 
+
+  /* Mobile watermark — sits in remaining viewport space */
+  .heroWmMobile {
+    display: flex;
+    flex: 1;
+    min-height: 150px;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 24px 10px 10px;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 24%, black 76%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 24%, black 76%, transparent 100%);
+  }
   /* All sections — consistent mobile padding */
   .problem   { padding: 56px 20px; }
   .pipeline  { padding: 48px 20px 56px; }

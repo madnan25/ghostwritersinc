@@ -56,6 +56,9 @@ export default function MarketingPage() {
           </div>
 
           <HeroTicker />
+          <div className={styles.heroWmMobile} aria-hidden="true">
+            <span>GWI</span>
+          </div>
         </div>
         <div className={styles.heroWm}>GWI</div>
       </section>
