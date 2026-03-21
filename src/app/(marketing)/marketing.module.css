@@ -723,7 +723,15 @@
   .hero { padding: 0 24px; }
   .hero::before { left: 24px; }
   .heroInner { padding-left: 32px; }
-  .heroWm { display: none; }
+  .heroWm {
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: clamp(120px, 30vw, 200px);
+    -webkit-text-stroke: 1px rgba(146,201,54,0.06);
+  }
   .problem { padding: 80px 24px; grid-template-columns: 1fr; gap: 40px; }
   .pipeline { padding: 60px 24px 80px; }
   .pipelineHdr { flex-direction: column; gap: 8px; }
@@ -767,7 +775,7 @@
   }
 
   /* Hero — full viewport, remove decorative line, stack actions */
-  .hero { min-height: 100svh; height: auto; padding: 0 20px; }
+  .hero { min-height: 100svh; height: 100svh; padding: 0 20px; }
   .hero::before { display: none; }
   .heroInner { padding-left: 0; max-width: 100%; }
   .heroKicker { margin-bottom: 24px; }
@@ -800,6 +808,10 @@
     flex-shrink: 0;
   }
   .heroAside { font-size: 9px; }
+  .heroWm {
+    bottom: 32px;
+    font-size: clamp(100px, 28vw, 160px);
+  }
 
   /* Ticker — allow wrapping, taller items */
   .tickerWindow { height: 40px; }
