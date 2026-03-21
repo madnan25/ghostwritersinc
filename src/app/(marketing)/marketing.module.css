@@ -739,3 +739,49 @@
   .cta { padding: 100px 24px; }
   .footer { padding: 24px; flex-direction: column; gap: 10px; text-align: center; }
 }
+
+/* ── MOBILE (≤ 520px) ── */
+@media (max-width: 520px) {
+  /* Nav */
+  .nav    { height: 52px; padding: 0 16px; }
+  .navCta { height: 44px; }
+
+  /* Hero */
+  .hero         { min-height: 100svh; height: auto; padding: 0 16px; }
+  .hero::before { left: 16px; }
+  .heroInner    { padding-left: 16px; }
+  .heroH1       { font-size: clamp(36px, 9vw, 52px); }
+  .heroSub      { font-size: 15px; }
+
+  /* All sections */
+  .problem   { padding: 60px 16px; }
+  .pipeline  { padding: 60px 16px; }
+  .agents    { padding: 60px 16px; }
+  .pullquote { padding: 60px 16px; }
+  .pillars   { padding: 60px 16px; }
+  .features  { padding: 60px 16px; }
+  .cta       { padding: 60px 16px; }
+
+  /* Agent grid — 1 column on phones */
+  .agentsGrid { grid-template-columns: 1fr; }
+
+  /* CTA form — stacked, full-width, touch-friendly */
+  .ctaForm   { flex-direction: column; }
+  .ctaInput  { border-right: 1px solid var(--border-mid); border-radius: 8px; height: 44px; }
+  .ctaSubmit { border-radius: 8px; height: 44px; }
+
+  /* Section headings — ~20% reduction */
+  .problemH2     { font-size: clamp(24px, 7vw, 38px); }
+  .pipelineTitle { font-size: clamp(21px, 5.5vw, 32px); }
+  .agentsH2      { font-size: clamp(24px, 7vw, 38px); }
+  .pqText        { font-size: clamp(16px, 5vw, 29px); }
+  .pillarsH2     { font-size: clamp(21px, 5.5vw, 32px); }
+  .featuresH2    { font-size: clamp(18px, 4.5vw, 27px); }
+  .ctaH2         { font-size: clamp(34px, 9vw, 64px); }
+
+  /* Pillar tags — allow wrapping */
+  .pillarTag { white-space: normal; }
+
+  /* Footer */
+  .footer { padding: 16px; }
+}
