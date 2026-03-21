@@ -21,8 +21,21 @@ interface PipelineSwimlaneProps {
 
 function EmptyColumn() {
   return (
-    <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border/25 text-xs text-foreground/36">
+    <div className="flex h-16 items-center justify-center rounded-xl border border-dashed border-border/25 text-xs text-foreground/36">
       Empty
+    </div>
+  )
+}
+
+function ColumnHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-[18px] border border-border/32 bg-background/42 px-3 py-2.5">
+      <span className="min-w-0 truncate text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-foreground/72">
+        {label}
+      </span>
+      <span className="inline-flex h-5 min-w-[22px] shrink-0 items-center justify-center rounded-full bg-foreground/9 px-1.5 text-[0.65rem] font-semibold text-foreground/58">
+        {count}
+      </span>
     </div>
   )
 }
@@ -138,25 +151,6 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
   const [alertDismissed, setAlertDismissed] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [selectedPillarIds, setSelectedPillarIds] = useState<Set<string>>(new Set())
-  const [showRightFade, setShowRightFade] = useState(false)
-  const desktopScrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = desktopScrollRef.current
-    if (!el) return
-    function update() {
-      if (!el) return
-      setShowRightFade(el.scrollWidth > el.clientWidth + el.scrollLeft + 4)
-    }
-    update()
-    el.addEventListener('scroll', update)
-    const observer = new ResizeObserver(update)
-    observer.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      observer.disconnect()
-    }
-  }, [])
 
   usePostsRealtimeSync(setPosts)
 
@@ -222,7 +216,7 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
 
   return (
     <div className="space-y-4">
-      {/* Alert bar for rejected/failed posts */}
+      {/* Alert bar */}
       {!alertDismissed && alertPosts.length > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-500/8 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-400/80" />
@@ -242,7 +236,7 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         </div>
       )}
 
-      {/* Pillar filter dropdown */}
+      {/* Pillar filter */}
       {pillarOptions.length > 0 && (
         <div className="flex items-center gap-3">
           <PillarDropdown
@@ -259,7 +253,7 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         </div>
       )}
 
-      {/* Mobile: tabbed single-column view */}
+      {/* ── Mobile (< md): tabbed single-column ── */}
       <div className="md:hidden">
         <div role="tablist" aria-label="Pipeline stages" className="flex gap-1 overflow-x-auto pb-2">
           {PIPELINE_COLUMN_DEFS.map((col, idx) => (
@@ -280,20 +274,15 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
               )}
             >
               {col.label}
-              <span
-                className={cn(
-                  'inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[0.6rem]',
-                  activeTab === idx
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-foreground/8 text-foreground/56',
-                )}
-              >
+              <span className={cn(
+                'inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[0.6rem]',
+                activeTab === idx ? 'bg-primary/20 text-primary' : 'bg-foreground/8 text-foreground/56',
+              )}>
                 {getColumnPosts(PIPELINE_COLUMN_DEFS[idx].id).length}
               </span>
             </button>
           ))}
         </div>
-
         <div
           role="tabpanel"
           id={`pipeline-panel-${PIPELINE_COLUMN_DEFS[activeTab].id}`}
@@ -316,9 +305,9 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         </div>
       </div>
 
-      {/* Tablet: 2-column hybrid view (768px–1024px) */}
+      {/* ── Tablet (md–lg): 2-up with tabs ── */}
       <div className="hidden md:block lg:hidden">
-        <div role="tablist" aria-label="Pipeline stages" className="mb-3 flex gap-1 overflow-x-auto pb-2">
+        <div role="tablist" aria-label="Pipeline stages" className="mb-3 flex gap-1 overflow-x-auto pb-1">
           {PIPELINE_COLUMN_DEFS.map((col, idx) => (
             <button
               key={col.id}
@@ -337,22 +326,16 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
               )}
             >
               {col.label}
-              <span
-                className={cn(
-                  'inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[0.6rem]',
-                  activeTab === idx
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-foreground/8 text-foreground/56',
-                )}
-              >
+              <span className={cn(
+                'inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[0.6rem]',
+                activeTab === idx ? 'bg-primary/20 text-primary' : 'bg-foreground/8 text-foreground/56',
+              )}>
                 {getColumnPosts(PIPELINE_COLUMN_DEFS[idx].id).length}
               </span>
             </button>
           ))}
         </div>
-
         <div className="grid grid-cols-2 gap-3">
-          {/* Primary panel: active tab */}
           {(() => {
             const col = PIPELINE_COLUMN_DEFS[activeTab]
             const colPosts = getColumnPosts(col.id)
@@ -362,58 +345,32 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
                 id={`pipeline-panel-tablet-${col.id}`}
                 aria-labelledby={`pipeline-tab-tablet-${activeTab}`}
                 tabIndex={0}
-                className="flex flex-col gap-2"
+                className="flex min-w-0 flex-col gap-2"
               >
-                <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">{col.label}</span>
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[0.65rem] font-medium text-foreground/56">
-                    {colPosts.length}
-                  </span>
-                </div>
-                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto pr-0.5">
-                  {colPosts.length === 0 ? (
-                    <EmptyColumn />
-                  ) : (
-                    colPosts.map((post) => (
-                      <CompactPostCard
-                        key={post.id}
-                        post={post}
-                        pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
-                        showSubBadge={col.id === 'in_review'}
-                      />
-                    ))
-                  )}
+                <ColumnHeader label={col.label} count={colPosts.length} />
+                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto">
+                  {colPosts.length === 0 ? <EmptyColumn /> : colPosts.map((post) => (
+                    <CompactPostCard key={post.id} post={post}
+                      pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                      showSubBadge={col.id === 'in_review'} />
+                  ))}
                 </div>
               </div>
             )
           })()}
-
-          {/* Secondary panel: adjacent column (next, or previous when on last tab) */}
           {(() => {
             const adjIdx = activeTab < PIPELINE_COLUMN_DEFS.length - 1 ? activeTab + 1 : activeTab - 1
             const col = PIPELINE_COLUMN_DEFS[adjIdx]
             const colPosts = getColumnPosts(col.id)
             return (
-              <div className="flex flex-col gap-2" aria-label={col.label}>
-                <div className="flex items-center justify-between rounded-lg border border-border/30 bg-background/40 px-3 py-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-foreground/68">{col.label}</span>
-                  <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/8 px-1.5 text-[0.65rem] font-medium text-foreground/56">
-                    {colPosts.length}
-                  </span>
-                </div>
-                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto pr-0.5">
-                  {colPosts.length === 0 ? (
-                    <EmptyColumn />
-                  ) : (
-                    colPosts.map((post) => (
-                      <CompactPostCard
-                        key={post.id}
-                        post={post}
-                        pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
-                        showSubBadge={col.id === 'in_review'}
-                      />
-                    ))
-                  )}
+              <div aria-label={col.label} className="flex min-w-0 flex-col gap-2">
+                <ColumnHeader label={col.label} count={colPosts.length} />
+                <div className="flex max-h-[calc(100vh-380px)] min-h-[120px] flex-col gap-2 overflow-y-auto">
+                  {colPosts.length === 0 ? <EmptyColumn /> : colPosts.map((post) => (
+                    <CompactPostCard key={post.id} post={post}
+                      pillar={post.pillar_id ? pillarMap.get(post.pillar_id) : undefined}
+                      showSubBadge={col.id === 'in_review'} />
+                  ))}
                 </div>
               </div>
             )
@@ -421,25 +378,23 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
         </div>
       </div>
 
-      {/* Desktop: horizontal swimlane (1024px+) */}
-      <div className="relative hidden lg:block">
-        <div ref={desktopScrollRef} className="flex gap-4 overflow-x-auto pb-2">
+      {/* ── Desktop (lg+): 5-column equal-width grid ──
+           grid-cols-5 = repeat(5, minmax(0, 1fr))
+           Every column gets an equal share of the available width.
+           min-w-0 on each cell prevents content from forcing expansion.
+           No overflow, nothing ever gets clipped.
+      */}
+      <div className="hidden lg:grid lg:grid-cols-5 lg:gap-3">
         {PIPELINE_COLUMN_DEFS.map((col) => {
           const colPosts = getColumnPosts(col.id)
           return (
-            <div key={col.id} aria-label={col.label} className="flex min-w-[200px] flex-1 flex-col gap-3">
-              {/* Column header */}
-              <div className="flex items-center justify-between rounded-lg border border-border/35 bg-background/50 px-3 py-2.5">
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/78">
-                  {col.label}
-                </span>
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-foreground/10 px-1.5 text-[0.65rem] font-semibold text-foreground/60">
-                  {colPosts.length}
-                </span>
-              </div>
-
-              {/* Column body — independent vertical scroll */}
-              <div className="flex max-h-[calc(100vh-340px)] min-h-[120px] flex-col gap-3 overflow-y-auto pr-0.5">
+            <section
+              key={col.id}
+              aria-label={col.label}
+              className="dashboard-rail flex min-w-0 flex-col gap-3 p-3"
+            >
+              <ColumnHeader label={col.label} count={colPosts.length} />
+              <div className="flex max-h-[calc(100vh-292px)] min-h-[180px] flex-col gap-2.5 overflow-y-auto pr-0.5">
                 {colPosts.length === 0 ? (
                   <EmptyColumn />
                 ) : (
@@ -453,16 +408,9 @@ export function PipelineSwimlane({ posts: initialPosts, pillars }: PipelineSwiml
                   ))
                 )}
               </div>
-            </div>
+            </section>
           )
         })}
-        </div>
-        {showRightFade && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent"
-          />
-        )}
       </div>
     </div>
   )

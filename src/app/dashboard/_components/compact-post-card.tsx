@@ -1,18 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Bot, Calendar, FileText, User } from 'lucide-react'
-import { AnimatePresence, m } from 'framer-motion'
+import { useTransition } from 'react'
+import { ArrowUpRight, Calendar } from 'lucide-react'
+import { approvePost } from '@/app/actions/posts'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Post } from '@/lib/types'
-import { PostCardActions } from './post-card-actions'
 
-type PillarBadge = {
-  name: string
-  color: string
-}
+type PillarBadge = { name: string; color: string }
 
 interface CompactPostCardProps {
   post: Post
@@ -23,34 +19,35 @@ interface CompactPostCardProps {
 const SUB_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
   pending_review_agent: {
     label: 'Agent Reviewed',
-    className: 'border-foreground/10 text-foreground/40',
+    className: 'border-primary/25 bg-primary/8 text-primary/82',
   },
   pending_review: {
     label: 'Awaiting Agent',
-    className: 'border-foreground/8 text-foreground/32',
+    className: 'border-border/45 bg-background/36 text-foreground/54',
   },
 }
 
-function getPostTitle(content: string): string {
-  const [firstLine] = content
+function normalizeContentLines(content: string): string[] {
+  return content
     .split('\n')
-    .map((l) => l.trim().replace(/^[-*#>\s]+/, ''))
+    .map((line) => line.trim().replace(/^[-*#>\s]+/, ''))
     .filter(Boolean)
-  const title = firstLine || 'Untitled post'
-  return title.length > 60 ? `${title.slice(0, 59)}…` : title
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`
+}
+
+function getPostTitle(content: string): string {
+  const [firstLine] = normalizeContentLines(content)
+  return truncateText(firstLine || 'Untitled post', 96)
 }
 
 function getPostPreview(content: string): string {
-  const lines = content
-    .split('\n')
-    .map((l) => l.trim().replace(/^[-*#>\s]+/, ''))
-    .filter(Boolean)
-  if (lines.length > 1) {
-    const preview = lines.slice(1, 3).join(' ')
-    return preview.length > 120 ? `${preview.slice(0, 119)}…` : preview
-  }
-  const [firstLine = ''] = lines
-  return firstLine.length > 60 ? firstLine.slice(60, 180).trim() : ''
+  const lines = normalizeContentLines(content)
+  if (lines.length <= 1) return ''
+  return truncateText(lines.slice(1, 3).join(' '), 140)
 }
 
 function formatShortDate(dateStr: string | null | undefined): string {
@@ -63,36 +60,11 @@ function formatShortDate(dateStr: string | null | undefined): string {
 function isStale(post: Post): boolean {
   if (post.status === 'published' || post.status === 'scheduled') return false
   const ref = post.suggested_publish_at
-  if (!ref) return false
-  return new Date(ref) < new Date()
+  return !!ref && new Date(ref) < new Date()
 }
 
 export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactPostCardProps) {
-  const router = useRouter()
-  const cardRef = useRef<HTMLDivElement>(null)
-  const [hovered, setHovered] = useState(false)
-  const [tapped, setTapped] = useState(false)
-
-  useEffect(() => {
-    if (!tapped) return
-    function handleOutside(e: MouseEvent | TouchEvent) {
-      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
-        setTapped(false)
-      }
-    }
-    document.addEventListener('mousedown', handleOutside)
-    document.addEventListener('touchstart', handleOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleOutside)
-      document.removeEventListener('touchstart', handleOutside)
-    }
-  }, [tapped])
-
-  const isExpanded = hovered || tapped
-
-  const title = getPostTitle(post.content)
-  const preview = getPostPreview(post.content)
-  const stale = isStale(post)
+  const [isPending, startTransition] = useTransition()
 
   const subBadgeKey =
     post.status === 'pending_review' && post.reviewed_by_agent
@@ -102,7 +74,9 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
         : undefined
 
   const subBadge = showSubBadge && subBadgeKey ? SUB_BADGE_CONFIG[subBadgeKey] : undefined
-
+  const title = getPostTitle(post.content)
+  const preview = getPostPreview(post.content)
+  const stale = isStale(post)
   const publishDate =
     post.status === 'scheduled'
       ? post.scheduled_publish_at
@@ -110,132 +84,92 @@ export function CompactPostCard({ post, pillar, showSubBadge = false }: CompactP
         ? post.published_at
         : post.suggested_publish_at
 
-  const hasExpandedContent =
-    preview || post.created_by_agent || post.reviewed_by_agent || post.brief_ref || stale
+  const showApprove = post.status === 'pending_review'
 
-  function handleLinkClick(e: React.MouseEvent) {
-    if (!window.matchMedia('(hover: none)').matches) return
-    if (!tapped) {
-      e.preventDefault()
-      e.stopPropagation()
-      setTapped(true)
-    }
-    // If already tapped, let the link navigate normally
-  }
-
-  function handleCardClick(e: React.MouseEvent) {
-    if (!window.matchMedia('(hover: none)').matches) return
-    const target = e.target as HTMLElement
-    if (target.closest('a') || target.closest('button')) return
-    if (!tapped) {
-      setTapped(true)
-    } else {
-      router.push(`/post/${post.id}`)
-    }
+  function handleApprove() {
+    startTransition(async () => {
+      await approvePost(post.id)
+    })
   }
 
   return (
-    <m.div
-      ref={cardRef}
-      layout="size"
-      className="editorial-card relative flex flex-col gap-3 p-3.5"
-      style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}14` } : undefined}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={handleCardClick}
+    <article
+      className="group flex min-h-[152px] flex-col rounded-[22px] border border-border/60 bg-card/82 backdrop-blur-sm transition-all duration-150 hover:border-border/85 hover:bg-card/90 hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.46)]"
+      style={pillar ? { boxShadow: `inset 0 0 0 1px ${pillar.color}18` } : undefined}
     >
-      {/* Sub-badge (only in In Review column) */}
-      {subBadge && (
-        <span
-          className={cn(
-            'inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-[0.14em]',
-            subBadge.className,
+      <div className="flex flex-1 flex-col gap-3 px-3.5 pb-3 pt-3.5">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {subBadge && (
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-[0.12em]',
+                  subBadge.className,
+                )}
+              >
+                {subBadge.label}
+              </span>
+            )}
+            {stale && (
+              <span className="inline-flex items-center rounded-full border border-orange-400/28 bg-orange-500/10 px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-[0.12em] text-orange-300/80">
+                Overdue
+              </span>
+            )}
+          </div>
+          {pillar && (
+            <span
+              className="max-w-[48%] truncate rounded-full border border-border/40 bg-background/28 px-2 py-0.5 text-[0.63rem] font-medium"
+              style={{ color: pillar.color }}
+              title={pillar.name}
+            >
+              {pillar.name}
+            </span>
           )}
-        >
-          {subBadge.label}
-        </span>
-      )}
+        </div>
 
-      {/* Title */}
-      <Link href={`/post/${post.id}`} className="block" onClick={handleLinkClick}>
-        <h4 className="line-clamp-1 text-[0.84rem] font-semibold tracking-[-0.025em] text-foreground/92 transition-colors hover:text-primary/92">
-          {title}
-        </h4>
-      </Link>
+        <Link href={`/post/${post.id}`} className="block space-y-2">
+          <h4 className="line-clamp-3 text-[0.84rem] font-semibold leading-[1.35] tracking-[-0.022em] text-foreground/92 transition-colors group-hover:text-primary/90">
+            {title}
+          </h4>
+          {preview ? (
+            <p className="line-clamp-2 text-[0.72rem] leading-5 text-foreground/54">
+              {preview}
+            </p>
+          ) : null}
+        </Link>
 
-      {/* Publish date */}
-      <div className="flex items-center gap-1.5 text-[0.72rem]">
-        <Calendar className="size-3 shrink-0 text-foreground/48" />
-        <span
-          className={cn(
-            post.status === 'scheduled' ? 'text-sky-400/80' : 'text-foreground/56',
-          )}
-        >
-          {formatShortDate(publishDate)}
-        </span>
-        {pillar && (
+        <div className="mt-auto flex items-center gap-1.5 text-[0.69rem]">
+          <Calendar className="size-3 shrink-0 text-foreground/38" />
           <span
-            className="ml-auto truncate text-[0.68rem]"
-            style={{ color: pillar.color }}
+            className={cn(
+              post.status === 'scheduled' ? 'text-sky-400/84' : 'text-foreground/46',
+            )}
           >
-            {pillar.name}
+            {formatShortDate(publishDate)}
           </span>
-        )}
+        </div>
       </div>
 
-      {/* Progressive disclosure: expanded metadata */}
-      <AnimatePresence initial={false}>
-        {isExpanded && hasExpandedContent && (
-          <m.div
-            key="expanded"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-            className="overflow-hidden"
+      <div className="flex items-center justify-between gap-2 border-t border-border/42 px-3.5 py-2.5">
+        <Link
+          href={`/post/${post.id}`}
+          className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-foreground/58 transition-colors hover:text-foreground"
+        >
+          Open
+          <ArrowUpRight className="size-3" />
+        </Link>
+        {showApprove ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 rounded-full border-primary/30 bg-primary/8 px-3 text-[0.72rem] text-primary/90 hover:border-primary/50 hover:bg-primary/14 hover:text-primary"
+            onClick={handleApprove}
+            disabled={isPending}
           >
-            <div className="space-y-2 pb-1 pt-0.5">
-              {stale && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-orange-400/30 bg-orange-500/8 px-2 py-0.5 text-[0.64rem] font-medium text-orange-300/80">
-                  Overdue
-                </span>
-              )}
-              {preview && (
-                <p className="line-clamp-2 text-[0.74rem] leading-5 text-foreground/56">
-                  {preview}
-                </p>
-              )}
-              {(post.created_by_agent || post.reviewed_by_agent || post.brief_ref) && (
-                <div className="space-y-1">
-                  {post.created_by_agent && (
-                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                      <Bot className="size-2.5 shrink-0" />
-                      <span className="truncate">{post.created_by_agent}</span>
-                    </div>
-                  )}
-                  {post.reviewed_by_agent && (
-                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                      <User className="size-2.5 shrink-0" />
-                      <span className="truncate">{post.reviewed_by_agent}</span>
-                    </div>
-                  )}
-                  {post.brief_ref && (
-                    <div className="flex items-center gap-1 text-[0.7rem] text-foreground/52">
-                      <FileText className="size-2.5 shrink-0" />
-                      <span className="truncate">{post.brief_ref}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </m.div>
-        )}
-      </AnimatePresence>
-
-      {/* Actions */}
-      <div className="editorial-rule pt-0" onClick={(e) => e.stopPropagation()}>
-        <PostCardActions postId={post.id} status={post.status} content={post.content} compact />
+            {isPending ? 'Approving…' : 'Approve'}
+          </Button>
+        ) : null}
       </div>
-    </m.div>
+    </article>
   )
 }

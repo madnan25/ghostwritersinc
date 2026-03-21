@@ -20,32 +20,28 @@ interface PostCardActionsProps {
   compact?: boolean
 }
 
-const defaultBtnClass = 'min-h-[40px] flex-1 sm:flex-none sm:min-h-0'
-const compactBtnClass = 'min-h-[36px] px-3 text-[0.76rem] sm:min-h-0'
-
 export function PostCardActions({ postId, status, content, compact = false }: PostCardActionsProps) {
   const [isPending, startTransition] = useTransition()
-  const btnClass = compact ? compactBtnClass : defaultBtnClass
-  const primaryBtnClass = `${btnClass} border-border/60 bg-transparent text-foreground/72 hover:border-primary/22 hover:bg-background/34 hover:text-foreground`
-  const wrapClass = compact ? 'flex w-full flex-wrap items-center gap-2' : 'flex w-full items-center gap-2'
+
+  /* Full-size cards keep original sizing; pipeline compact cards use tighter sizing */
+  const btnClass = compact
+    ? 'h-7 px-2.5 text-[0.72rem]'
+    : 'min-h-[40px] flex-1 sm:flex-none sm:min-h-0'
+
+  const outlineCls = `${btnClass} border-border/55 bg-transparent text-foreground/68 hover:border-primary/25 hover:bg-background/30 hover:text-foreground`
+  const wrap = compact ? 'flex w-full flex-wrap items-center gap-1.5' : 'flex w-full items-center gap-2'
 
   function handleApprove() {
-    startTransition(async () => {
-      await approvePost(postId)
-    })
+    startTransition(async () => { await approvePost(postId) })
   }
 
   if (status === 'draft') {
     return (
-      <div className={wrapClass}>
-        <Button
-          size="sm"
-          variant="outline"
-          className={primaryBtnClass}
+      <div className={wrap}>
+        <Button size="sm" variant="outline" className={outlineCls}
           onClick={() => startTransition(async () => { await submitForAgentReview(postId) })}
-          disabled={isPending}
-        >
-          {isPending ? 'Submitting…' : 'Submit for Review'}
+          disabled={isPending}>
+          {isPending ? 'Submitting…' : 'Submit'}
         </Button>
         <EditPostDialog postId={postId} initialContent={content} className={btnClass} />
         <DeletePostDialog postId={postId} className={btnClass} />
@@ -55,7 +51,7 @@ export function PostCardActions({ postId, status, content, compact = false }: Po
 
   if (status === 'approved') {
     return (
-      <div className={compact ? 'flex flex-wrap items-center gap-2' : 'flex items-center gap-2'}>
+      <div className={wrap}>
         {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} className={btnClass} />}
         <DeletePostDialog postId={postId} className={btnClass} />
       </div>
@@ -64,22 +60,25 @@ export function PostCardActions({ postId, status, content, compact = false }: Po
 
   if (!isReviewQueueStatus(status)) {
     return (
-      <div className={compact ? 'flex flex-wrap items-center gap-2' : 'flex items-center gap-2'}>
+      <div className={wrap}>
         <DeletePostDialog postId={postId} className={btnClass} />
       </div>
     )
   }
 
+  /* pending_review — show Approve prominently, then secondary actions */
   return (
-    <div className={wrapClass}>
-      <Button size="sm" variant="outline" className={primaryBtnClass} onClick={handleApprove} disabled={isPending}>
+    <div className="flex w-full flex-col gap-1.5">
+      <Button size="sm" variant="outline"
+        className={`w-full ${compact ? 'h-7 text-[0.72rem]' : 'min-h-[40px]'} border-primary/30 bg-primary/8 text-primary/90 hover:border-primary/50 hover:bg-primary/14 hover:text-primary`}
+        onClick={handleApprove} disabled={isPending}>
         {isPending ? 'Approving…' : getApproveActionLabel()}
       </Button>
-      {canEditPost(status) && (
-        <EditPostDialog postId={postId} initialContent={content} className={btnClass} />
-      )}
-      {canRejectPost(status) && <RejectDialog postId={postId} className={btnClass} />}
-      <DeletePostDialog postId={postId} className={btnClass} />
+      <div className={wrap}>
+        {canEditPost(status) && <EditPostDialog postId={postId} initialContent={content} className={btnClass} />}
+        {canRejectPost(status) && <RejectDialog postId={postId} className={btnClass} />}
+        <DeletePostDialog postId={postId} className={btnClass} />
+      </div>
     </div>
   )
 }
