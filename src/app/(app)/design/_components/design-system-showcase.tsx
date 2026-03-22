@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { BrandWordmark } from "@/components/brand-wordmark";
 import { cn } from "@/lib/utils";
 import {
   buttonGuidelines,
@@ -36,6 +37,63 @@ function DesignSection({
 export function DesignSystemShowcase() {
   return (
     <div className="space-y-10">
+      <DesignSection
+        kicker="Brand"
+        title="Logo And Wordmark"
+        description="The marketing page is the visual reference. Any product-specific deviations from that lockup should be documented here so brand usage stays intentional instead of drifting."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="dashboard-frame p-6 sm:p-7">
+            <p className="editorial-meta">Marketing Nav Lockup</p>
+            <div className="mt-5 flex min-h-28 items-center rounded-[24px] border border-border/60 bg-card/50 px-6">
+              <div className="inline-flex items-center gap-[10px] leading-none">
+                <span className="grid size-7 place-items-center rounded-[6px] bg-[#92c936] text-[11px] font-extrabold uppercase tracking-[-0.02em] text-[#0a0c08]">
+                  GW
+                </span>
+                <span className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+                  Ghostwriters
+                  <span className="text-primary">.</span>
+                </span>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-foreground/68">
+              Exact marketing-page logo treatment. Use this as the baseline reference for color,
+              casing, corner radius, and wordmark proportion.
+            </p>
+          </div>
+          <div className="dashboard-frame p-6 sm:p-7">
+            <p className="editorial-meta">Product Nav Lockup</p>
+            <div className="mt-5 flex min-h-28 items-center rounded-[24px] border border-border/60 bg-card/50 px-6">
+              <BrandWordmark href="/design" size="compact" />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-foreground/68">
+              Shared product implementation for the app header. Slightly larger than marketing so
+              it holds up inside the desktop app chrome.
+            </p>
+          </div>
+          <div className="dashboard-frame p-6 sm:p-7">
+            <p className="editorial-meta">Standalone Logo Mark</p>
+            <div className="mt-5 flex min-h-28 items-center rounded-[24px] border border-border/60 bg-card/50 px-6">
+              <BrandWordmark href="/design" size="compact" showWordmark={false} />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-foreground/68">
+              Badge-only usage for constrained surfaces where the wordmark would be visually heavy
+              or redundant.
+            </p>
+          </div>
+          <div className="dashboard-frame p-6 sm:p-7">
+            <p className="editorial-meta">Muted Footer Lockup</p>
+            <div className="mt-5 flex min-h-28 items-center rounded-[24px] border border-border/60 bg-card/50 px-6">
+              <BrandWordmark href="/design" size="sm" tone="muted" />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-foreground/68">
+              Reduced-emphasis footer version. Keeps the same brand geometry while softening the
+              wordmark contrast for supporting placements.
+            </p>
+          </div>
+        </div>
+      </DesignSection>
+
       <DesignSection
         kicker="Foundations"
         title="Color Tokens"
