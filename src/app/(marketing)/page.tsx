@@ -36,14 +36,14 @@ export default function MarketingPage() {
           </div>
 
           <h1 className={styles.heroH1}>
-            Your Linked<span className={styles.linkedinIn}>In</span>.<br />
+            Your LinkedIn<span className={styles.linkedinIn}>.</span><br />
             Written by <span className={styles.lime}>agents.</span><br />
             <span className={styles.dim}>Sounding like you.</span>
           </h1>
 
           <p className={styles.heroSub}>
             A coordinated team of AI agents that researches, strategizes,
-            writes, and publishes your Linked<span className={styles.linkedinIn}>In</span> content — on autopilot, in your
+            writes, and publishes your LinkedIn content — on autopilot, in your
             voice, getting sharper every week.
           </p>
 
@@ -71,11 +71,11 @@ export default function MarketingPage() {
         <div className={styles.reveal}>
           <div className={styles.kicker}>The problem</div>
           <h2 className={styles.problemH2}>
-            You know Linked<span className={styles.linkedinIn}>In</span> matters.<br />
+            You know LinkedIn matters.<br />
             <span className={styles.muted}>You just never post.</span>
           </h2>
           <p className={styles.problemBody}>
-            Linked<span className={styles.linkedinIn}>In</span> has 1 billion users. Only 1% of them post content
+            LinkedIn has 1 billion users. Only 1% of them post content
             regularly — yet that 1% captures the vast majority of views,
             inbound opportunities, and trust.
             <br /><br />
@@ -88,7 +88,7 @@ export default function MarketingPage() {
           <div className={styles.stat}>
             <div className={styles.statN}>1%</div>
             <div className={styles.statL}>
-              of Linked<span className={styles.linkedinIn}>In</span>&apos;s 1 billion users post regularly — they generate
+              of LinkedIn&apos;s 1 billion users post regularly — they generate
               virtually all the organic reach on the platform
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function MarketingPage() {
           <div className={styles.stat}>
             <div className={styles.statN}>3hrs</div>
             <div className={styles.statL}>
-              median time founders report spending per Linked<span className={styles.linkedinIn}>In</span> post —
+              median time founders report spending per LinkedIn post —
               research, drafting, editing, second-guessing, rewriting
             </div>
           </div>
@@ -161,7 +161,7 @@ export default function MarketingPage() {
             <span className={styles.stepAgent}>Platform</span>
             <div className={styles.stepTitle}>Publish</div>
             <div className={styles.stepBody}>
-              Direct publish to Linked<span className={styles.linkedinIn}>In</span> or one-click copy. Scheduled or
+              Direct publish to LinkedIn or one-click copy. Scheduled or
               immediate. Tracked and logged.
             </div>
           </div>
@@ -287,7 +287,7 @@ export default function MarketingPage() {
           Private Beta — Founding Access
         </div>
         <h2 className={`${styles.ctaH2} ${styles.reveal}`}>
-          Your Linked<span className={styles.linkedinIn}>In</span>.<br />Finally <em>working</em>.
+          Your LinkedIn<span className={styles.linkedinIn}>.</span><br />Finally <em>working</em>.
         </h2>
         <WaitlistForm />
         <p className={styles.ctaFine}>
