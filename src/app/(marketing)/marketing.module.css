@@ -887,21 +887,22 @@
   .ctaH2 { font-size: clamp(30px, 8vw, 56px); margin-bottom: 32px; }
   .ctaForm {
     flex-direction: column;
-    gap: 0;
+    gap: 12px;
     max-width: 100%;
   }
   .ctaInput {
     border: 1px solid var(--border-strong, rgba(191,198,177,0.35));
-    border-radius: 10px 10px 0 0;
-    border-bottom: none;
-    height: 52px;
+    border-radius: 14px;
+    border-right: 1px solid var(--border-strong, rgba(191,198,177,0.35));
+    height: 56px;
     font-size: 16px; /* prevents iOS zoom on focus */
-    padding: 0 20px;
+    padding: 0 22px;
   }
   .ctaSubmit {
-    border-radius: 0 0 10px 10px;
-    height: 52px;
-    font-size: 15px;
+    border-radius: 14px;
+    height: 56px;
+    font-size: 16px;
+    font-weight: 700;
     width: 100%;
   }
   .ctaFine { font-size: 10px; margin-top: 12px; }
