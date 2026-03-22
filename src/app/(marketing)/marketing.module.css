@@ -173,6 +173,8 @@
 .heroH1 .lime { color: var(--primary); }
 .heroH1 .dim  { color: var(--fg-muted); }
 
+.linkedinIn { color: #0A66C2; }
+
 .heroSub {
   font-size: 17px;
   font-weight: 400;
