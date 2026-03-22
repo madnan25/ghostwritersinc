@@ -63,6 +63,52 @@ async function findExistingReviewTask(
 }
 
 /**
+ * Create a Paperclip task for Strategist when a user submits a new post
+ * request (human brief). This wakes the Strategist to enrich and process
+ * the brief through the content pipeline.
+ */
+export async function createBriefRequestTask(opts: {
+  briefTopic: string
+  priority: 'normal' | 'urgent'
+}): Promise<void> {
+  if (!isConfigured()) {
+    console.warn(
+      '[paperclip] Skipping brief request task — missing env vars',
+    )
+    return
+  }
+
+  const { briefTopic, priority } = opts
+  const truncatedTopic = briefTopic.slice(0, 60)
+
+  try {
+    await paperclipFetch(`/api/companies/${PAPERCLIP_COMPANY_ID}/issues`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: `Process post request: ${truncatedTopic}`,
+        description:
+          `A user submitted a new post request via the dashboard.\n\n` +
+          `**Topic:** ${briefTopic}\n` +
+          `**Priority:** ${priority}\n\n` +
+          `Pick up this pending brief via \`POST /api/briefs/enrich\`, enrich it with research and pillar assignment, ` +
+          `then coordinate with Scout for research and Scribe for writing as needed.`,
+        status: 'todo',
+        priority: priority === 'urgent' ? 'high' : 'medium',
+        assigneeAgentId: STRATEGIST_AGENT_ID,
+        parentId: REVIEW_PARENT_ISSUE_ID,
+        projectId: PROJECT_ID,
+      }),
+    })
+  } catch (err) {
+    // Best-effort — don't fail the user's request if Paperclip is unreachable
+    console.error(
+      '[paperclip] Failed to create brief request task:',
+      err instanceof Error ? err.message : err,
+    )
+  }
+}
+
+/**
  * Create a Paperclip re-review task for Strategist when a user requests
  * re-review on an agent-reviewed post at pending_review.
  */

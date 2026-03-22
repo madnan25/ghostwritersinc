@@ -6,7 +6,7 @@ import type { PostStatus } from '@/lib/types'
 import { getLatestBriefVersion } from '@/lib/brief-versioning'
 import { buildVersionedContentUpdate } from '@/lib/post-versioning'
 import { validateTransition } from '@/lib/workflow'
-import { createStrategyReviewTask, createReReviewTask } from '@/lib/paperclip'
+import { createStrategyReviewTask, createReReviewTask, createBriefRequestTask } from '@/lib/paperclip'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -911,6 +911,12 @@ export async function createHumanBriefRequest(data: {
   })
 
   if (error) throw new Error(error.message)
+
+  // Notify Strategist via Paperclip so the brief gets picked up immediately
+  await createBriefRequestTask({
+    briefTopic: data.topic.trim(),
+    priority: data.priority ?? 'normal',
+  })
 
   revalidatePath('/dashboard')
   revalidatePath('/calendar')
