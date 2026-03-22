@@ -90,8 +90,11 @@ export async function createBriefRequestTask(opts: {
           `A user submitted a new post request via the dashboard.\n\n` +
           `**Topic:** ${briefTopic}\n` +
           `**Priority:** ${priority}\n\n` +
-          `Pick up this pending brief via \`POST /api/briefs/enrich\`, enrich it with research and pillar assignment, ` +
-          `then coordinate with Scout for research and Scribe for writing as needed.`,
+          `Follow the Human Post Request Workflow in your AGENTS.md:\n` +
+          `1. Enrich pending briefs via \`POST /api/briefs/enrich\`\n` +
+          `2. Assess if the topic needs fresh research\n` +
+          `3. If yes, create a research task for Scout\n` +
+          `4. Create brief and hand off to Scribe for writing`,
         status: 'todo',
         priority: priority === 'urgent' ? 'high' : 'medium',
         assigneeAgentId: STRATEGIST_AGENT_ID,
