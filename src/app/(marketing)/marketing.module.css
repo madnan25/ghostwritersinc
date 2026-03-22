@@ -961,10 +961,13 @@
     width: 100%;
   }
   .ctaInput {
+    appearance: none;
+    -webkit-appearance: none;
     border: 1px solid rgba(191,198,177,0.22);
     border-radius: 14px;
     display: block;
     width: 100%;
+    min-height: 72px;
     height: 72px;
     font-size: 16px; /* prevents iOS zoom on focus */
     font-weight: 500;
@@ -972,6 +975,7 @@
     letter-spacing: -0.01em;
     padding: 0 24px;
     background: #141914;
+    box-sizing: border-box;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.03),
       0 12px 28px -22px rgba(0, 0, 0, 0.6);
