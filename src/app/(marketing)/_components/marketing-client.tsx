@@ -33,9 +33,17 @@ export function MarketingNav() {
       </Link>
       <div className={styles.navRight}>
         <span className={styles.navTag}>Private Beta</span>
-        <a href="#cta" className={styles.navCta}>
+        <button
+          type="button"
+          className={styles.navCta}
+          onClick={() =>
+            document
+              .getElementById('cta')
+              ?.scrollIntoView({ behavior: 'smooth' })
+          }
+        >
           Join Waitlist
-        </a>
+        </button>
       </div>
     </nav>
   );
@@ -110,6 +118,26 @@ export function ScrollRevealInit() {
   return null;
 }
 
+export function ScrollToCtaButton({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() =>
+        document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' })
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
 export function WaitlistForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -123,9 +151,6 @@ export function WaitlistForm() {
     const form = e.currentTarget;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    const now = new Date();
-    const timestamp = now.toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
-
     try {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
@@ -133,7 +158,6 @@ export function WaitlistForm() {
         body: JSON.stringify({
           email,
           device: isMobile ? 'mobile' : 'desktop',
-          timestamp,
         }),
       });
 

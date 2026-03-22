@@ -2,8 +2,10 @@ import {
   HeroTicker,
   MarketingNav,
   ScrollRevealInit,
+  ScrollToCtaButton,
   WaitlistForm,
 } from './_components/marketing-client';
+import { BrandWordmark } from '@/components/brand-wordmark';
 import styles from './marketing.module.css';
 
 export const metadata = {
@@ -46,9 +48,9 @@ export default function MarketingPage() {
           </p>
 
           <div className={styles.heroActions}>
-            <a href="#cta" className={styles.btnLg}>
+            <ScrollToCtaButton className={styles.btnLg}>
               Request Early Access
-            </a>
+            </ScrollToCtaButton>
             <span className={styles.heroAside}>
               Founding cohort only · Limited spots
             </span>
@@ -295,8 +297,7 @@ export default function MarketingPage() {
 
       <footer className={styles.footer}>
         <div className={styles.footerLogo}>
-          <div className={styles.footerBadge}>GW</div>
-          <span className={styles.footerName}>Ghostwriters Inc.</span>
+          <BrandWordmark href="/" size="sm" tone="muted" />
         </div>
         <span className={styles.footerCopy}>
           © 2026 Ghostwriters Inc. · All rights reserved
