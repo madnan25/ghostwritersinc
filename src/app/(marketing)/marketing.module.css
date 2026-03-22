@@ -1,8 +1,9 @@
-/* Marketing landing page styles — scoped via CSS Modules */
+/* Marketing landing page styles — scoped via CSS Modules — v2 */
 
 .wrapper {
   --bg:            #040705;
   --card:          #0f1410;
+  --cta-input-h:   72px;
   --secondary:     #1a1e1a;
   --muted:         #161916;
   --accent:        #222823;
@@ -656,7 +657,7 @@
 .ctaInput {
   flex: 1;
   min-width: 0;
-  height: 72px;
+  height: var(--cta-input-h, 72px);
   background: #141914;
   border: 1px solid rgba(191,198,177,0.18);
   border-radius: 16px;
