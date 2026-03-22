@@ -33,9 +33,9 @@ export function MarketingNav() {
       </Link>
       <div className={styles.navRight}>
         <span className={styles.navTag}>Private Beta</span>
-        <Link href="/login" className={styles.navCta}>
+        <a href="#cta" className={styles.navCta}>
           Join Waitlist
-        </Link>
+        </a>
       </div>
     </nav>
   );
@@ -112,34 +112,68 @@ export function ScrollRevealInit() {
 
 export function WaitlistForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
+    setError('');
+    setSubmitting(true);
+
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    const now = new Date();
+    const timestamp = now.toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          device: isMobile ? 'mobile' : 'desktop',
+          timestamp,
+        }),
+      });
+
+      if (!res.ok) throw new Error('submit failed');
+      setSubmitted(true);
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <>
       <form className={styles.ctaForm} onSubmit={handleSubmit}>
         <input
+          name="email"
           type="email"
           className={styles.ctaInput}
           placeholder="your@email.com"
           required
           autoComplete="email"
-          disabled={submitted}
+          disabled={submitted || submitting}
         />
         <button
           type="submit"
           className={`${styles.ctaSubmit}${submitted ? ` ${styles.done}` : ''}`}
-          disabled={submitted}
+          disabled={submitted || submitting}
         >
-          {submitted ? '✓ On the list' : 'Join Waitlist'}
+          {submitted ? '\u2713 On the list' : submitting ? 'Joining...' : 'Join Waitlist'}
         </button>
       </form>
       {submitted && (
         <div className={`${styles.successLine} ${styles.show}`}>
-          ✓&nbsp;&nbsp;You&#39;re on the list. We&#39;ll be in touch.
+          {'\u2713'}&nbsp;&nbsp;You&#39;re on the list. We&#39;ll be in touch.
+        </div>
+      )}
+      {error && (
+        <div className={styles.successLine} style={{ color: '#f87171' }}>
+          {error}
         </div>
       )}
     </>

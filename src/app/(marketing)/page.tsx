@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {
   HeroTicker,
   MarketingNav,
@@ -47,9 +46,9 @@ export default function MarketingPage() {
           </p>
 
           <div className={styles.heroActions}>
-            <Link href="/login" className={styles.btnLg}>
+            <a href="#cta" className={styles.btnLg}>
               Request Early Access
-            </Link>
+            </a>
             <span className={styles.heroAside}>
               Founding cohort only · Limited spots
             </span>
