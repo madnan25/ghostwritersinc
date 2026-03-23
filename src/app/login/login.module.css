@@ -195,30 +195,111 @@
   animation: fadeUp 0.7s ease 0.4s forwards;
 }
 
-/* ── RESPONSIVE ── */
-@media (max-width: 520px) {
+/* ── RESPONSIVE — DESKTOP (≥ 960px) ── */
+@media (min-width: 960px) {
   .wrapper {
-    padding: 48px 16px 32px;
-    align-items: flex-start;
-    padding-top: 80px;
+    padding: 80px 24px 60px;
+  }
+}
+
+/* ── RESPONSIVE — TABLET (≤ 960px) ── */
+@media (max-width: 960px) {
+  .wrapper {
+    padding: 60px 20px 40px;
   }
 
   .wrapper::before {
-    left: 20px;
+    left: 32px;
   }
 
   .heading {
-    font-size: clamp(1.9rem, 8vw, 2.4rem);
+    font-size: clamp(2rem, 5vw, 2.8rem);
+  }
+}
+
+/* ── RESPONSIVE — MOBILE (≤ 520px) ── */
+@media (max-width: 520px) {
+  .wrapper {
+    -webkit-text-size-adjust: 100%;
+    padding: 0 20px;
+    padding-top: 88px;
+    padding-bottom: 48px;
+    align-items: flex-start;
+  }
+
+  /* Hide decorative vertical rule — too tight on narrow viewports */
+  .wrapper::before {
+    display: none;
+  }
+
+  .header {
+    margin-bottom: 28px;
+  }
+
+  .kicker {
+    margin-bottom: 16px;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+  }
+
+  .heading {
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
+    margin-bottom: 12px;
+    letter-spacing: -0.03em;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 100%;
   }
 
   .card {
     padding: 20px;
+    border-radius: 14px;
+  }
+
+  .error {
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .infoText {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .linkedinBtn {
+    height: 52px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .footer {
+    margin-top: 16px;
+    font-size: 10px;
   }
 }
 
-@media (min-width: 960px) {
-  .wrapper {
-    padding: 80px 24px 60px;
+/* ── RESPONSIVE — VERY SMALL (≤ 360px) ── */
+@media (max-width: 360px) {
+  .heading {
+    font-size: 1.7rem;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .linkedinBtn {
+    height: 48px;
+    font-size: 15px;
   }
 }
 
