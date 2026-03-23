@@ -19,20 +19,15 @@ export function MarketingNav() {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 40);
+    const handler = () => {
+      setScrolled(window.scrollY > 40);
+      const features = document.getElementById('features');
+      if (features) {
+        setHidden(features.getBoundingClientRect().bottom < 1);
+      }
+    };
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
-  }, []);
-
-  useEffect(() => {
-    const endScreen = document.getElementById('end-screen');
-    if (!endScreen) return;
-    const io = new IntersectionObserver(
-      ([entry]) => setHidden(entry.isIntersecting),
-      { threshold: 0.15 }
-    );
-    io.observe(endScreen);
-    return () => io.disconnect();
   }, []);
 
   return (

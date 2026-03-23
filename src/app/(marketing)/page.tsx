@@ -254,7 +254,7 @@ export default function MarketingPage() {
       </section>
 
       {/* FEATURES */}
-      <section className={styles.features}>
+      <section className={styles.features} id="features">
         <div className={`${styles.featuresHdr} ${styles.reveal}`}>
           <h2 className={styles.featuresH2}>
             Built for humans who care about quality
