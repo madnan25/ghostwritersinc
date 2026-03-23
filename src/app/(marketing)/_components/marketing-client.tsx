@@ -16,22 +16,32 @@ const TICKER_ITEMS = [
 
 export function MarketingNav() {
   const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [navTop, setNavTop] = useState(0);
 
   useEffect(() => {
+    const NAV_H = 60;
     const handler = () => {
       setScrolled(window.scrollY > 40);
       const features = document.getElementById('features');
       if (features) {
-        setHidden(features.getBoundingClientRect().bottom < 1);
+        const bottom = features.getBoundingClientRect().bottom;
+        setNavTop(bottom < NAV_H ? bottom - NAV_H : 0);
       }
     };
     window.addEventListener('scroll', handler, { passive: true });
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  const offScreen = navTop < 0;
+
   return (
-    <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ''} ${hidden ? styles.navHidden : ''}`}>
+    <nav
+      className={`${styles.nav} ${scrolled ? styles.scrolled : ''}`}
+      style={{
+        top: `${navTop}px`,
+        pointerEvents: offScreen ? 'none' : undefined,
+      }}
+    >
       <Link href="/" className={styles.navLogo}>
         <div className={styles.navBadge}>GW</div>
         <div className={styles.navWordmark}>

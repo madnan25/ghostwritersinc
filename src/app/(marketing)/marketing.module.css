@@ -56,18 +56,12 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.3s, background 0.3s, opacity 0.4s ease, transform 0.4s ease;
+  transition: border-color 0.3s, background 0.3s;
 }
 .nav.scrolled {
   background: rgba(4,7,5,0.88);
   backdrop-filter: blur(16px);
   border-color: var(--border);
-}
-.nav.navHidden {
-  opacity: 0;
-  transform: translateY(-100%);
-  pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease, border-color 0.3s, background 0.3s;
 }
 .navLogo {
   display: flex;
