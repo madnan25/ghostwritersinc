@@ -56,12 +56,18 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.3s, background 0.3s;
+  transition: border-color 0.3s, background 0.3s, opacity 0.4s ease, transform 0.4s ease;
 }
 .nav.scrolled {
   background: rgba(4,7,5,0.88);
   backdrop-filter: blur(16px);
   border-color: var(--border);
+}
+.nav.navHidden {
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease, border-color 0.3s, background 0.3s;
 }
 .navLogo {
   display: flex;
@@ -613,8 +619,20 @@
 .featBody { font-size: 13px; color: var(--fg-muted); line-height: 1.7; }
 
 /* ── CTA ── */
+/* ── END SCREEN (CTA + Footer = 100vh) ── */
+.endScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .cta {
-  padding: 140px 64px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 80px 64px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -785,7 +803,7 @@
   .features { padding: 60px 24px 80px; }
   .featuresHdr { flex-direction: column; gap: 8px; }
   .featuresGrid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .cta { padding: 100px 24px; }
+  .cta { padding: 60px 24px; }
   .ctaForm {
     flex-direction: column;
     gap: 14px;
@@ -955,7 +973,7 @@
   .featBody { font-size: 12px; }
 
   /* CTA section — mobile-optimised stacked form */
-  .cta       { padding: 80px 20px; }
+  .cta       { padding: 48px 20px; }
   .ctaH2 { font-size: clamp(30px, 8vw, 56px); margin-bottom: 36px; }
   .ctaForm {
     gap: 14px;

@@ -281,28 +281,30 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className={styles.cta} id="cta">
-        <div className={`${styles.ctaKicker} ${styles.reveal}`}>
-          Private Beta — Founding Access
-        </div>
-        <h2 className={`${styles.ctaH2} ${styles.reveal}`}>
-          Your LinkedIn<span className={styles.linkedinIn}>.</span><br />Finally <em>working</em>.
-        </h2>
-        <WaitlistForm />
-        <p className={styles.ctaFine}>
-          No pitch decks. No demo calls. Early access when we&apos;re ready.
-        </p>
-      </section>
+      {/* CTA + FOOTER — full viewport ending screen */}
+      <div className={styles.endScreen} id="end-screen">
+        <section className={styles.cta} id="cta">
+          <div className={`${styles.ctaKicker} ${styles.reveal}`}>
+            Private Beta — Founding Access
+          </div>
+          <h2 className={`${styles.ctaH2} ${styles.reveal}`}>
+            Your LinkedIn<span className={styles.linkedinIn}>.</span><br />Finally <em>working</em>.
+          </h2>
+          <WaitlistForm />
+          <p className={styles.ctaFine}>
+            No pitch decks. No demo calls. Early access when we&apos;re ready.
+          </p>
+        </section>
 
-      <footer className={styles.footer}>
-        <div className={styles.footerLogo}>
-          <BrandWordmark href="/" size="sm" tone="muted" />
-        </div>
-        <span className={styles.footerCopy}>
-          © 2026 Ghostwriters Inc. · All rights reserved
-        </span>
-      </footer>
+        <footer className={styles.footer}>
+          <div className={styles.footerLogo}>
+            <BrandWordmark href="/" size="sm" tone="muted" />
+          </div>
+          <span className={styles.footerCopy}>
+            © 2026 Ghostwriters Inc. · All rights reserved
+          </span>
+        </footer>
+      </div>
 
       <ScrollRevealInit />
     </div>

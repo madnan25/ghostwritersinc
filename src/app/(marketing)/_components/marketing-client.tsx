@@ -16,6 +16,7 @@ const TICKER_ITEMS = [
 
 export function MarketingNav() {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
@@ -23,8 +24,19 @@ export function MarketingNav() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  useEffect(() => {
+    const endScreen = document.getElementById('end-screen');
+    if (!endScreen) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setHidden(entry.isIntersecting),
+      { threshold: 0.15 }
+    );
+    io.observe(endScreen);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ''}`}>
+    <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ''} ${hidden ? styles.navHidden : ''}`}>
       <Link href="/" className={styles.navLogo}>
         <div className={styles.navBadge}>GW</div>
         <div className={styles.navWordmark}>
