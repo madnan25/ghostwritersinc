@@ -9,6 +9,10 @@ export type RotationWarning = {
   period_label?: string;
   target_pct?: number;
   actual_pct?: number;
+  actual_count?: number;
+  target_count?: number;
+  total_posts?: number;
+  direction?: "over" | "under";
   suggestion: string;
 };
 
@@ -163,24 +167,68 @@ export function computeRotationWarnings(
       countByPillar.set(post.pillar_id!, (countByPillar.get(post.pillar_id!) ?? 0) + 1);
     }
 
-    for (const [pillarId, count] of countByPillar.entries()) {
-      const pillar = pillarMap.get(pillarId);
-      if (!pillar) continue;
+    // Collect under-target pillar names for actionable suggestions
+    const overPillars: { name: string; excess: number }[] = [];
+    const underPillars: { name: string; deficit: number }[] = [];
 
-      const actualPct = Math.round((count / totalAssigned) * 100);
-      if ((count / totalAssigned) <= (pillar.weight_pct / 100)) continue;
+    for (const pillar of pillars) {
+      if (!pillarMap.has(pillar.id)) continue;
+      const count = countByPillar.get(pillar.id) ?? 0;
+      const targetCount = Math.round(totalAssigned * pillar.weight_pct / 100);
+      if (count > targetCount) overPillars.push({ name: pillar.name, excess: count - targetCount });
+      if (count < targetCount) underPillars.push({ name: pillar.name, deficit: targetCount - count });
+    }
 
-      warnings.push({
-        pillar_id: pillarId,
-        pillar_name: pillar.name,
-        run_length: count,
-        source: "scheduled",
-        scope: "month",
-        period_label: periodLabel,
-        target_pct: pillar.weight_pct,
-        actual_pct: actualPct,
-        suggestion: `${pillar.name} is overweight in ${periodLabel}: ${actualPct}% of scheduled posts vs a ${pillar.weight_pct}% target.`,
-      });
+    const underNames = underPillars.map((p) => p.name);
+
+    for (const pillar of pillars) {
+      if (!pillarMap.has(pillar.id)) continue;
+      const count = countByPillar.get(pillar.id) ?? 0;
+      const targetCount = Math.round(totalAssigned * pillar.weight_pct / 100);
+      const actualPct = totalAssigned > 0 ? Math.round((count / totalAssigned) * 100) : 0;
+
+      if (count > targetCount) {
+        const excess = count - targetCount;
+        const reassignTo = underNames.length > 0
+          ? ` — reassign to ${underNames.join(" or ")}`
+          : "";
+        warnings.push({
+          pillar_id: pillar.id,
+          pillar_name: pillar.name,
+          run_length: count,
+          source: "scheduled",
+          scope: "month",
+          period_label: periodLabel,
+          target_pct: pillar.weight_pct,
+          actual_pct: actualPct,
+          actual_count: count,
+          target_count: targetCount,
+          total_posts: totalAssigned,
+          direction: "over",
+          suggestion: `${excess} post${excess !== 1 ? "s" : ""} over target${reassignTo}.`,
+        });
+      } else if (count < targetCount) {
+        const deficit = targetCount - count;
+        const overNames = overPillars.map((p) => p.name);
+        const stealFrom = overNames.length > 0
+          ? ` — reassign from ${overNames.join(" or ")}`
+          : "";
+        warnings.push({
+          pillar_id: pillar.id,
+          pillar_name: pillar.name,
+          run_length: count,
+          source: "scheduled",
+          scope: "month",
+          period_label: periodLabel,
+          target_pct: pillar.weight_pct,
+          actual_pct: actualPct,
+          actual_count: count,
+          target_count: targetCount,
+          total_posts: totalAssigned,
+          direction: "under",
+          suggestion: `Needs ${deficit} more post${deficit !== 1 ? "s" : ""}${stealFrom}.`,
+        });
+      }
     }
   }
 

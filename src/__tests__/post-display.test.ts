@@ -94,7 +94,7 @@ describe("post display helpers", () => {
     });
   });
 
-  it("flags pillars that exceed their monthly target share", () => {
+  it("flags pillars that exceed their monthly target share with counts and suggestions", () => {
     const weightedPillars: ContentPillar[] = [
       { ...pillars[0], weight_pct: 25 },
       { ...pillars[1], weight_pct: 75 },
@@ -111,8 +111,8 @@ describe("post display helpers", () => {
       new Date("2026-03-01T12:00:00.000Z")
     );
 
-    const monthlyWarning = warnings.find((warning) => warning.scope === "month");
-    expect(monthlyWarning).toMatchObject({
+    const overWarning = warnings.find((w) => w.scope === "month" && w.direction === "over");
+    expect(overWarning).toMatchObject({
       pillar_id: "pillar-a",
       pillar_name: "Thought Leadership",
       run_length: 2,
@@ -120,7 +120,24 @@ describe("post display helpers", () => {
       scope: "month",
       target_pct: 25,
       actual_pct: 67,
+      actual_count: 2,
+      target_count: 1,
+      total_posts: 3,
+      direction: "over",
     });
+    expect(overWarning!.suggestion).toContain("1 post over target");
+
+    const underWarning = warnings.find((w) => w.scope === "month" && w.direction === "under");
+    expect(underWarning).toMatchObject({
+      pillar_id: "pillar-b",
+      pillar_name: "Industry Trends",
+      source: "scheduled",
+      scope: "month",
+      actual_count: 1,
+      target_count: 2,
+      direction: "under",
+    });
+    expect(underWarning!.suggestion).toContain("Needs 1 more post");
   });
 
   it("formats empty dates safely", () => {

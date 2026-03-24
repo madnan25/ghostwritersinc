@@ -90,32 +90,53 @@ function ScheduledMixList({ warnings }: { warnings: RotationWarning[] }) {
           <span className="font-medium">Scheduled mix is on target.</span>
         </div>
         <p className="mt-1.5 text-foreground/60">
-          No pillar is over its monthly weight target in the scheduled calendar.
+          Every pillar is at or within its monthly weight target.
         </p>
       </div>
     )
   }
 
-  const visible = expanded ? warnings : warnings.slice(0, MAX_VISIBLE)
-  const hiddenCount = warnings.length - MAX_VISIBLE
+  // Sort: over-target first, then under-target
+  const sorted = [...warnings].sort((a, b) => {
+    if (a.direction === 'over' && b.direction !== 'over') return -1
+    if (a.direction !== 'over' && b.direction === 'over') return 1
+    return 0
+  })
+
+  const visible = expanded ? sorted : sorted.slice(0, MAX_VISIBLE)
+  const hiddenCount = sorted.length - MAX_VISIBLE
 
   return (
     <div>
-      {visible.map((warning, index) => (
-        <div
-          key={`scheduled-${warning.pillar_id}-${warning.period_label}`}
-          className={`flex items-center gap-3 py-2.5 ${index < visible.length - 1 ? 'border-b border-white/6' : ''}`}
-        >
-          <Target className="size-4 shrink-0 text-sky-300" />
-          <span className="flex-1 truncate text-sm font-medium text-foreground">
-            {warning.pillar_name}
-          </span>
-          <span className="shrink-0 text-sm text-foreground/50">
-            {warning.actual_pct}% vs {warning.target_pct}% target
-          </span>
-        </div>
-      ))}
-      {warnings.length > MAX_VISIBLE && (
+      {visible.map((warning, index) => {
+        const isOver = warning.direction === 'over'
+        return (
+          <div
+            key={`scheduled-${warning.pillar_id}-${warning.period_label}`}
+            className={`py-3 ${index < visible.length - 1 ? 'border-b border-white/6' : ''}`}
+          >
+            <div className="flex items-center gap-3">
+              {isOver ? (
+                <AlertTriangle className="size-4 shrink-0 text-amber-300" />
+              ) : (
+                <Target className="size-4 shrink-0 text-sky-300" />
+              )}
+              <span className="flex-1 truncate text-sm font-medium text-foreground">
+                {warning.pillar_name}
+              </span>
+              <span className="shrink-0 text-sm tabular-nums text-foreground/50">
+                {warning.actual_count ?? warning.run_length} post{(warning.actual_count ?? warning.run_length) !== 1 ? 's' : ''}
+                {' → '}
+                target {warning.target_count ?? '?'}
+              </span>
+            </div>
+            <p className={`mt-1 pl-7 text-xs ${isOver ? 'text-amber-300/70' : 'text-sky-300/70'}`}>
+              {warning.suggestion}
+            </p>
+          </div>
+        )
+      })}
+      {sorted.length > MAX_VISIBLE && (
         <button
           onClick={() => setExpanded(!expanded)}
           className="mt-2 flex items-center gap-1 text-xs text-foreground/45 transition-colors hover:text-foreground/70"
@@ -211,7 +232,7 @@ export function ScheduleHealthPanels({ warnings }: ScheduleHealthPanelsProps) {
               )}
             </div>
             <p className="mt-1 text-sm leading-6 text-foreground/62">
-              Monthly pillar weight drift in the actual scheduled calendar. Wildcards are excluded.
+              Post counts vs targets for each pillar. Shows what to add, remove, or reassign.
             </p>
           </div>
         </div>
