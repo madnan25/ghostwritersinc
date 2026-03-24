@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       status: 'pending_review',
       agent_id: auth.agentId,
       created_by_agent: auth.agentName,
-      freshness_type: parsed.data.freshness_type ?? null,
+      freshness_type: parsed.data.freshness_type ?? 'evergreen',
       expiry_date: parsed.data.expiry_date ?? null,
     })
     .select()
